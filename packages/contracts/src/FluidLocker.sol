@@ -15,16 +15,16 @@ contract FluidLocker {
     error NOT_LOCKER_OWNER();
     error FORBIDDEN();
 
-    constructor(IERC20 _fluid) {
+    constructor(ISuperToken _fluid) {
         FLUID = _fluid;
     }
 
-    function initialize(address owner) external initializer {
+    function initialize(address owner) external {
         lockerOwner = owner;
     }
 
     function lock(uint256 amount) external {
-        FLUID.transferFrom(msg.sender, address(this), _amount);
+        FLUID.transferFrom(msg.sender, address(this), amount);
     }
     function drain() external onlyOwner {}
     function stake() external onlyOwner {}
@@ -32,7 +32,7 @@ contract FluidLocker {
 
     function transferLocker(address recipient) external onlyOwner {
         if (recipient == address(0)) revert FORBIDDEN();
-        owner = recipient;
+        lockerOwner = recipient;
 
         /// TODO emit ownership transferred event
     }
