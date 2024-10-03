@@ -68,8 +68,12 @@ contract FluidLocker {
         lockerOwner = owner;
     }
 
+    function claimUnits() external {}
+
     function lock(uint256 amount) external {
         FLUID.transferFrom(msg.sender, address(this), amount);
+
+        /// FIXME emit `FLUID locked` event
     }
 
     function drain(uint128 drainPeriod) external onlyOwner {
@@ -90,6 +94,8 @@ contract FluidLocker {
         } else {
             _vestDrain(availableBalance, drainPeriod);
         }
+
+        /// FIXME emit `drained locker` event
     }
 
     function _instantDrain(uint256 amountToDrain) internal {
@@ -102,21 +108,43 @@ contract FluidLocker {
 
         // Transfer the leftover $FLUID to the locker owner
         FLUID.transfer(msg.sender, amountToDrain - penaltyAmount);
-
-        /// FIXME emit `drained locker` event
     }
 
-    function _vestDrain(uint256 amountToDrain, uint128 drainPeriod) internal {}
+    function _vestDrain(uint256 amountToDrain, uint128 drainPeriod) internal {
+        // Calculate the drain and penalty flow rates based on requested amount and drain period
+        (
+            int96 drainFlowRate,
+            int96 penaltyFlowRate
+        ) = _calculateVestDrainFlowRates(amountToDrain, drainPeriod);
 
-    function stake() external onlyOwner {}
+        // Distribute Penalty flow to Staker GDA Pool
+        FLUID.distributeFlow(address(this), GDA_POOL, penaltyFlowRate);
 
-    function unstake() external onlyOwner {}
+        // Create Drain flow from the locker to the locker owner
+        FLUID.createFlow(msg.sender, drainFlowRate);
+    }
+
+    function _calculateVestDrainFlowRates(
+        uint256 amountToDrain,
+        uint128 drainPeriod
+    ) internal view returns (int96 drainFlowRate, int96 penaltyFlowRate) {
+        uint256 drainAmount = 0;
+        uint256 penaltyAmount = amountToDrain - drainAmount;
+    }
+
+    function stake() external onlyOwner {
+        /// FIXME emit `staked` event
+    }
+
+    function unstake() external onlyOwner {
+        /// FIXME emit `unstaked` event
+    }
 
     function transferLocker(address recipient) external onlyOwner {
         if (recipient == address(0)) revert FORBIDDEN();
         lockerOwner = recipient;
 
-        /// FIXME emit ownership transferred event
+        /// FIXME emit `ownership transferred` event
     }
 
     function getStakedBalance() external view returns (uint256 sBalance) {
