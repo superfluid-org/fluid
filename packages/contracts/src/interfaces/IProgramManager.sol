@@ -16,6 +16,9 @@ interface IProgramManager {
     /// @notice Error thrown when caller is not the program admin
     error NOT_PROGRAM_ADMIN();
 
+    /// @notice Error thrown when caller is not the program admin
+    error INVALID_PARAMETER();
+
     /// @notice Error thrown when a signature is of invalid
     error INVALID_SIGNATURE(string reason);
 
@@ -48,12 +51,13 @@ interface IProgramManager {
         bytes memory signature
     ) external;
 
-    // FIXME : add Nonce Vs Signer Vs User check
-    /** CASE : if nonce check is not added a signature can be reused later after a program wipe (i.e. resetting all units)
-     *         ideally, once a program end, the GDA pool is reused for a new campaign, so all users must be disconnected
-     *         and the signer updated. Altho, if the signer is not updated and the nonce check not enforced, user could reused
-     *         previous signature to get themself units they dont deserve.
-     */
+    function updateUnits(
+        uint8[] memory programIds,
+        uint128[] memory newUnits,
+        uint256[] memory nonces,
+        bytes[] memory signatures
+    ) external;
+
     function updateUserUnits(
         uint8 programId,
         address user,

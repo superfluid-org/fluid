@@ -5,6 +5,7 @@ pragma solidity ^0.8.26;
 /* Superfluid Protocol Contracts & Interfaces */
 import {ISuperfluid, ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+import {IProgramManager} from "./interfaces/IProgramManager.sol";
 
 using SuperTokenV1Library for ISuperToken;
 
@@ -26,7 +27,9 @@ contract FluidLocker {
     ISuperToken public immutable FLUID;
 
     /// @notice Superfluid pool interface
-    ISuperfluidPool public immutable GDA_POOL;
+    ISuperfluidPool public immutable PENALTY_DRAINING_POOL;
+
+    IProgramManager public immutable PROGRAM_MANAGER;
 
     /// @notice This locker owner address
     address public lockerOwner;
@@ -59,16 +62,47 @@ contract FluidLocker {
     /// @notice Error thrown when attempting to drain a locker that does not have available $FLUID
     error NO_FLUID_TO_DRAIN();
 
-    constructor(ISuperToken fluid, ISuperfluidPool gdaPool) {
+    constructor(
+        ISuperToken fluid,
+        ISuperfluidPool penaltyDrainingPool,
+        IProgramManager programManager
+    ) {
         FLUID = fluid;
-        GDA_POOL = gdaPool;
+        PENALTY_DRAINING_POOL = penaltyDrainingPool;
+        PROGRAM_MANAGER = programManager;
     }
 
     function initialize(address owner) external {
         lockerOwner = owner;
     }
 
-    function claimUnits() external {}
+    function claim(
+        uint8 programId,
+        uint128 totalProgramUnits,
+        uint256 nonce,
+        bytes memory stackSignature
+    ) external {
+        PROGRAM_MANAGER.updateUnits(
+            programId,
+            totalProgramUnits,
+            nonce,
+            stackSignature
+        );
+    }
+
+    function claim(
+        uint8[] memory programIds,
+        uint128[] memory totalProgramUnits,
+        uint256[] memory nonces,
+        bytes[] memory stackSignatures
+    ) external {
+        PROGRAM_MANAGER.updateUnits(
+            programIds,
+            totalProgramUnits,
+            nonces,
+            stackSignatures
+        );
+    }
 
     function lock(uint256 amount) external {
         FLUID.transferFrom(msg.sender, address(this), amount);
@@ -103,8 +137,12 @@ contract FluidLocker {
         uint256 penaltyAmount = (amountToDrain * _INSTANT_DRAIN_PENALTY_BP) /
             _BP_DENOMINATOR;
 
-        // Distribute penalty to staker (connected to the GDA_POOL)
-        FLUID.distributeToPool(address(this), GDA_POOL, penaltyAmount);
+        // Distribute penalty to staker (connected to the PENALTY_DRAINING_POOL)
+        FLUID.distributeToPool(
+            address(this),
+            PENALTY_DRAINING_POOL,
+            penaltyAmount
+        );
 
         // Transfer the leftover $FLUID to the locker owner
         FLUID.transfer(msg.sender, amountToDrain - penaltyAmount);
@@ -118,7 +156,11 @@ contract FluidLocker {
         ) = _calculateVestDrainFlowRates(amountToDrain, drainPeriod);
 
         // Distribute Penalty flow to Staker GDA Pool
-        FLUID.distributeFlow(address(this), GDA_POOL, penaltyFlowRate);
+        FLUID.distributeFlow(
+            address(this),
+            PENALTY_DRAINING_POOL,
+            penaltyFlowRate
+        );
 
         // Create Drain flow from the locker to the locker owner
         FLUID.createFlow(msg.sender, drainFlowRate);
@@ -133,10 +175,12 @@ contract FluidLocker {
     }
 
     function stake() external onlyOwner {
+        // Connect to PENALTY_DRAINING_POOL
         /// FIXME emit `staked` event
     }
 
     function unstake() external onlyOwner {
+        // Disconnect from PENALTY_DRAINING_POOL
         /// FIXME emit `unstaked` event
     }
 
