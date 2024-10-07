@@ -1,16 +1,17 @@
 pragma solidity ^0.8.26;
 
 /* Openzeppelin Contracts & Interfaces */
+import {Math} from "@openzeppelin-v5/contracts/utils/math/Math.sol";
+import {SafeCast} from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {ISuperfluid, ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 import {IProgramManager} from "./interfaces/IProgramManager.sol";
-import {Math} from "@openzeppelin-v5/contracts/utils/math/Math.sol";
 import {IFluidLocker} from "./interfaces/IFluidLocker.sol";
 
 using SuperTokenV1Library for ISuperToken;
-using Math for uint256;
+using SafeCast for int256;
 
 /**
 DESIGN Questions :
@@ -170,6 +171,9 @@ contract FluidLocker is IFluidLocker {
         uint256 drainAmount = (amountToDrain *
             _getDrainPercentage(drainPeriod)) / _BP_DENOMINATOR;
         uint256 penaltyAmount = amountToDrain - drainAmount;
+
+        drainFlowRate = int256(drainAmount / drainPeriod).toInt96();
+        penaltyFlowRate = int256(penaltyAmount / drainPeriod).toInt96();
     }
 
     function _getDrainPercentage(
