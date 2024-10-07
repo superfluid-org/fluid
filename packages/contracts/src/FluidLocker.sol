@@ -9,6 +9,7 @@ import {ISuperfluid, ISuperfluidPool, ISuperToken} from "@superfluid-finance/eth
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 import {IProgramManager} from "./interfaces/IProgramManager.sol";
 import {IFluidLocker} from "./interfaces/IFluidLocker.sol";
+import {ILockerDrainer} from "./interfaces/ILockerDrainer.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -35,6 +36,9 @@ contract FluidLocker is IFluidLocker {
 
     /// @notice Distribution Program Manager interface
     IProgramManager public immutable PROGRAM_MANAGER;
+
+    /// @notice Connected Locker Drainer interface
+    ILockerDrainer public lockerDrainer;
 
     /// @notice This locker owner address
     address public lockerOwner;
@@ -153,15 +157,11 @@ contract FluidLocker is IFluidLocker {
             int96 penaltyFlowRate
         ) = _calculateVestDrainFlowRates(amountToDrain, drainPeriod);
 
-        // Distribute Penalty flow to Staker GDA Pool
-        FLUID.distributeFlow(
-            address(this),
-            PENALTY_DRAINING_POOL,
-            penaltyFlowRate
-        );
+        // Transfer the total amount to drain to the connected Locker Drainer
+        FLUID.transfer(address(lockerDrainer), amountToDrain);
 
-        // Create Drain flow from the locker to the locker owner
-        FLUID.createFlow(msg.sender, drainFlowRate);
+        // Initiate drain process
+        lockerDrainer.processDrain(drainFlowRate, penaltyFlowRate);
     }
 
     function _calculateVestDrainFlowRates(
