@@ -6,8 +6,10 @@ pragma solidity ^0.8.26;
 import {ISuperfluid, ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 import {IProgramManager} from "./interfaces/IProgramManager.sol";
+import {Math} from "@openzeppelin-v5/contracts/utils/math/Math.sol";
 
 using SuperTokenV1Library for ISuperToken;
+using Math for uint256;
 
 /**
 DESIGN Questions :
@@ -29,6 +31,7 @@ contract FluidLocker {
     /// @notice Superfluid pool interface
     ISuperfluidPool public immutable PENALTY_DRAINING_POOL;
 
+    /// @notice Distribution Program Manager interface
     IProgramManager public immutable PROGRAM_MANAGER;
 
     /// @notice This locker owner address
@@ -45,6 +48,12 @@ contract FluidLocker {
 
     /// @notice Basis points denominator (for percentage calculation)
     uint256 private constant _BP_DENOMINATOR = 10_000;
+
+    /// @notice Scaler used for drain percentage calculation
+    uint256 private constant _SCALER = 1e18;
+
+    /// @notice Scaler used for drain percentage calculation
+    uint256 private constant _PERCENT_TO_BP = 100;
 
     /// @notice Balance of $FLUID staked in this locker
     uint256 private stakedBalance;
@@ -170,8 +179,21 @@ contract FluidLocker {
         uint256 amountToDrain,
         uint128 drainPeriod
     ) internal view returns (int96 drainFlowRate, int96 penaltyFlowRate) {
-        uint256 drainAmount = 0;
+        uint256 drainAmount = (amountToDrain *
+            _getDrainPercentage(drainPeriod)) / _BP_DENOMINATOR;
         uint256 penaltyAmount = amountToDrain - drainAmount;
+    }
+
+    function _getDrainPercentage(
+        uint128 drainPeriod
+    ) internal returns (uint256 drainPercentageBP) {
+        drainPercentageBP =
+            (_PERCENT_TO_BP *
+                (((80 * _SCALER) / Math.sqrt(540 * _SCALER)) *
+                    (Math.sqrt(drainPeriod * _SCALER) / _SCALER) +
+                    20 *
+                    SCALER)) /
+            _SCALER;
     }
 
     function stake() external onlyOwner {
