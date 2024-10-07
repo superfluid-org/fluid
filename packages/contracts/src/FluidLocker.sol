@@ -7,6 +7,7 @@ import {ISuperfluid, ISuperfluidPool, ISuperToken} from "@superfluid-finance/eth
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 import {IProgramManager} from "./interfaces/IProgramManager.sol";
 import {Math} from "@openzeppelin-v5/contracts/utils/math/Math.sol";
+import {IFluidLocker} from "./interfaces/IFluidLocker.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using Math for uint256;
@@ -22,7 +23,7 @@ DESIGN Questions :
 
  */
 
-contract FluidLocker {
+contract FluidLocker is IFluidLocker {
     /// FIXME storage packing
 
     /// @notice $FLUID SuperToken interface
@@ -57,19 +58,6 @@ contract FluidLocker {
 
     /// @notice Balance of $FLUID staked in this locker
     uint256 private stakedBalance;
-
-    /// FIXME : Move to IFluidLocker
-    /// @notice Error thrown when the caller is not the owner
-    error NOT_LOCKER_OWNER();
-
-    /// @notice Error thrown when attempting to perform a forbidden operation
-    error FORBIDDEN();
-
-    /// @notice Error thrown when attempting to drain this locker with an invalid drain period
-    error INVALID_DRAIN_PERIOD();
-
-    /// @notice Error thrown when attempting to drain a locker that does not have available $FLUID
-    error NO_FLUID_TO_DRAIN();
 
     constructor(
         ISuperToken fluid,
@@ -178,7 +166,7 @@ contract FluidLocker {
     function _calculateVestDrainFlowRates(
         uint256 amountToDrain,
         uint128 drainPeriod
-    ) internal view returns (int96 drainFlowRate, int96 penaltyFlowRate) {
+    ) internal pure returns (int96 drainFlowRate, int96 penaltyFlowRate) {
         uint256 drainAmount = (amountToDrain *
             _getDrainPercentage(drainPeriod)) / _BP_DENOMINATOR;
         uint256 penaltyAmount = amountToDrain - drainAmount;
@@ -186,13 +174,13 @@ contract FluidLocker {
 
     function _getDrainPercentage(
         uint128 drainPeriod
-    ) internal returns (uint256 drainPercentageBP) {
+    ) internal pure returns (uint256 drainPercentageBP) {
         drainPercentageBP =
             (_PERCENT_TO_BP *
                 (((80 * _SCALER) / Math.sqrt(540 * _SCALER)) *
                     (Math.sqrt(drainPeriod * _SCALER) / _SCALER) +
                     20 *
-                    SCALER)) /
+                    _SCALER)) /
             _SCALER;
     }
 
