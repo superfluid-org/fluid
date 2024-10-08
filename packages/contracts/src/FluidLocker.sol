@@ -78,6 +78,13 @@ contract FluidLocker is IFluidLocker {
         lockerOwner = owner;
     }
 
+    //      ______     __                        __   ______                 __  _
+    //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
+    //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /// @inheritdoc IFluidLocker
     function claim(
         uint8 programId,
         uint128 totalProgramUnits,
@@ -92,6 +99,7 @@ contract FluidLocker is IFluidLocker {
         );
     }
 
+    /// @inheritdoc IFluidLocker
     function claim(
         uint8[] memory programIds,
         uint128[] memory totalProgramUnits,
@@ -106,12 +114,15 @@ contract FluidLocker is IFluidLocker {
         );
     }
 
+    /// @inheritdoc IFluidLocker
     function lock(uint256 amount) external {
+        // Fetch the amount of FLUID Token to be locked from the caller
         FLUID.transferFrom(msg.sender, address(this), amount);
 
         /// FIXME emit `FLUID locked` event
     }
 
+    /// @inheritdoc IFluidLocker
     function drain(uint128 drainPeriod) external onlyOwner {
         // Enforce drain period validity
         if (
@@ -133,6 +144,74 @@ contract FluidLocker is IFluidLocker {
 
         /// FIXME emit `drained locker` event
     }
+
+    /// @inheritdoc IFluidLocker
+    function stake() external onlyOwner {
+        uint256 amountToStake = getAvailableBalance();
+
+        if (amountToStake == 0) revert NO_FLUID_TO_STAKE();
+
+        stakedBalance += amountToStake;
+
+        if (
+            !FLUID.isMemberConnected(
+                address(PENALTY_DRAINING_POOL),
+                address(this)
+            )
+        ) {
+            // Connect this locker to the Penalty Draining Pool
+            FLUID.connectPool(PENALTY_DRAINING_POOL);
+        }
+        /// FIXME add call to TaxCollector to update units in Penalty Draining Pool
+
+        /// FIXME emit `staked` event
+    }
+
+    /// @inheritdoc IFluidLocker
+    function unstake() external onlyOwner {
+        // Enfore staked balance is not zero
+        if (stakedBalance == 0) revert NO_FLUID_TO_UNSTAKE();
+
+        // Set staked balance to 0
+        stakedBalance = 0;
+
+        // Disconnect this locker from the Penalty Draining Pool
+        FLUID.disconnectPool(PENALTY_DRAINING_POOL);
+
+        /// FIXME add call to TaxCollector to update units in Penalty Draining Pool
+
+        /// FIXME emit `unstaked` event
+    }
+
+    /// @inheritdoc IFluidLocker
+    function transferLocker(address recipient) external onlyOwner {
+        if (recipient == address(0)) revert FORBIDDEN();
+        lockerOwner = recipient;
+
+        /// FIXME emit `ownership transferred` event
+    }
+
+    //   _    ___                 ______                 __  _
+    //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
+    //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //  | |/ / /  __/ |/ |/ /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /// @inheritdoc IFluidLocker
+    function getStakedBalance() external view returns (uint256 sBalance) {
+        sBalance = stakedBalance;
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getAvailableBalance() public view returns (uint256 aBalance) {
+        aBalance = FLUID.balanceOf(address(this)) - stakedBalance;
+    }
+
+    //      ____      __                        __   ______                 __  _
+    //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
+    //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     function _instantDrain(uint256 amountToDrain) internal {
         // Calculate instant drain penalty amount
@@ -188,30 +267,11 @@ contract FluidLocker is IFluidLocker {
             _SCALER;
     }
 
-    function stake() external onlyOwner {
-        // Connect to PENALTY_DRAINING_POOL
-        /// FIXME emit `staked` event
-    }
-
-    function unstake() external onlyOwner {
-        // Disconnect from PENALTY_DRAINING_POOL
-        /// FIXME emit `unstaked` event
-    }
-
-    function transferLocker(address recipient) external onlyOwner {
-        if (recipient == address(0)) revert FORBIDDEN();
-        lockerOwner = recipient;
-
-        /// FIXME emit `ownership transferred` event
-    }
-
-    function getStakedBalance() external view returns (uint256 sBalance) {
-        sBalance = stakedBalance;
-    }
-
-    function getAvailableBalance() public view returns (uint256 aBalance) {
-        aBalance = FLUID.balanceOf(address(this)) - stakedBalance;
-    }
+    //      __  ___          ___ _____
+    //     /  |/  /___  ____/ (_) __(_)__  __________
+    //    / /|_/ / __ \/ __  / / /_/ / _ \/ ___/ ___/
+    //   / /  / / /_/ / /_/ / / __/ /  __/ /  (__  )
+    //  /_/  /_/\____/\__,_/_/_/ /_/\___/_/  /____/
 
     /**
      * @dev Throws if called by any account other than the owner.
