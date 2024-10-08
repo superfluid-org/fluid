@@ -18,6 +18,12 @@ contract ProgramManager is IProgramManager {
     mapping(address signer => mapping(address user => uint256 lastValidNonce))
         private lastValidNonces;
 
+    //      ______     __                        __   ______                 __  _
+    //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
+    //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
     /**
      * @dev Creates a new distribution program
      * @param programId program identifier to be created
@@ -57,7 +63,8 @@ contract ProgramManager is IProgramManager {
     }
 
     /**
-     * @dev Update program signer
+     * @notice Update program signer
+     * @dev Only the program admin can perform this operation
      * @param programId program identifier to be updated
      * @param newSigner new signer address
      */
@@ -72,27 +79,41 @@ contract ProgramManager is IProgramManager {
         /// FIXME emit ProgramSignerUpdated event
     }
 
+    /**
+     * @notice Update units within the distribution pool associated to the given program
+     * @param programId program identifier associated to the distribution pool
+     * @param newUnits unit amount to be granted
+     * @param nonce nonce corresponding to the stack signature
+     * @param stackSignature stack signature containing necessary info to update units
+     */
     function updateUnits(
         uint8 programId,
         uint128 newUnits,
         uint256 nonce,
-        bytes memory signature
+        bytes memory stackSignature
     ) external {
-        updateUserUnits(programId, msg.sender, newUnits, nonce, signature);
+        updateUserUnits(programId, msg.sender, newUnits, nonce, stackSignature);
     }
 
+    /**
+     * @notice Batch update units within the distribution pools associated to the given programs
+     * @param programIds array of program identifiers associated to the distribution pool
+     * @param newUnits array of unit amounts to be granted
+     * @param nonces array nonces corresponding to the stack signatures
+     * @param stackSignatures array of stack signatures containing necessary info to update units
+     */
     function updateUnits(
         uint8[] memory programIds,
         uint128[] memory newUnits,
         uint256[] memory nonces,
-        bytes[] memory signatures
+        bytes[] memory stackSignatures
     ) external {
         uint256 length = programIds.length;
 
         if (
             length != newUnits.length ||
             length != nonces.length ||
-            length != signatures.length
+            length != stackSignatures.length
         ) revert INVALID_PARAMETER();
 
         for (uint256 i = 0; i < length; ++i) {
@@ -101,18 +122,25 @@ contract ProgramManager is IProgramManager {
                 msg.sender,
                 newUnits[i],
                 nonces[i],
-                signatures[i]
+                stackSignatures[i]
             );
         }
     }
 
-    /// FIXME add check to ensure `user` is a Locker contract ?
+    /**
+     * @notice Update units within the distribution pool associated to the given program
+     * @param programId program identifier associated to the distribution pool
+     * @param user address to grants the units to
+     * @param newUnits unit amount to be granted
+     * @param nonce nonce corresponding to the stack signature
+     * @param stackSignature stack signature containing necessary info to update units
+     */
     function updateUserUnits(
         uint8 programId,
         address user,
         uint128 newUnits,
         uint256 nonce,
-        bytes memory signature
+        bytes memory stackSignature
     ) public {
         Program memory p = programs[programId];
 
@@ -121,13 +149,26 @@ contract ProgramManager is IProgramManager {
 
         lastValidNonces[p.stackSigner][user] = nonce;
 
-        if (!_verifySignature(p.stackSigner, user, newUnits, nonce, signature))
-            revert INVALID_SIGNATURE("signer");
+        if (
+            !_verifySignature(
+                p.stackSigner,
+                user,
+                newUnits,
+                nonce,
+                stackSignature
+            )
+        ) revert INVALID_SIGNATURE("signer");
 
         p.token.updateMemberUnits(p.distributionPool, user, newUnits);
 
         /// FIXME emit UserUnitsUpdated event
     }
+
+    //      ____      __                        __   ______                 __  _
+    //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
+    //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     function _isNonceValid(
         address signer,

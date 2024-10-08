@@ -5,25 +5,16 @@ import {Math} from "@openzeppelin-v5/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
-import {ISuperfluid, ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import {ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+
+/* FLUID Token Interfaces */
 import {IProgramManager} from "./interfaces/IProgramManager.sol";
 import {IFluidLocker} from "./interfaces/IFluidLocker.sol";
 import {ILockerDrainer} from "./interfaces/ILockerDrainer.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
-
-/**
-DESIGN Questions :
-- Are we OK to allow draining of staking reward?
-    If YES :
-        - will need to support multiple concurrent drains (i.e. User drains 10 FLUID at t1, User drains 20 FLUID at t2)
-    If NOT : 
-        - will need to implement logic as follow : 
-            ```if (stakedBalance > 0) revert CANNOT_DRAIN_WHILE_STAKING();```
-
- */
 
 contract FluidLocker is IFluidLocker {
     /// FIXME storage packing
