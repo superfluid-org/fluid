@@ -2,6 +2,11 @@ pragma solidity ^0.8.26;
 
 import {ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
+/**
+ * @title Program Manager Contract Interface
+ * @author Superfluid
+ * @notice Contract responsible for administrating the GDA pool that distribute FLUID to lockers
+ **/
 interface IProgramManager {
     /**
      * @notice Program Data Type

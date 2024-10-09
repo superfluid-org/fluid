@@ -1,7 +1,5 @@
 pragma solidity ^0.8.26;
 
-/* Openzeppelin Contracts & Interfaces */
-
 /* Superfluid Protocol Contracts & Interfaces */
 import {ISuperfluidPool, ISuperToken, PoolConfig} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
@@ -15,7 +13,7 @@ using SuperTokenV1Library for ISuperToken;
  * @notice Contract responsible for administrating the GDA pool that distribute FLUID to lockers
  **/
 contract ProgramManager is IProgramManager {
-    /// FIXME storage packing
+    /// FIXME storage packing check
 
     /// @notice mapping storing the program details for a given program identifier
     mapping(uint8 programId => Program program) public programs;
