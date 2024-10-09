@@ -1,17 +1,11 @@
 pragma solidity ^0.8.26;
 
-/* Openzeppelin Contracts & Interfaces */
-import {Math} from "@openzeppelin-v5/contracts/utils/math/Math.sol";
-import {SafeCast} from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
-
 /* Superfluid Protocol Contracts & Interfaces */
 import {ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 import {ILockerDrainer} from "./interfaces/ILockerDrainer.sol";
 
 using SuperTokenV1Library for ISuperToken;
-// using Math for uint256;
-using SafeCast for uint256;
 
 contract LockerDrainer is ILockerDrainer {
     /// FIXME storage packing
@@ -35,9 +29,14 @@ contract LockerDrainer is ILockerDrainer {
     }
 
     function processDrain(
+        address lockerOwner,
         int96 drainFlowRate,
         int96 penaltyFlowRate
     ) external onlyConnectedLocker {
+        // Ensure that there is no active drain
+        if (FLUID.getFlowRate(address(this), lockerOwner) != 0)
+            revert DRAIN_ALREADY_ACTIVE();
+
         // Distribute Penalty flow to Staker GDA Pool
         FLUID.distributeFlow(
             address(this),
@@ -46,7 +45,17 @@ contract LockerDrainer is ILockerDrainer {
         );
 
         // Create Drain flow from the locker to the locker owner
-        FLUID.createFlow(msg.sender, drainFlowRate);
+        FLUID.createFlow(lockerOwner, drainFlowRate);
+    }
+
+    function cancelDrain(address lockerOwner) external onlyConnectedLocker {
+        // Ensure that there is a drain to cancel
+        if (FLUID.getFlowRate(address(this), lockerOwner) == 0)
+            revert NO_ACTIVE_DRAIN();
+
+        // Transfer entire FLUID balance back to the connected locker
+        FLUID.transfer(msg.sender, FLUID.balanceOf(address(this)));
+        FLUID.deleteFlow(address(this), lockerOwner);
     }
 
     /**

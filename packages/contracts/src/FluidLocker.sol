@@ -11,6 +11,7 @@ import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contra
 /* FLUID Token Interfaces */
 import {IProgramManager} from "./interfaces/IProgramManager.sol";
 import {IFluidLocker} from "./interfaces/IFluidLocker.sol";
+import {IPenaltyManager} from "./interfaces/IPenaltyManager.sol";
 import {ILockerDrainer} from "./interfaces/ILockerDrainer.sol";
 
 using SuperTokenV1Library for ISuperToken;
@@ -27,6 +28,9 @@ contract FluidLocker is IFluidLocker {
 
     /// @notice Distribution Program Manager interface
     IProgramManager public immutable PROGRAM_MANAGER;
+
+    /// @notice Penalty Manager interface
+    IPenaltyManager public immutable PENALTY_MANAGER;
 
     /// @notice Connected Locker Drainer interface
     ILockerDrainer public lockerDrainer;
@@ -142,8 +146,6 @@ contract FluidLocker is IFluidLocker {
 
         if (amountToStake == 0) revert NO_FLUID_TO_STAKE();
 
-        stakedBalance += amountToStake;
-
         if (
             !FLUID.isMemberConnected(
                 address(PENALTY_DRAINING_POOL),
@@ -153,7 +155,11 @@ contract FluidLocker is IFluidLocker {
             // Connect this locker to the Penalty Draining Pool
             FLUID.connectPool(PENALTY_DRAINING_POOL);
         }
-        /// FIXME add call to TaxCollector to update units in Penalty Draining Pool
+
+        stakedBalance += amountToStake;
+
+        // Call Penalty Manager to update staker's units
+        PENALTY_MANAGER.updateStakerUnits(stakedBalance);
 
         /// FIXME emit `staked` event
     }
@@ -165,6 +171,9 @@ contract FluidLocker is IFluidLocker {
 
         // Set staked balance to 0
         stakedBalance = 0;
+
+        // Call Penalty Manager to update staker's units
+        PENALTY_MANAGER.updateStakerUnits(0);
 
         // Disconnect this locker from the Penalty Draining Pool
         FLUID.disconnectPool(PENALTY_DRAINING_POOL);
@@ -231,7 +240,7 @@ contract FluidLocker is IFluidLocker {
         FLUID.transfer(address(lockerDrainer), amountToDrain);
 
         // Initiate drain process
-        lockerDrainer.processDrain(drainFlowRate, penaltyFlowRate);
+        lockerDrainer.processDrain(lockerOwner, drainFlowRate, penaltyFlowRate);
     }
 
     function _calculateVestDrainFlowRates(
