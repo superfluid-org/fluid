@@ -43,13 +43,23 @@ contract FluidLocker is IFluidLocker {
     /// @notice This locker owner address
     address public lockerOwner;
 
+    /// @notice Timestamp at which the staking cooldown period is elapsed
+    uint128 public stakingUnlocksAt;
+
+    /// @notice Staking cooldown period
+    /// FIXME Discuss arbitrary decision
+    uint128 private constant _STAKING_COOLDOWN_PERIOD = 3 days;
+
     /// @notice Minimum drain period allowed
+    /// FIXME Discuss arbitrary decision
     uint128 private constant _MIN_DRAIN_PERIOD = 7 days;
 
     /// @notice Maximum drain period allowed
+    /// FIXME Discuss arbitrary decision
     uint128 private constant _MAX_DRAIN_PERIOD = 540 days;
 
     /// @notice Instant drain penalty percentage (expressed in basis points)
+    /// FIXME Discuss arbitrary decision
     uint256 private constant _INSTANT_DRAIN_PENALTY_BP = 8_000;
 
     /// @notice Basis points denominator (for percentage calculation)
@@ -161,7 +171,11 @@ contract FluidLocker is IFluidLocker {
             FLUID.connectPool(PENALTY_DRAINING_POOL);
         }
 
+        // Update staked balance
         stakedBalance += amountToStake;
+
+        // Update unlock timestamp
+        stakingUnlocksAt = uint128(block.timestamp) + _STAKING_COOLDOWN_PERIOD;
 
         // Call Penalty Manager to update staker's units
         PENALTY_MANAGER.updateStakerUnits(stakedBalance);
@@ -171,6 +185,9 @@ contract FluidLocker is IFluidLocker {
 
     /// @inheritdoc IFluidLocker
     function unstake() external onlyOwner {
+        if (block.timestamp < stakingUnlocksAt)
+            revert STAKING_COOLDOWN_NOT_ELAPSED();
+
         // Enfore staked balance is not zero
         if (stakedBalance == 0) revert NO_FLUID_TO_UNSTAKE();
 
@@ -182,8 +199,6 @@ contract FluidLocker is IFluidLocker {
 
         // Disconnect this locker from the Penalty Draining Pool
         FLUID.disconnectPool(PENALTY_DRAINING_POOL);
-
-        /// FIXME add call to TaxCollector to update units in Penalty Draining Pool
 
         /// FIXME emit `unstaked` event
     }

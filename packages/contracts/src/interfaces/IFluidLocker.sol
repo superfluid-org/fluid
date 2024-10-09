@@ -19,6 +19,9 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to stake from locker that does not have available $FLUID
     error NO_FLUID_TO_STAKE();
 
+    /// @notice Error thrown when attempting to unstake while the staking cooldown is not yet elapsed
+    error STAKING_COOLDOWN_NOT_ELAPSED();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
