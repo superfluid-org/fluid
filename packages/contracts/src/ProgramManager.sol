@@ -3,12 +3,17 @@ pragma solidity ^0.8.26;
 /* Openzeppelin Contracts & Interfaces */
 
 /* Superfluid Protocol Contracts & Interfaces */
-import {ISuperfluid, ISuperfluidPool, ISuperToken, PoolConfig} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import {ISuperfluidPool, ISuperToken, PoolConfig} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 import {IProgramManager} from "./interfaces/IProgramManager.sol";
 
 using SuperTokenV1Library for ISuperToken;
 
+/**
+ * @title Program Manager Contract
+ * @author Superfluid
+ * @notice Contract responsible for administrating the GDA pool that distribute FLUID to lockers
+ **/
 contract ProgramManager is IProgramManager {
     /// FIXME storage packing
 
@@ -24,14 +29,7 @@ contract ProgramManager is IProgramManager {
     //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
-    /**
-     * @dev Creates a new distribution program
-     * @param programId program identifier to be created
-     * @param programAdmin program admin address
-     * @param signer signer address
-     * @param token SuperToken to be distributed
-     * @return distributionPool deployed Superfluid Pool contract address
-     */
+    /// @inheritdoc IProgramManager
     function createProgram(
         uint8 programId,
         address programAdmin,
@@ -62,12 +60,7 @@ contract ProgramManager is IProgramManager {
         /// FIXME emit ProgramCreated event
     }
 
-    /**
-     * @notice Update program signer
-     * @dev Only the program admin can perform this operation
-     * @param programId program identifier to be updated
-     * @param newSigner new signer address
-     */
+    /// @inheritdoc IProgramManager
     function updateProgramSigner(uint8 programId, address newSigner) external {
         // Ensure caller is program admin
         if (msg.sender != programs[programId].programAdmin)
@@ -79,13 +72,7 @@ contract ProgramManager is IProgramManager {
         /// FIXME emit ProgramSignerUpdated event
     }
 
-    /**
-     * @notice Update units within the distribution pool associated to the given program
-     * @param programId program identifier associated to the distribution pool
-     * @param newUnits unit amount to be granted
-     * @param nonce nonce corresponding to the stack signature
-     * @param stackSignature stack signature containing necessary info to update units
-     */
+    /// @inheritdoc IProgramManager
     function updateUnits(
         uint8 programId,
         uint128 newUnits,
@@ -95,13 +82,7 @@ contract ProgramManager is IProgramManager {
         updateUserUnits(programId, msg.sender, newUnits, nonce, stackSignature);
     }
 
-    /**
-     * @notice Batch update units within the distribution pools associated to the given programs
-     * @param programIds array of program identifiers associated to the distribution pool
-     * @param newUnits array of unit amounts to be granted
-     * @param nonces array nonces corresponding to the stack signatures
-     * @param stackSignatures array of stack signatures containing necessary info to update units
-     */
+    /// @inheritdoc IProgramManager
     function updateUnits(
         uint8[] memory programIds,
         uint128[] memory newUnits,
@@ -127,14 +108,7 @@ contract ProgramManager is IProgramManager {
         }
     }
 
-    /**
-     * @notice Update units within the distribution pool associated to the given program
-     * @param programId program identifier associated to the distribution pool
-     * @param user address to grants the units to
-     * @param newUnits unit amount to be granted
-     * @param nonce nonce corresponding to the stack signature
-     * @param stackSignature stack signature containing necessary info to update units
-     */
+    /// @inheritdoc IProgramManager
     function updateUserUnits(
         uint8 programId,
         address user,

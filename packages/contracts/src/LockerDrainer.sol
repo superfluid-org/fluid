@@ -7,6 +7,11 @@ import {ILockerDrainer} from "./interfaces/ILockerDrainer.sol";
 
 using SuperTokenV1Library for ISuperToken;
 
+/**
+ * @title Locker Drainer Contract
+ * @author Superfluid
+ * @notice Contract responsible for flowing drained token from the locker to the locker owner
+ **/
 contract LockerDrainer is ILockerDrainer {
     /// FIXME storage packing
 

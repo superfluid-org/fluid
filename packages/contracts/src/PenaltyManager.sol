@@ -10,6 +10,11 @@ import {IPenaltyManager} from "./interfaces/IPenaltyManager.sol";
 
 using SuperTokenV1Library for ISuperToken;
 
+/**
+ * @title Penalty Manager Contract
+ * @author Superfluid
+ * @notice Contract responsible for administrating the GDA pool that distribute drain tax to staker or liquidity provider
+ **/
 contract PenaltyManager is Ownable, IPenaltyManager {
     /// @notice $FLUID SuperToken interface
     ISuperToken public immutable FLUID;

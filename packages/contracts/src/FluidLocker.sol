@@ -17,6 +17,11 @@ import {ILockerDrainer} from "./interfaces/ILockerDrainer.sol";
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
 
+/**
+ * @title Locker Contract
+ * @author Superfluid
+ * @notice Contract responsible for locking and holding FLUID token on behalf of users
+ **/
 contract FluidLocker is IFluidLocker {
     /// FIXME storage packing
 
