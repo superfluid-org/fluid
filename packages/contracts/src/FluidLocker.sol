@@ -36,10 +36,10 @@ contract FluidLocker is Initializable, IFluidLocker {
 
     /// FIXME storage packing
 
-    /// @notice $FLUID SuperToken interface
+    /// @notice FLUID SuperToken interface
     ISuperToken public immutable FLUID;
 
-    /// @notice Superfluid pool interface
+    /// @notice Superfluid GDA pool interface
     ISuperfluidPool public immutable PENALTY_DRAINING_POOL;
 
     /// @notice Distribution Program Manager interface
@@ -82,7 +82,7 @@ contract FluidLocker is Initializable, IFluidLocker {
     /// @notice Scaler used for drain percentage calculation
     uint256 private constant _PERCENT_TO_BP = 100;
 
-    /// @notice Balance of $FLUID staked in this locker
+    /// @notice Balance of $FLUID token staked in this locker
     uint256 private _stakedBalance;
 
     //     ______                 __                  __

@@ -28,9 +28,10 @@ contract ProgramManager is IProgramManager {
 
     /// FIXME storage packing check
 
-    /// @notice mapping storing the program details for a given program identifier
+    /// @notice Stores the program details for a given program identifier
     mapping(uint8 programId => Program program) public programs;
 
+    /// @notice Stores the last valid nonce used for a given signer and a given user
     mapping(address signer => mapping(address user => uint256 lastValidNonce)) private _lastValidNonces;
 
     //      ______     __                        __   ______                 __  _

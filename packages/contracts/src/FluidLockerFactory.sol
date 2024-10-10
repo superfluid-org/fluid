@@ -24,12 +24,16 @@ contract FluidLockerFactory is IFluidLockerFactory {
     //   ___/ / /_/ /_/ / /_/  __(__  )
     //  /____/\__/\__,_/\__/\___/____/
 
+    /// @notice Locker Beacon contract address
     UpgradeableBeacon public immutable LOCKER_BEACON;
 
+    /// @notice Locker Drainer Beacon contract address
     UpgradeableBeacon public immutable LOCKER_DRAINER_BEACON;
 
+    /// @notice Penalty Manager interface
     IPenaltyManager private immutable _PENALTY_MANAGER;
 
+    /// @notice Stores wheather or not a locker has been created
     mapping(address locker => bool isCreated) internal _lockers;
 
     //     ______                 __                  __
@@ -38,6 +42,12 @@ contract FluidLockerFactory is IFluidLockerFactory {
     //  / /___/ /_/ / / / (__  ) /_/ /  / /_/ / /__/ /_/ /_/ / /
     //  \____/\____/_/ /_/____/\__/_/   \__,_/\___/\__/\____/_/
 
+    /**
+     * @notice FLUID Locker Factory contract constructor
+     * @param lockerImplementation Locker implementation contract address
+     * @param lockerDrainerImplementation Locker Drainer implementation contract address
+     * @param penaltyManager Penalty Manager interface contract address
+     */
     constructor(address lockerImplementation, address lockerDrainerImplementation, IPenaltyManager penaltyManager) {
         // Sets the Penalty Manager interface
         _PENALTY_MANAGER = penaltyManager;
