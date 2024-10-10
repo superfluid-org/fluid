@@ -1,13 +1,17 @@
 pragma solidity ^0.8.26;
 
 /* Superfluid Protocol Contracts & Interfaces */
-import {ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import {
+    ISuperfluidPool,
+    ISuperToken
+} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
 /**
  * @title Program Manager Contract Interface
  * @author Superfluid
  * @notice Contract responsible for administrating the GDA pool that distribute FLUID to lockers
- **/
+ *
+ */
 interface IProgramManager {
     //      ____        __        __
     //     / __ \____ _/ /_____ _/ /___  ______  ___  _____
@@ -62,12 +66,9 @@ interface IProgramManager {
      * @param token SuperToken to be distributed
      * @return distributionPool deployed Superfluid Pool contract address
      */
-    function createProgram(
-        uint8 programId,
-        address programAdmin,
-        address signer,
-        ISuperToken token
-    ) external returns (ISuperfluidPool distributionPool);
+    function createProgram(uint8 programId, address programAdmin, address signer, ISuperToken token)
+        external
+        returns (ISuperfluidPool distributionPool);
 
     /**
      * @notice Update program signer
@@ -84,12 +85,7 @@ interface IProgramManager {
      * @param nonce nonce corresponding to the stack signature
      * @param stackSignature stack signature containing necessary info to update units
      */
-    function updateUnits(
-        uint8 programId,
-        uint128 newUnits,
-        uint256 nonce,
-        bytes memory stackSignature
-    ) external;
+    function updateUnits(uint8 programId, uint128 newUnits, uint256 nonce, bytes memory stackSignature) external;
 
     /**
      * @notice Batch update units within the distribution pools associated to the given programs

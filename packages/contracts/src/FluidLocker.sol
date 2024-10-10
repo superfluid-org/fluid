@@ -1,19 +1,22 @@
 pragma solidity ^0.8.26;
 
 /* Openzeppelin Contracts & Interfaces */
-import {Math} from "@openzeppelin-v5/contracts/utils/math/Math.sol";
-import {SafeCast} from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
-import {Initializable} from "@openzeppelin-v5/contracts/proxy/utils/Initializable.sol";
+import { Math } from "@openzeppelin-v5/contracts/utils/math/Math.sol";
+import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
+import { Initializable } from "@openzeppelin-v5/contracts/proxy/utils/Initializable.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
-import {ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
-import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+import {
+    ISuperfluidPool,
+    ISuperToken
+} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
 /* FLUID Interfaces */
-import {IProgramManager} from "./interfaces/IProgramManager.sol";
-import {IFluidLocker} from "./interfaces/IFluidLocker.sol";
-import {IPenaltyManager} from "./interfaces/IPenaltyManager.sol";
-import {ILockerDrainer} from "./interfaces/ILockerDrainer.sol";
+import { IProgramManager } from "./interfaces/IProgramManager.sol";
+import { IFluidLocker } from "./interfaces/IFluidLocker.sol";
+import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
+import { ILockerDrainer } from "./interfaces/ILockerDrainer.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -22,7 +25,8 @@ using SafeCast for int256;
  * @title Locker Contract
  * @author Superfluid
  * @notice Contract responsible for locking and holding FLUID token on behalf of users
- **/
+ *
+ */
 contract FluidLocker is Initializable, IFluidLocker {
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
@@ -79,7 +83,7 @@ contract FluidLocker is Initializable, IFluidLocker {
     uint256 private constant _PERCENT_TO_BP = 100;
 
     /// @notice Balance of $FLUID staked in this locker
-    uint256 private stakedBalance;
+    uint256 private _stakedBalance;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -93,11 +97,7 @@ contract FluidLocker is Initializable, IFluidLocker {
      * @param penaltyDrainingPool Penalty Draining Pool GDA contract interface
      * @param programManager Program Manager contract interface
      */
-    constructor(
-        ISuperToken fluid,
-        ISuperfluidPool penaltyDrainingPool,
-        IProgramManager programManager
-    ) {
+    constructor(ISuperToken fluid, ISuperfluidPool penaltyDrainingPool, IProgramManager programManager) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
 
@@ -112,10 +112,7 @@ contract FluidLocker is Initializable, IFluidLocker {
      * @param owner this Locker contract owner account
      * @param lockerDrainerAddress Locker Drainer contract address connected to this Locker
      */
-    function initialize(
-        address owner,
-        address lockerDrainerAddress
-    ) external initializer {
+    function initialize(address owner, address lockerDrainerAddress) external initializer {
         // Sets the owner of this locker
         lockerOwner = owner;
 
@@ -130,18 +127,8 @@ contract FluidLocker is Initializable, IFluidLocker {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFluidLocker
-    function claim(
-        uint8 programId,
-        uint128 totalProgramUnits,
-        uint256 nonce,
-        bytes memory stackSignature
-    ) external {
-        PROGRAM_MANAGER.updateUnits(
-            programId,
-            totalProgramUnits,
-            nonce,
-            stackSignature
-        );
+    function claim(uint8 programId, uint128 totalProgramUnits, uint256 nonce, bytes memory stackSignature) external {
+        PROGRAM_MANAGER.updateUnits(programId, totalProgramUnits, nonce, stackSignature);
     }
 
     /// @inheritdoc IFluidLocker
@@ -151,12 +138,7 @@ contract FluidLocker is Initializable, IFluidLocker {
         uint256[] memory nonces,
         bytes[] memory stackSignatures
     ) external {
-        PROGRAM_MANAGER.updateUnits(
-            programIds,
-            totalProgramUnits,
-            nonces,
-            stackSignatures
-        );
+        PROGRAM_MANAGER.updateUnits(programIds, totalProgramUnits, nonces, stackSignatures);
     }
 
     /// @inheritdoc IFluidLocker
@@ -170,10 +152,9 @@ contract FluidLocker is Initializable, IFluidLocker {
     /// @inheritdoc IFluidLocker
     function drain(uint128 drainPeriod) external onlyOwner {
         // Enforce drain period validity
-        if (
-            drainPeriod != 0 &&
-            (drainPeriod < _MIN_DRAIN_PERIOD || drainPeriod > _MAX_DRAIN_PERIOD)
-        ) revert INVALID_DRAIN_PERIOD();
+        if (drainPeriod != 0 && (drainPeriod < _MIN_DRAIN_PERIOD || drainPeriod > _MAX_DRAIN_PERIOD)) {
+            revert INVALID_DRAIN_PERIOD();
+        }
 
         // Get balance available for draining
         uint256 availableBalance = getAvailableBalance();
@@ -196,38 +177,34 @@ contract FluidLocker is Initializable, IFluidLocker {
 
         if (amountToStake == 0) revert NO_FLUID_TO_STAKE();
 
-        if (
-            !FLUID.isMemberConnected(
-                address(PENALTY_DRAINING_POOL),
-                address(this)
-            )
-        ) {
+        if (!FLUID.isMemberConnected(address(PENALTY_DRAINING_POOL), address(this))) {
             // Connect this locker to the Penalty Draining Pool
             FLUID.connectPool(PENALTY_DRAINING_POOL);
         }
 
         // Update staked balance
-        stakedBalance += amountToStake;
+        _stakedBalance += amountToStake;
 
         // Update unlock timestamp
         stakingUnlocksAt = uint128(block.timestamp) + _STAKING_COOLDOWN_PERIOD;
 
         // Call Penalty Manager to update staker's units
-        PENALTY_MANAGER.updateStakerUnits(stakedBalance);
+        PENALTY_MANAGER.updateStakerUnits(_stakedBalance);
 
         /// FIXME emit `staked` event
     }
 
     /// @inheritdoc IFluidLocker
     function unstake() external onlyOwner {
-        if (block.timestamp < stakingUnlocksAt)
+        if (block.timestamp < stakingUnlocksAt) {
             revert STAKING_COOLDOWN_NOT_ELAPSED();
+        }
 
         // Enfore staked balance is not zero
-        if (stakedBalance == 0) revert NO_FLUID_TO_UNSTAKE();
+        if (_stakedBalance == 0) revert NO_FLUID_TO_UNSTAKE();
 
         // Set staked balance to 0
-        stakedBalance = 0;
+        _stakedBalance = 0;
 
         // Call Penalty Manager to update staker's units
         PENALTY_MANAGER.updateStakerUnits(0);
@@ -254,12 +231,12 @@ contract FluidLocker is Initializable, IFluidLocker {
 
     /// @inheritdoc IFluidLocker
     function getStakedBalance() external view returns (uint256 sBalance) {
-        sBalance = stakedBalance;
+        sBalance = _stakedBalance;
     }
 
     /// @inheritdoc IFluidLocker
     function getAvailableBalance() public view returns (uint256 aBalance) {
-        aBalance = FLUID.balanceOf(address(this)) - stakedBalance;
+        aBalance = FLUID.balanceOf(address(this)) - _stakedBalance;
     }
 
     //      ____      __                        __   ______                 __  _
@@ -270,15 +247,10 @@ contract FluidLocker is Initializable, IFluidLocker {
 
     function _instantDrain(uint256 amountToDrain) internal {
         // Calculate instant drain penalty amount
-        uint256 penaltyAmount = (amountToDrain * _INSTANT_DRAIN_PENALTY_BP) /
-            _BP_DENOMINATOR;
+        uint256 penaltyAmount = (amountToDrain * _INSTANT_DRAIN_PENALTY_BP) / _BP_DENOMINATOR;
 
         // Distribute penalty to staker (connected to the PENALTY_DRAINING_POOL)
-        FLUID.distributeToPool(
-            address(this),
-            PENALTY_DRAINING_POOL,
-            penaltyAmount
-        );
+        FLUID.distributeToPool(address(this), PENALTY_DRAINING_POOL, penaltyAmount);
 
         // Transfer the leftover $FLUID to the locker owner
         FLUID.transfer(msg.sender, amountToDrain - penaltyAmount);
@@ -286,10 +258,7 @@ contract FluidLocker is Initializable, IFluidLocker {
 
     function _vestDrain(uint256 amountToDrain, uint128 drainPeriod) internal {
         // Calculate the drain and penalty flow rates based on requested amount and drain period
-        (
-            int96 drainFlowRate,
-            int96 penaltyFlowRate
-        ) = _calculateVestDrainFlowRates(amountToDrain, drainPeriod);
+        (int96 drainFlowRate, int96 penaltyFlowRate) = _calculateVestDrainFlowRates(amountToDrain, drainPeriod);
 
         // Transfer the total amount to drain to the connected Locker Drainer
         FLUID.transfer(address(lockerDrainer), amountToDrain);
@@ -298,28 +267,26 @@ contract FluidLocker is Initializable, IFluidLocker {
         lockerDrainer.processDrain(lockerOwner, drainFlowRate, penaltyFlowRate);
     }
 
-    function _calculateVestDrainFlowRates(
-        uint256 amountToDrain,
-        uint128 drainPeriod
-    ) internal pure returns (int96 drainFlowRate, int96 penaltyFlowRate) {
-        uint256 amountToUser = (amountToDrain *
-            _getDrainPercentage(drainPeriod)) / _BP_DENOMINATOR;
+    function _calculateVestDrainFlowRates(uint256 amountToDrain, uint128 drainPeriod)
+        internal
+        pure
+        returns (int96 drainFlowRate, int96 penaltyFlowRate)
+    {
+        uint256 amountToUser = (amountToDrain * _getDrainPercentage(drainPeriod)) / _BP_DENOMINATOR;
         uint256 penaltyAmount = amountToDrain - amountToUser;
 
         drainFlowRate = int256(amountToUser / drainPeriod).toInt96();
         penaltyFlowRate = int256(penaltyAmount / drainPeriod).toInt96();
     }
 
-    function _getDrainPercentage(
-        uint128 drainPeriod
-    ) internal pure returns (uint256 drainPercentageBP) {
-        drainPercentageBP =
-            (_PERCENT_TO_BP *
-                (((80 * _SCALER) / Math.sqrt(540 * _SCALER)) *
-                    (Math.sqrt(drainPeriod * _SCALER) / _SCALER) +
-                    20 *
-                    _SCALER)) /
-            _SCALER;
+    function _getDrainPercentage(uint128 drainPeriod) internal pure returns (uint256 drainPercentageBP) {
+        drainPercentageBP = (
+            _PERCENT_TO_BP
+                * (
+                    ((80 * _SCALER) / Math.sqrt(540 * _SCALER)) * (Math.sqrt(drainPeriod * _SCALER) / _SCALER)
+                        + 20 * _SCALER
+                )
+        ) / _SCALER;
     }
 
     //      __  ___          ___ _____

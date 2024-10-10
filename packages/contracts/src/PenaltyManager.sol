@@ -1,14 +1,18 @@
 pragma solidity ^0.8.26;
 
 /* Openzeppelin Contracts & Interfaces */
-import {Ownable} from "@openzeppelin-v5/contracts/access/Ownable.sol";
+import { Ownable } from "@openzeppelin-v5/contracts/access/Ownable.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
-import {ISuperfluidPool, ISuperToken, PoolConfig} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
-import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+import {
+    ISuperfluidPool,
+    ISuperToken,
+    PoolConfig
+} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
 /* FLUID Interfaces */
-import {IPenaltyManager} from "./interfaces/IPenaltyManager.sol";
+import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
 
 using SuperTokenV1Library for ISuperToken;
 
@@ -16,7 +20,8 @@ using SuperTokenV1Library for ISuperToken;
  * @title Penalty Manager Contract
  * @author Superfluid
  * @notice Contract responsible for administrating the GDA pool that distribute drain tax to staker or liquidity provider
- **/
+ *
+ */
 contract PenaltyManager is Ownable, IPenaltyManager {
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
@@ -53,10 +58,8 @@ contract PenaltyManager is Ownable, IPenaltyManager {
         FLUID = fluid;
 
         // Configure Superfluid GDA Pool
-        PoolConfig memory poolConfig = PoolConfig({
-            transferabilityForUnitsOwner: false,
-            distributionFromAnyAddress: true
-        });
+        PoolConfig memory poolConfig =
+            PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
 
         // Create Superfluid GDA Pool
         PENALTY_DRAINING_POOL = fluid.createPool(address(this), poolConfig);
@@ -73,11 +76,7 @@ contract PenaltyManager is Ownable, IPenaltyManager {
         if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
 
         /// FIXME Define proper stakedBalance to GDA pool units calculation
-        FLUID.updateMemberUnits(
-            PENALTY_DRAINING_POOL,
-            msg.sender,
-            uint128(lockerStakedBalance)
-        );
+        FLUID.updateMemberUnits(PENALTY_DRAINING_POOL, msg.sender, uint128(lockerStakedBalance));
     }
 
     /// @inheritdoc IPenaltyManager
@@ -85,11 +84,7 @@ contract PenaltyManager is Ownable, IPenaltyManager {
         if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
 
         /// FIXME Find proper liquidity provided to GDA pool units calculation
-        FLUID.updateMemberUnits(
-            PENALTY_DRAINING_POOL,
-            msg.sender,
-            uint128(liquidityProvided)
-        );
+        FLUID.updateMemberUnits(PENALTY_DRAINING_POOL, msg.sender, uint128(liquidityProvided));
     }
 
     /// @inheritdoc IPenaltyManager

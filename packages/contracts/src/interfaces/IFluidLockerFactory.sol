@@ -5,7 +5,8 @@ pragma solidity ^0.8.26;
  * @title Fluid Locker Factory Contract Interface
  * @author Superfluid
  * @notice Deploys new Fluid Locker contracts and their associated Locker Drainer
- **/
+ *
+ */
 interface IFluidLockerFactory {
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -24,9 +25,7 @@ interface IFluidLockerFactory {
      * @param lockerOwner Owner address of the Locker to be deployed
      * @return lockerInstance Deployed Locker contract address
      */
-    function createLockerContract(
-        address lockerOwner
-    ) external returns (address lockerInstance);
+    function createLockerContract(address lockerOwner) external returns (address lockerInstance);
 
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -39,34 +38,24 @@ interface IFluidLockerFactory {
      * @param locker Locker address to be queried
      * @return isCreated true if the locker is created, false otherwise
      */
-    function isLockerCreated(
-        address locker
-    ) external view returns (bool isCreated);
+    function isLockerCreated(address locker) external view returns (bool isCreated);
 
     /**
      * @notice Returns the locker contract address of the given user
      * @param user User address to be queried
      * @return lockerAddress The user's locker contract address
      */
-    function getLockerAddress(
-        address user
-    ) external view returns (address lockerAddress);
+    function getLockerAddress(address user) external view returns (address lockerAddress);
 
     /**
      * @notice Returns the locker beacon implementation contract address
      * @return lockerBeaconImpl The locker beacon implementation contract address
      */
-    function getLockerBeaconImplementation()
-        external
-        view
-        returns (address lockerBeaconImpl);
+    function getLockerBeaconImplementation() external view returns (address lockerBeaconImpl);
 
     /**
      * @notice Returns the locker drainer beacon implementation contract address
      * @return lockerDrainerBeaconImpl The locker drainer beacon implementation contract address
      */
-    function getLockerDrainerBeaconImplementation()
-        external
-        view
-        returns (address lockerDrainerBeaconImpl);
+    function getLockerDrainerBeaconImplementation() external view returns (address lockerDrainerBeaconImpl);
 }

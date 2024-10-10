@@ -4,7 +4,8 @@ pragma solidity ^0.8.26;
  * @title Locker Drainer Contract Interface
  * @author Superfluid
  * @notice Contract responsible for flowing drained token from the locker to the locker owner
- **/
+ *
+ */
 interface ILockerDrainer {
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
@@ -33,11 +34,7 @@ interface ILockerDrainer {
      * @param drainFlowRate FLUID flow rate from this contract to the locker owner
      * @param penaltyFlowRate FLUID flow rate from this contract to the penalty GDA pool
      */
-    function processDrain(
-        address lockerOwner,
-        int96 drainFlowRate,
-        int96 penaltyFlowRate
-    ) external;
+    function processDrain(address lockerOwner, int96 drainFlowRate, int96 penaltyFlowRate) external;
 
     /**
      * @notice Stops the flow from this contract to the locker owner and transfer residual FLUID back to the connected locker

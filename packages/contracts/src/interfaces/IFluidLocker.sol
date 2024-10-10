@@ -4,7 +4,8 @@ pragma solidity ^0.8.26;
  * @title Locker Contract Interface
  * @author Superfluid
  * @notice Contract responsible for locking and holding FLUID token on behalf of users
- **/
+ *
+ */
 interface IFluidLocker {
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
@@ -46,12 +47,7 @@ interface IFluidLocker {
      * @param nonce nonce associated to the signature provided by Stack
      * @param stackSignature stack signature containing necessary info to update units
      */
-    function claim(
-        uint8 programId,
-        uint128 totalProgramUnits,
-        uint256 nonce,
-        bytes memory stackSignature
-    ) external;
+    function claim(uint8 programId, uint128 totalProgramUnits, uint256 nonce, bytes memory stackSignature) external;
 
     /**
      * @notice Batch update this locker units within the given programs identifier's GDA pools
