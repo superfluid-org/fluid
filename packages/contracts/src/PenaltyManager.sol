@@ -6,6 +6,8 @@ import {Ownable} from "@openzeppelin-v5/contracts/access/Ownable.sol";
 /* Superfluid Protocol Contracts & Interfaces */
 import {ISuperfluidPool, ISuperToken, PoolConfig} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+
+/* FLUID Interfaces */
 import {IPenaltyManager} from "./interfaces/IPenaltyManager.sol";
 
 using SuperTokenV1Library for ISuperToken;
@@ -16,6 +18,14 @@ using SuperTokenV1Library for ISuperToken;
  * @notice Contract responsible for administrating the GDA pool that distribute drain tax to staker or liquidity provider
  **/
 contract PenaltyManager is Ownable, IPenaltyManager {
+    //     _____ __        __
+    //    / ___// /_____ _/ /____  _____
+    //    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /____/\__/\__,_/\__/\___/____/
+
+    /// FIXME storage packing
+
     /// @notice $FLUID SuperToken interface
     ISuperToken public immutable FLUID;
 
@@ -28,6 +38,17 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     /// @notice Stores the approval status of a given locker contract address
     mapping(address locker => bool isApproved) private _approvedLockers;
 
+    //     ______                 __                  __
+    //    / ____/___  ____  _____/ /________  _______/ /_____  _____
+    //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
+    //  / /___/ /_/ / / / (__  ) /_/ /  / /_/ / /__/ /_/ /_/ / /
+    //  \____/\____/_/ /_/____/\__/_/   \__,_/\___/\__/\____/_/
+
+    /**
+     * @notice Penalty Manager contract constructor
+     * @param owner Penalty Manager contract owner address
+     * @param fluid FLUID SuperToken contract interface
+     */
     constructor(address owner, ISuperToken fluid) Ownable(owner) {
         FLUID = fluid;
 
@@ -41,6 +62,13 @@ contract PenaltyManager is Ownable, IPenaltyManager {
         PENALTY_DRAINING_POOL = fluid.createPool(address(this), poolConfig);
     }
 
+    //      ______     __                        __   ______                 __  _
+    //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
+    //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /// @inheritdoc IPenaltyManager
     function updateStakerUnits(uint256 lockerStakedBalance) external {
         if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
 
@@ -52,6 +80,7 @@ contract PenaltyManager is Ownable, IPenaltyManager {
         );
     }
 
+    /// @inheritdoc IPenaltyManager
     function updateLiquidityProvidersUnits(uint256 liquidityProvided) external {
         if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
 
@@ -63,12 +92,27 @@ contract PenaltyManager is Ownable, IPenaltyManager {
         );
     }
 
+    /// @inheritdoc IPenaltyManager
     function setLockerFactory(address lockerFactoryAddress) external onlyOwner {
         lockerFactory = lockerFactoryAddress;
     }
 
-    function approveLocker(address lockerAddress) external {
-        if (msg.sender != lockerFactory) revert NOT_LOCKER_FACTORY();
+    /// @inheritdoc IPenaltyManager
+    function approveLocker(address lockerAddress) external onlyLockerFactory {
         _approvedLockers[lockerAddress] = true;
+    }
+
+    //      __  ___          ___ _____
+    //     /  |/  /___  ____/ (_) __(_)__  __________
+    //    / /|_/ / __ \/ __  / / /_/ / _ \/ ___/ ___/
+    //   / /  / / /_/ / /_/ / / __/ /  __/ /  (__  )
+    //  /_/  /_/\____/\__,_/_/_/ /_/\___/_/  /____/
+
+    /**
+     * @dev Throws if called by any account other than the Locker Factory contract
+     */
+    modifier onlyLockerFactory() {
+        if (msg.sender != lockerFactory) revert NOT_LOCKER_FACTORY();
+        _;
     }
 }

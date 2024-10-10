@@ -1,6 +1,17 @@
 pragma solidity ^0.8.26;
 
+/**
+ * @title Locker Contract Interface
+ * @author Superfluid
+ * @notice Contract responsible for locking and holding FLUID token on behalf of users
+ **/
 interface IFluidLocker {
+    //     ______           __                     ______
+    //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
+    //   / /   / / / / ___/ __/ __ \/ __ `__ \   / __/ / ___/ ___/ __ \/ ___/ ___/
+    //  / /___/ /_/ (__  ) /_/ /_/ / / / / / /  / /___/ /  / /  / /_/ / /  (__  )
+    //  \____/\__,_/____/\__/\____/_/ /_/ /_/  /_____/_/  /_/   \____/_/  /____/
+
     /// @notice Error thrown when the caller is not the owner
     error NOT_LOCKER_OWNER();
 

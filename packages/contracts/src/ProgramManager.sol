@@ -3,6 +3,8 @@ pragma solidity ^0.8.26;
 /* Superfluid Protocol Contracts & Interfaces */
 import {ISuperfluidPool, ISuperToken, PoolConfig} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+
+/* FLUID Interfaces */
 import {IProgramManager} from "./interfaces/IProgramManager.sol";
 
 using SuperTokenV1Library for ISuperToken;
@@ -13,13 +15,19 @@ using SuperTokenV1Library for ISuperToken;
  * @notice Contract responsible for administrating the GDA pool that distribute FLUID to lockers
  **/
 contract ProgramManager is IProgramManager {
+    //     _____ __        __
+    //    / ___// /_____ _/ /____  _____
+    //    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /____/\__/\__,_/\__/\___/____/
+
     /// FIXME storage packing check
 
     /// @notice mapping storing the program details for a given program identifier
     mapping(uint8 programId => Program program) public programs;
 
     mapping(address signer => mapping(address user => uint256 lastValidNonce))
-        private lastValidNonces;
+        private _lastValidNonces;
 
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -119,7 +127,7 @@ contract ProgramManager is IProgramManager {
         if (!_isNonceValid(p.stackSigner, user, nonce))
             revert INVALID_SIGNATURE("nonce");
 
-        lastValidNonces[p.stackSigner][user] = nonce;
+        _lastValidNonces[p.stackSigner][user] = nonce;
 
         if (
             !_verifySignature(
@@ -147,7 +155,7 @@ contract ProgramManager is IProgramManager {
         address user,
         uint256 nonce
     ) internal view returns (bool isValid) {
-        isValid = nonce > lastValidNonces[signer][user];
+        isValid = nonce > _lastValidNonces[signer][user];
     }
 
     function _verifySignature(

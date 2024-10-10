@@ -9,7 +9,7 @@ import {Initializable} from "@openzeppelin-v5/contracts/proxy/utils/Initializabl
 import {ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
-/* FLUID Token Interfaces */
+/* FLUID Interfaces */
 import {IProgramManager} from "./interfaces/IProgramManager.sol";
 import {IFluidLocker} from "./interfaces/IFluidLocker.sol";
 import {IPenaltyManager} from "./interfaces/IPenaltyManager.sol";
@@ -24,6 +24,12 @@ using SafeCast for int256;
  * @notice Contract responsible for locking and holding FLUID token on behalf of users
  **/
 contract FluidLocker is Initializable, IFluidLocker {
+    //     _____ __        __
+    //    / ___// /_____ _/ /____  _____
+    //    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /____/\__/\__,_/\__/\___/____/
+
     /// FIXME storage packing
 
     /// @notice $FLUID SuperToken interface
@@ -75,17 +81,37 @@ contract FluidLocker is Initializable, IFluidLocker {
     /// @notice Balance of $FLUID staked in this locker
     uint256 private stakedBalance;
 
+    //     ______                 __                  __
+    //    / ____/___  ____  _____/ /________  _______/ /_____  _____
+    //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
+    //  / /___/ /_/ / / / (__  ) /_/ /  / /_/ / /__/ /_/ /_/ / /
+    //  \____/\____/_/ /_/____/\__/_/   \__,_/\___/\__/\____/_/
+
+    /**
+     * @notice Locker contract constructor
+     * @param fluid FLUID SuperToken contract interface
+     * @param penaltyDrainingPool Penalty Draining Pool GDA contract interface
+     * @param programManager Program Manager contract interface
+     */
     constructor(
         ISuperToken fluid,
         ISuperfluidPool penaltyDrainingPool,
         IProgramManager programManager
     ) {
+        // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
+
+        // Sets immutable states
         FLUID = fluid;
         PENALTY_DRAINING_POOL = penaltyDrainingPool;
         PROGRAM_MANAGER = programManager;
     }
 
+    /**
+     * @notice Locker contract initializer
+     * @param owner this Locker contract owner account
+     * @param lockerDrainerAddress Locker Drainer contract address connected to this Locker
+     */
     function initialize(
         address owner,
         address lockerDrainerAddress
@@ -303,7 +329,7 @@ contract FluidLocker is Initializable, IFluidLocker {
     //  /_/  /_/\____/\__,_/_/_/ /_/\___/_/  /____/
 
     /**
-     * @dev Throws if called by any account other than the owner.
+     * @dev Throws if called by any account other than the owner
      */
     modifier onlyOwner() {
         if (msg.sender != lockerOwner) revert NOT_LOCKER_OWNER();

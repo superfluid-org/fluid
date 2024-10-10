@@ -1,5 +1,6 @@
 pragma solidity ^0.8.26;
 
+/* Superfluid Protocol Contracts & Interfaces */
 import {ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
 /**
@@ -8,6 +9,13 @@ import {ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contrac
  * @notice Contract responsible for administrating the GDA pool that distribute FLUID to lockers
  **/
 interface IProgramManager {
+    //      ____        __        __
+    //     / __ \____ _/ /_____ _/ /___  ______  ___  _____
+    //    / / / / __ `/ __/ __ `/ __/ / / / __ \/ _ \/ ___/
+    //   / /_/ / /_/ / /_/ /_/ / /_/ /_/ / /_/ /  __(__  )
+    //  /_____/\__,_/\__/\__,_/\__/\__, / .___/\___/____/
+    //                            /____/_/
+
     /**
      * @notice Program Data Type
      * @param programAdmin program admin address
@@ -22,6 +30,12 @@ interface IProgramManager {
         ISuperfluidPool distributionPool;
     }
 
+    //     ______           __                     ______
+    //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
+    //   / /   / / / / ___/ __/ __ \/ __ `__ \   / __/ / ___/ ___/ __ \/ ___/ ___/
+    //  / /___/ /_/ (__  ) /_/ /_/ / / / / / /  / /___/ /  / /  / /_/ / /  (__  )
+    //  \____/\__,_/____/\__/\____/_/ /_/ /_/  /_____/_/  /_/   \____/_/  /____/
+
     /// @notice Error thrown when attempting to create a program with an alredy existsing program identifier
     error PROGRAM_ALREADY_CREATED();
 
@@ -33,6 +47,12 @@ interface IProgramManager {
 
     /// @notice Error thrown when a signature is of invalid
     error INVALID_SIGNATURE(string reason);
+
+    //      ______     __                        __   ______                 __  _
+    //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
+    //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /**
      * @notice Creates a new distribution program

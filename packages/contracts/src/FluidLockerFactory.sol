@@ -17,6 +17,12 @@ import {IPenaltyManager} from "./interfaces/IPenaltyManager.sol";
  * @notice Deploys new Fluid Locker contracts and their associated Locker Drainer
  **/
 contract FluidLockerFactory is IFluidLockerFactory {
+    //     _____ __        __
+    //    / ___// /_____ _/ /____  _____
+    //    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /____/\__/\__,_/\__/\___/____/
+
     UpgradeableBeacon public immutable LOCKER_BEACON;
 
     UpgradeableBeacon public immutable LOCKER_DRAINER_BEACON;
@@ -24,6 +30,12 @@ contract FluidLockerFactory is IFluidLockerFactory {
     IPenaltyManager private immutable _PENALTY_MANAGER;
 
     mapping(address locker => bool isCreated) internal _lockers;
+
+    //     ______                 __                  __
+    //    / ____/___  ____  _____/ /________  _______/ /_____  _____
+    //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
+    //  / /___/ /_/ / / / (__  ) /_/ /  / /_/ / /__/ /_/ /_/ / /
+    //  \____/\____/_/ /_/____/\__/_/   \__,_/\___/\__/\____/_/
 
     constructor(
         address lockerImplementation,
@@ -48,12 +60,11 @@ contract FluidLockerFactory is IFluidLockerFactory {
         LOCKER_DRAINER_BEACON.transferOwnership(msg.sender);
     }
 
-    /// @inheritdoc IFluidLockerFactory
-    function isLockerCreated(
-        address locker
-    ) external view returns (bool isCreated) {
-        return _lockers[locker];
-    }
+    //      ______     __                        __   ______                 __  _
+    //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
+    //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFluidLockerFactory
     function createLockerContract() external returns (address lockerInstance) {
@@ -95,6 +106,19 @@ contract FluidLockerFactory is IFluidLockerFactory {
         _PENALTY_MANAGER.approveLocker(lockerInstance);
 
         /// FIXME emit Locker Created event
+    }
+
+    //   _    ___                 ______                 __  _
+    //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
+    //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //  | |/ / /  __/ |/ |/ /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /// @inheritdoc IFluidLockerFactory
+    function isLockerCreated(
+        address locker
+    ) external view returns (bool isCreated) {
+        return _lockers[locker];
     }
 
     /// @inheritdoc IFluidLockerFactory
