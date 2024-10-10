@@ -49,7 +49,7 @@ contract LockerDrainer is ILockerDrainer {
             penaltyFlowRate
         );
 
-        // Create Drain flow from the locker to the locker owner
+        // Create Drain flow from the locker drainer to the locker owner
         FLUID.createFlow(lockerOwner, drainFlowRate);
     }
 
@@ -61,10 +61,12 @@ contract LockerDrainer is ILockerDrainer {
         // Transfer entire FLUID balance back to the connected locker
         FLUID.transfer(msg.sender, FLUID.balanceOf(address(this)));
         FLUID.deleteFlow(address(this), lockerOwner);
+
+        /// FIXME Is there any way to delete the distributionFlow to the PENALTY_DRAINING_POOL ?
     }
 
     /**
-     * @dev Throws if called by any account other than the owner.
+     * @dev Reverts if called by any account other than the connected locker.
      */
     modifier onlyConnectedLocker() {
         if (msg.sender != locker) revert NOT_CONNECTED_LOCKER();

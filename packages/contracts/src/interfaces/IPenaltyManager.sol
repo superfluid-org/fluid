@@ -8,5 +8,7 @@ interface IPenaltyManager {
 
     function updateLiquidityProvidersUnits(uint256 liquidityProvided) external;
 
+    function setLockerFactory(address lockerFactoryAddress) external;
+
     function approveLocker(address lockerAddress) external;
 }

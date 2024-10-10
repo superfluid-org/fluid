@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 /* Openzeppelin Contracts & Interfaces */
 import {Math} from "@openzeppelin-v5/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
+import {Initializable} from "@openzeppelin-v5/contracts/proxy/utils/Initializable.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
@@ -22,7 +23,7 @@ using SafeCast for int256;
  * @author Superfluid
  * @notice Contract responsible for locking and holding FLUID token on behalf of users
  **/
-contract FluidLocker is IFluidLocker {
+contract FluidLocker is Initializable, IFluidLocker {
     /// FIXME storage packing
 
     /// @notice $FLUID SuperToken interface
@@ -84,7 +85,7 @@ contract FluidLocker is IFluidLocker {
         PROGRAM_MANAGER = programManager;
     }
 
-    function initialize(address owner) external {
+    function initialize(address owner) external initializer {
         lockerOwner = owner;
     }
 
@@ -136,14 +137,14 @@ contract FluidLocker is IFluidLocker {
     function drain(uint128 drainPeriod) external onlyOwner {
         // Enforce drain period validity
         if (
-            (drainPeriod != 0 && drainPeriod < _MIN_DRAIN_PERIOD) ||
-            drainPeriod > _MAX_DRAIN_PERIOD
+            drainPeriod != 0 &&
+            (drainPeriod < _MIN_DRAIN_PERIOD || drainPeriod > _MAX_DRAIN_PERIOD)
         ) revert INVALID_DRAIN_PERIOD();
 
-        // get balance available for draining
+        // Get balance available for draining
         uint256 availableBalance = getAvailableBalance();
 
-        // revert if there is nothing to drain
+        // Revert if there is no FLUID to drain
         if (availableBalance == 0) revert NO_FLUID_TO_DRAIN();
 
         if (drainPeriod == 0) {
@@ -267,11 +268,11 @@ contract FluidLocker is IFluidLocker {
         uint256 amountToDrain,
         uint128 drainPeriod
     ) internal pure returns (int96 drainFlowRate, int96 penaltyFlowRate) {
-        uint256 drainAmount = (amountToDrain *
+        uint256 amountToUser = (amountToDrain *
             _getDrainPercentage(drainPeriod)) / _BP_DENOMINATOR;
-        uint256 penaltyAmount = amountToDrain - drainAmount;
+        uint256 penaltyAmount = amountToDrain - amountToUser;
 
-        drainFlowRate = int256(drainAmount / drainPeriod).toInt96();
+        drainFlowRate = int256(amountToUser / drainPeriod).toInt96();
         penaltyFlowRate = int256(penaltyAmount / drainPeriod).toInt96();
     }
 

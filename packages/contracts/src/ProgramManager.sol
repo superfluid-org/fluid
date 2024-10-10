@@ -41,7 +41,7 @@ contract ProgramManager is IProgramManager {
         // Configure Superfluid GDA Pool
         PoolConfig memory poolConfig = PoolConfig({
             transferabilityForUnitsOwner: false,
-            distributionFromAnyAddress: false
+            distributionFromAnyAddress: true
         });
 
         // Create Superfluid GDA Pool

@@ -22,17 +22,14 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     /// @notice Superfluid pool interface
     ISuperfluidPool public immutable PENALTY_DRAINING_POOL;
 
-    address public immutable LOCKER_FACTORY;
+    /// @notice Locker Factory contract address
+    address public lockerFactory;
 
+    /// @notice Stores the approval status of a given locker contract address
     mapping(address locker => bool isApproved) private _approvedLockers;
 
-    constructor(
-        address owner,
-        address lockerFactory,
-        ISuperToken fluid
-    ) Ownable(owner) {
+    constructor(address owner, ISuperToken fluid) Ownable(owner) {
         FLUID = fluid;
-        LOCKER_FACTORY = lockerFactory;
 
         // Configure Superfluid GDA Pool
         PoolConfig memory poolConfig = PoolConfig({
@@ -47,13 +44,14 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     function updateStakerUnits(uint256 lockerStakedBalance) external {
         if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
 
-        /// FIXME Find proper stakedBalance to GDA pool units calculation
+        /// FIXME Define proper stakedBalance to GDA pool units calculation
         FLUID.updateMemberUnits(
             PENALTY_DRAINING_POOL,
             msg.sender,
             uint128(lockerStakedBalance)
         );
     }
+
     function updateLiquidityProvidersUnits(uint256 liquidityProvided) external {
         if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
 
@@ -65,8 +63,12 @@ contract PenaltyManager is Ownable, IPenaltyManager {
         );
     }
 
+    function setLockerFactory(address lockerFactoryAddress) external onlyOwner {
+        lockerFactory = lockerFactoryAddress;
+    }
+
     function approveLocker(address lockerAddress) external {
-        if (msg.sender != LOCKER_FACTORY) revert NOT_LOCKER_FACTORY();
+        if (msg.sender != lockerFactory) revert NOT_LOCKER_FACTORY();
         _approvedLockers[lockerAddress] = true;
     }
 }
