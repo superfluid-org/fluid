@@ -1,8 +1,13 @@
 pragma solidity ^0.8.26;
 
+/* Openzeppelin Contracts & Interfaces */
+import {Initializable} from "@openzeppelin-v5/contracts/proxy/utils/Initializable.sol";
+
 /* Superfluid Protocol Contracts & Interfaces */
 import {ISuperfluidPool, ISuperToken} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import {SuperTokenV1Library} from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+
+/* FLUID Contracts & Interfaces */
 import {ILockerDrainer} from "./interfaces/ILockerDrainer.sol";
 
 using SuperTokenV1Library for ISuperToken;
@@ -12,7 +17,7 @@ using SuperTokenV1Library for ISuperToken;
  * @author Superfluid
  * @notice Contract responsible for flowing drained token from the locker to the locker owner
  **/
-contract LockerDrainer is ILockerDrainer {
+contract LockerDrainer is Initializable, ILockerDrainer {
     /// FIXME storage packing
 
     /// @notice $FLUID SuperToken interface
@@ -25,11 +30,12 @@ contract LockerDrainer is ILockerDrainer {
     address public locker;
 
     constructor(ISuperToken fluid, ISuperfluidPool penaltyDrainingPool) {
+        _disableInitializers();
         FLUID = fluid;
         PENALTY_DRAINING_POOL = penaltyDrainingPool;
     }
 
-    function initialize(address connectedLocker) external {
+    function initialize(address connectedLocker) external initializer {
         locker = connectedLocker;
     }
 

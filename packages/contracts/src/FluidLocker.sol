@@ -80,13 +80,21 @@ contract FluidLocker is Initializable, IFluidLocker {
         ISuperfluidPool penaltyDrainingPool,
         IProgramManager programManager
     ) {
+        _disableInitializers();
         FLUID = fluid;
         PENALTY_DRAINING_POOL = penaltyDrainingPool;
         PROGRAM_MANAGER = programManager;
     }
 
-    function initialize(address owner) external initializer {
+    function initialize(
+        address owner,
+        address lockerDrainerAddress
+    ) external initializer {
+        // Sets the owner of this locker
         lockerOwner = owner;
+
+        // Sets the Locker Drainer contract associated to this Locker
+        lockerDrainer = ILockerDrainer(lockerDrainerAddress);
     }
 
     //      ______     __                        __   ______                 __  _

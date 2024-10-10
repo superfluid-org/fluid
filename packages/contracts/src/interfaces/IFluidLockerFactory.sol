@@ -11,13 +11,23 @@ interface IFluidLockerFactory {
         address locker
     ) external view returns (bool isCreated);
 
-    function createLockerContract() external returns (address instance);
+    function createLockerContract() external returns (address lockerInstance);
 
     function createLockerContract(
         address lockerOwner
-    ) external returns (address instance);
+    ) external returns (address lockerInstance);
 
-    function getLockerAddress(address user) external view returns (address);
+    function getLockerAddress(
+        address user
+    ) external view returns (address lockerAddress);
 
-    function getBeaconImplementation() external view returns (address);
+    function getLockerBeaconImplementation()
+        external
+        view
+        returns (address lockerBeaconImpl);
+
+    function getLockerDrainerBeaconImplementation()
+        external
+        view
+        returns (address lockerDrainerBeaconImpl);
 }
