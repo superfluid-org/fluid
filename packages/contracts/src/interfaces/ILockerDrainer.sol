@@ -37,7 +37,7 @@ interface ILockerDrainer {
     function processDrain(address lockerOwner, int96 drainFlowRate, int96 penaltyFlowRate) external;
 
     /**
-     * @notice Stops the flow from this contract to the locker owner and transfer residual FLUID back to the connected locker
+     * @notice Stops the flow to the locker owner and transfer residual FLUID back to the connected locker
      * @param lockerOwner locker owner account address
      */
     function cancelDrain(address lockerOwner) external;
