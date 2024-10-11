@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 /**
  * @title Fluid Locker Factory Contract Interface
  * @author Superfluid
- * @notice Deploys new Fluid Locker contracts and their associated Locker Drainer
+ * @notice Deploys new Fluid Locker contracts and their associated Fontaine
  *
  */
 interface IFluidLockerFactory {
@@ -15,13 +15,13 @@ interface IFluidLockerFactory {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /**
-     * @notice Deploy a Locker and connected Locker Drainer for the caller
+     * @notice Deploy a Locker and connected Fontaine for the caller
      * @return lockerInstance Deployed Locker contract address
      */
     function createLockerContract() external returns (address lockerInstance);
 
     /**
-     * @notice Deploy a Locker and connected Locker Drainer for the given user
+     * @notice Deploy a Locker and connected Fontaine for the given user
      * @param lockerOwner Owner address of the Locker to be deployed
      * @return lockerInstance Deployed Locker contract address
      */
@@ -54,8 +54,8 @@ interface IFluidLockerFactory {
     function getLockerBeaconImplementation() external view returns (address lockerBeaconImpl);
 
     /**
-     * @notice Returns the locker drainer beacon implementation contract address
-     * @return lockerDrainerBeaconImpl The locker drainer beacon implementation contract address
+     * @notice Returns the fontaine beacon implementation contract address
+     * @return fontaineBeaconImpl The fontaine beacon implementation contract address
      */
-    function getLockerDrainerBeaconImplementation() external view returns (address lockerDrainerBeaconImpl);
+    function getFontaineBeaconImplementation() external view returns (address fontaineBeaconImpl);
 }

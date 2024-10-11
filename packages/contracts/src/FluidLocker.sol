@@ -16,7 +16,7 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 import { IProgramManager } from "./interfaces/IProgramManager.sol";
 import { IFluidLocker } from "./interfaces/IFluidLocker.sol";
 import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
-import { ILockerDrainer } from "./interfaces/ILockerDrainer.sol";
+import { IFontaine } from "./interfaces/IFontaine.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -48,8 +48,8 @@ contract FluidLocker is Initializable, IFluidLocker {
     /// @notice Penalty Manager interface
     IPenaltyManager public immutable PENALTY_MANAGER;
 
-    /// @notice Connected Locker Drainer interface
-    ILockerDrainer public lockerDrainer;
+    /// @notice Connected Fontaine interface
+    IFontaine public fontaine;
 
     /// @notice This locker owner address
     address public lockerOwner;
@@ -110,14 +110,14 @@ contract FluidLocker is Initializable, IFluidLocker {
     /**
      * @notice Locker contract initializer
      * @param owner this Locker contract owner account
-     * @param lockerDrainerAddress Locker Drainer contract address connected to this Locker
+     * @param fontaineAddress Fontaine contract address connected to this Locker
      */
-    function initialize(address owner, address lockerDrainerAddress) external initializer {
+    function initialize(address owner, address fontaineAddress) external initializer {
         // Sets the owner of this locker
         lockerOwner = owner;
 
-        // Sets the Locker Drainer contract associated to this Locker
-        lockerDrainer = ILockerDrainer(lockerDrainerAddress);
+        // Sets the Fontaine contract associated to this Locker
+        fontaine = IFontaine(fontaineAddress);
     }
 
     //      ______     __                        __   ______                 __  _
@@ -260,11 +260,11 @@ contract FluidLocker is Initializable, IFluidLocker {
         // Calculate the drain and penalty flow rates based on requested amount and drain period
         (int96 drainFlowRate, int96 penaltyFlowRate) = _calculateVestDrainFlowRates(amountToDrain, drainPeriod);
 
-        // Transfer the total amount to drain to the connected Locker Drainer
-        FLUID.transfer(address(lockerDrainer), amountToDrain);
+        // Transfer the total amount to drain to the connected Fontaine
+        FLUID.transfer(address(fontaine), amountToDrain);
 
         // Initiate drain process
-        lockerDrainer.processDrain(lockerOwner, drainFlowRate, penaltyFlowRate);
+        fontaine.processDrain(lockerOwner, drainFlowRate, penaltyFlowRate);
     }
 
     function _calculateVestDrainFlowRates(uint256 amountToDrain, uint128 drainPeriod)

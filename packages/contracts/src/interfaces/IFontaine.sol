@@ -1,12 +1,12 @@
 pragma solidity ^0.8.26;
 
 /**
- * @title Locker Drainer Contract Interface
+ * @title Fontaine Contract Interface
  * @author Superfluid
  * @notice Contract responsible for flowing drained token from the locker to the locker owner
  *
  */
-interface ILockerDrainer {
+interface IFontaine {
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
     //   / /   / / / / ___/ __/ __ \/ __ `__ \   / __/ / ___/ ___/ __ \/ ___/ ___/

@@ -7,14 +7,14 @@ import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/Upgradea
 
 /* FLUID Contracts & Interfaces */
 import { FluidLocker } from "./FluidLocker.sol";
-import { LockerDrainer } from "./LockerDrainer.sol";
+import { Fontaine } from "./Fontaine.sol";
 import { IFluidLockerFactory } from "./interfaces/IFluidLockerFactory.sol";
 import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
 
 /**
  * @title Fluid Locker Factory Contract
  * @author Superfluid
- * @notice Deploys new Fluid Locker contracts and their associated Locker Drainer
+ * @notice Deploys new Fluid Locker contracts and their associated Fontaine
  *
  */
 contract FluidLockerFactory is IFluidLockerFactory {
@@ -27,8 +27,8 @@ contract FluidLockerFactory is IFluidLockerFactory {
     /// @notice Locker Beacon contract address
     UpgradeableBeacon public immutable LOCKER_BEACON;
 
-    /// @notice Locker Drainer Beacon contract address
-    UpgradeableBeacon public immutable LOCKER_DRAINER_BEACON;
+    /// @notice Fontaine Beacon contract address
+    UpgradeableBeacon public immutable FONTAINE_BEACON;
 
     /// @notice Penalty Manager interface
     IPenaltyManager private immutable _PENALTY_MANAGER;
@@ -45,24 +45,24 @@ contract FluidLockerFactory is IFluidLockerFactory {
     /**
      * @notice FLUID Locker Factory contract constructor
      * @param lockerImplementation Locker implementation contract address
-     * @param lockerDrainerImplementation Locker Drainer implementation contract address
+     * @param fontaineImplementation Fontaine implementation contract address
      * @param penaltyManager Penalty Manager interface contract address
      */
-    constructor(address lockerImplementation, address lockerDrainerImplementation, IPenaltyManager penaltyManager) {
+    constructor(address lockerImplementation, address fontaineImplementation, IPenaltyManager penaltyManager) {
         // Sets the Penalty Manager interface
         _PENALTY_MANAGER = penaltyManager;
 
         // Deploy the Locker beacon with the Locker implementation contract
         LOCKER_BEACON = new UpgradeableBeacon(lockerImplementation);
 
-        // Deploy the Locker Drainer beacon with the Locker Drainer implementation contract
-        LOCKER_DRAINER_BEACON = new UpgradeableBeacon(lockerDrainerImplementation);
+        // Deploy the Fontaine beacon with the Fontaine implementation contract
+        FONTAINE_BEACON = new UpgradeableBeacon(fontaineImplementation);
 
         // Transfer ownership of the Locker beacon to the deployer
         LOCKER_BEACON.transferOwnership(msg.sender);
 
-        // Transfer ownership of the Locker Drainer beacon to the deployer
-        LOCKER_DRAINER_BEACON.transferOwnership(msg.sender);
+        // Transfer ownership of the Fontaine beacon to the deployer
+        FONTAINE_BEACON.transferOwnership(msg.sender);
     }
 
     //      ______     __                        __   ______                 __  _
@@ -78,21 +78,21 @@ contract FluidLockerFactory is IFluidLockerFactory {
 
     /// @inheritdoc IFluidLockerFactory
     function createLockerContract(address lockerOwner) public returns (address lockerInstance) {
-        // Use create2 to deploy a Locker BeaconProxy with the hashed encoded LockerOwner as the salt
+        // Use create2 to deploy a Locker Beacon Proxy with the hashed encoded LockerOwner as the salt
         lockerInstance =
             address(new BeaconProxy{ salt: keccak256(abi.encode(lockerOwner)) }(address(LOCKER_BEACON), ""));
 
-        // Use create2 to deploy a Locker Drainer BeaconProxy with the hashed encoded associated Locker address as the salt
-        address lockerDrainerInstance =
-            address(new BeaconProxy{ salt: keccak256(abi.encode(lockerInstance)) }(address(LOCKER_DRAINER_BEACON), ""));
+        // Use create2 to deploy a Fontaine Beacon Proxy with the hashed encoded associated Locker address as the salt
+        address fontaineInstance =
+            address(new BeaconProxy{ salt: keccak256(abi.encode(lockerInstance)) }(address(FONTAINE_BEACON), ""));
 
         _lockers[lockerInstance] = true;
 
-        // Initialize the new Locker Drainer instance
-        LockerDrainer(lockerDrainerInstance).initialize(lockerInstance);
+        // Initialize the new Fontaine instance
+        Fontaine(fontaineInstance).initialize(lockerInstance);
 
         // Initialize the new Locker instance
-        FluidLocker(lockerInstance).initialize(lockerOwner, lockerDrainerInstance);
+        FluidLocker(lockerInstance).initialize(lockerOwner, fontaineInstance);
 
         // Approve the newly created locker to interact with the Penalty Manager
         _PENALTY_MANAGER.approveLocker(lockerInstance);
@@ -137,7 +137,7 @@ contract FluidLockerFactory is IFluidLockerFactory {
     }
 
     /// @inheritdoc IFluidLockerFactory
-    function getLockerDrainerBeaconImplementation() public view returns (address lockerDrainerBeaconImpl) {
-        lockerDrainerBeaconImpl = LOCKER_DRAINER_BEACON.implementation();
+    function getFontaineBeaconImplementation() public view returns (address fontaineBeaconImpl) {
+        fontaineBeaconImpl = FONTAINE_BEACON.implementation();
     }
 }

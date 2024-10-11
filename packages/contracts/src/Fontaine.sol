@@ -11,17 +11,17 @@ import {
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
 /* FLUID Contracts & Interfaces */
-import { ILockerDrainer } from "./interfaces/ILockerDrainer.sol";
+import { IFontaine } from "./interfaces/IFontaine.sol";
 
 using SuperTokenV1Library for ISuperToken;
 
 /**
- * @title Locker Drainer Contract
+ * @title Fontaine Contract
  * @author Superfluid
  * @notice Contract responsible for flowing drained token from the locker to the locker owner
  *
  */
-contract LockerDrainer is Initializable, ILockerDrainer {
+contract Fontaine is Initializable, IFontaine {
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -36,7 +36,7 @@ contract LockerDrainer is Initializable, ILockerDrainer {
     /// @notice Superfluid pool interface
     ISuperfluidPool public immutable PENALTY_DRAINING_POOL;
 
-    /// @notice Locker address associated to this Drainer
+    /// @notice Locker address associated to this Fontaine
     address public locker;
 
     //     ______                 __                  __
@@ -46,7 +46,7 @@ contract LockerDrainer is Initializable, ILockerDrainer {
     //  \____/\____/_/ /_/____/\__/_/   \__,_/\___/\__/\____/_/
 
     /**
-     * @notice Locker Drainer contract constructor
+     * @notice Fontaine contract constructor
      * @param fluid FLUID SuperToken interface
      * @param penaltyDrainingPool Penalty Draining Pool GDA contract address
      */
@@ -60,8 +60,8 @@ contract LockerDrainer is Initializable, ILockerDrainer {
     }
 
     /**
-     * @notice Locker Drainer contract initializer
-     * @param connectedLocker Locker contract address connected to this Locker Drainer
+     * @notice Fontaine contract initializer
+     * @param connectedLocker Locker contract address connected to this Fontaine
      */
     function initialize(address connectedLocker) external initializer {
         locker = connectedLocker;
@@ -73,7 +73,7 @@ contract LockerDrainer is Initializable, ILockerDrainer {
     //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
-    /// @inheritdoc ILockerDrainer
+    /// @inheritdoc IFontaine
     function processDrain(address lockerOwner, int96 drainFlowRate, int96 penaltyFlowRate)
         external
         onlyConnectedLocker
@@ -86,22 +86,22 @@ contract LockerDrainer is Initializable, ILockerDrainer {
         // Distribute Penalty flow to Staker GDA Pool
         FLUID.distributeFlow(address(this), PENALTY_DRAINING_POOL, penaltyFlowRate);
 
-        // Create Drain flow from the locker drainer to the locker owner
+        // Create Drain flow from the Fontaine to the locker owner
         FLUID.createFlow(lockerOwner, drainFlowRate);
     }
 
-    /// @inheritdoc ILockerDrainer
+    /// @inheritdoc IFontaine
     function cancelDrain(address lockerOwner) external onlyConnectedLocker {
         // Ensure that there is a drain to cancel
         if (FLUID.getFlowRate(address(this), lockerOwner) == 0) {
             revert NO_ACTIVE_DRAIN();
         }
 
+        FLUID.deleteFlow(address(this), lockerOwner);
+        FLUID.distributeFlow(address(this), PENALTY_DRAINING_POOL, 0);
+
         // Transfer entire FLUID balance back to the connected locker
         FLUID.transfer(msg.sender, FLUID.balanceOf(address(this)));
-        FLUID.deleteFlow(address(this), lockerOwner);
-
-        /// FIXME Is there any way to delete the distributionFlow to the PENALTY_DRAINING_POOL ?
     }
 
     //      __  ___          ___ _____
