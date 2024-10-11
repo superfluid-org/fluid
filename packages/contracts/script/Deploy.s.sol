@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import { Script } from "forge-std/Script.sol";
 import {
     ISuperfluid,
+    ISuperfluidPool,
     ISuperToken
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
