@@ -7,12 +7,12 @@ import {
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
 /**
- * @title Program Manager Contract Interface
+ * @title Ecosystem Partner Program Manager Contract Interface
  * @author Superfluid
  * @notice Contract responsible for administrating the GDA pool that distribute FLUID to lockers
  *
  */
-interface IProgramManager {
+interface IEPProgramManager {
     //      ____        __        __
     //     / __ \____ _/ /_____ _/ /___  ______  ___  _____
     //    / / / / __ `/ __/ __ `/ __/ / / / __ \/ _ \/ ___/
@@ -21,13 +21,13 @@ interface IProgramManager {
     //                            /____/_/
 
     /**
-     * @notice Program Data Type
+     * @notice Ecosystem Partner Program Data Type
      * @param programAdmin program admin address
      * @param stackSigner signer address
      * @param token SuperToken to be distributed
      * @return distributionPool deployed Superfluid Pool contract address
      */
-    struct Program {
+    struct EPProgram {
         address programAdmin;
         address stackSigner;
         ISuperToken token;

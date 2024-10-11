@@ -9,17 +9,17 @@ import {
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
 /* FLUID Interfaces */
-import { IProgramManager } from "./interfaces/IProgramManager.sol";
+import { IEPProgramManager } from "./interfaces/IEPProgramManager.sol";
 
 using SuperTokenV1Library for ISuperToken;
 
 /**
- * @title Program Manager Contract
+ * @title Ecosystem Partner Program Manager Contract
  * @author Superfluid
  * @notice Contract responsible for administrating the GDA pool that distribute FLUID to lockers
  *
  */
-contract ProgramManager is IProgramManager {
+contract EPProgramManager is IEPProgramManager {
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -29,7 +29,7 @@ contract ProgramManager is IProgramManager {
     /// FIXME storage packing check
 
     /// @notice Stores the program details for a given program identifier
-    mapping(uint8 programId => Program program) public programs;
+    mapping(uint8 programId => EPProgram program) public programs;
 
     /// @notice Stores the last valid nonce used for a given signer and a given user
     mapping(address signer => mapping(address user => uint256 lastValidNonce)) private _lastValidNonces;
@@ -40,7 +40,7 @@ contract ProgramManager is IProgramManager {
     //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
-    /// @inheritdoc IProgramManager
+    /// @inheritdoc IEPProgramManager
     function createProgram(uint8 programId, address programAdmin, address signer, ISuperToken token)
         external
         returns (ISuperfluidPool distributionPool)
@@ -58,12 +58,12 @@ contract ProgramManager is IProgramManager {
         distributionPool = token.createPool(address(this), poolConfig);
 
         // Persist program details
-        programs[programId] = Program(programAdmin, signer, token, distributionPool);
+        programs[programId] = EPProgram(programAdmin, signer, token, distributionPool);
 
         /// FIXME emit ProgramCreated event
     }
 
-    /// @inheritdoc IProgramManager
+    /// @inheritdoc IEPProgramManager
     function updateProgramSigner(uint8 programId, address newSigner) external {
         // Ensure caller is program admin
         if (msg.sender != programs[programId].programAdmin) {
@@ -76,12 +76,12 @@ contract ProgramManager is IProgramManager {
         /// FIXME emit ProgramSignerUpdated event
     }
 
-    /// @inheritdoc IProgramManager
+    /// @inheritdoc IEPProgramManager
     function updateUnits(uint8 programId, uint128 newUnits, uint256 nonce, bytes memory stackSignature) external {
         updateUserUnits(programId, msg.sender, newUnits, nonce, stackSignature);
     }
 
-    /// @inheritdoc IProgramManager
+    /// @inheritdoc IEPProgramManager
     function updateUnits(
         uint8[] memory programIds,
         uint128[] memory newUnits,
@@ -99,7 +99,7 @@ contract ProgramManager is IProgramManager {
         }
     }
 
-    /// @inheritdoc IProgramManager
+    /// @inheritdoc IEPProgramManager
     function updateUserUnits(
         uint8 programId,
         address user,
@@ -107,7 +107,7 @@ contract ProgramManager is IProgramManager {
         uint256 nonce,
         bytes memory stackSignature
     ) public {
-        Program memory p = programs[programId];
+        EPProgram memory p = programs[programId];
 
         if (!_isNonceValid(p.stackSigner, user, nonce)) {
             revert INVALID_SIGNATURE("nonce");

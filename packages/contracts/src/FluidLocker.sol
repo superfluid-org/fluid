@@ -13,7 +13,7 @@ import {
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
 /* FLUID Interfaces */
-import { IProgramManager } from "./interfaces/IProgramManager.sol";
+import { IEPProgramManager } from "./interfaces/IEPProgramManager.sol";
 import { IFluidLocker } from "./interfaces/IFluidLocker.sol";
 import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
 import { IFontaine } from "./interfaces/IFontaine.sol";
@@ -43,7 +43,7 @@ contract FluidLocker is Initializable, IFluidLocker {
     ISuperfluidPool public immutable PENALTY_DRAINING_POOL;
 
     /// @notice Distribution Program Manager interface
-    IProgramManager public immutable PROGRAM_MANAGER;
+    IEPProgramManager public immutable EP_PROGRAM_MANAGER;
 
     /// @notice Penalty Manager interface
     IPenaltyManager public immutable PENALTY_MANAGER;
@@ -95,16 +95,16 @@ contract FluidLocker is Initializable, IFluidLocker {
      * @notice Locker contract constructor
      * @param fluid FLUID SuperToken contract interface
      * @param penaltyDrainingPool Penalty Draining Pool GDA contract interface
-     * @param programManager Program Manager contract interface
+     * @param programManager Ecosystem Partner Program Manager contract interface
      */
-    constructor(ISuperToken fluid, ISuperfluidPool penaltyDrainingPool, IProgramManager programManager) {
+    constructor(ISuperToken fluid, ISuperfluidPool penaltyDrainingPool, IEPProgramManager programManager) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
 
         // Sets immutable states
         FLUID = fluid;
         PENALTY_DRAINING_POOL = penaltyDrainingPool;
-        PROGRAM_MANAGER = programManager;
+        EP_PROGRAM_MANAGER = programManager;
     }
 
     /**
@@ -128,7 +128,7 @@ contract FluidLocker is Initializable, IFluidLocker {
 
     /// @inheritdoc IFluidLocker
     function claim(uint8 programId, uint128 totalProgramUnits, uint256 nonce, bytes memory stackSignature) external {
-        PROGRAM_MANAGER.updateUnits(programId, totalProgramUnits, nonce, stackSignature);
+        EP_PROGRAM_MANAGER.updateUnits(programId, totalProgramUnits, nonce, stackSignature);
     }
 
     /// @inheritdoc IFluidLocker
@@ -138,7 +138,7 @@ contract FluidLocker is Initializable, IFluidLocker {
         uint256[] memory nonces,
         bytes[] memory stackSignatures
     ) external {
-        PROGRAM_MANAGER.updateUnits(programIds, totalProgramUnits, nonces, stackSignatures);
+        EP_PROGRAM_MANAGER.updateUnits(programIds, totalProgramUnits, nonces, stackSignatures);
     }
 
     /// @inheritdoc IFluidLocker
