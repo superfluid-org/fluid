@@ -40,6 +40,8 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     /// @notice Locker Factory contract address
     address public lockerFactory;
 
+    uint128 private constant _UNIT_DOWNSCALER = 1e6;
+
     /// @notice Stores the approval status of a given locker contract address
     mapping(address locker => bool isApproved) private _approvedLockers;
 
@@ -76,7 +78,7 @@ contract PenaltyManager is Ownable, IPenaltyManager {
         if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
 
         /// FIXME Define proper stakedBalance to GDA pool units calculation
-        FLUID.updateMemberUnits(PENALTY_DRAINING_POOL, msg.sender, uint128(lockerStakedBalance));
+        FLUID.updateMemberUnits(PENALTY_DRAINING_POOL, msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
     }
 
     /// @inheritdoc IPenaltyManager
@@ -84,7 +86,7 @@ contract PenaltyManager is Ownable, IPenaltyManager {
         if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
 
         /// FIXME Find proper liquidity provided to GDA pool units calculation
-        FLUID.updateMemberUnits(PENALTY_DRAINING_POOL, msg.sender, uint128(liquidityProvided));
+        FLUID.updateMemberUnits(PENALTY_DRAINING_POOL, msg.sender, uint128(liquidityProvided) / _UNIT_DOWNSCALER);
     }
 
     /// @inheritdoc IPenaltyManager
