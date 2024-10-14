@@ -4,14 +4,14 @@ Latest deployed contract address
 
 ### BASE SEPOLIA :
 
-| Contract            | Address                                    | Explorer                                                                          |
-| ------------------- | ------------------------------------------ | --------------------------------------------------------------------------------- |
-| FluidToken          | 0x3A193aC8FcaCCDa817c174D04081C105154a8441 | https://mumbai.polygonscan.com/address/0xc0f123B96d67C2D600b91Fdee740E05D18e4DD45 |
-| EPProgramManager    | 0x7cEC6490CEfF2768A1ecfc6d71C1dF819A8a6E3c | https://mumbai.polygonscan.com/address/0xc0f123B96d67C2D600b91Fdee740E05D18e4DD45 |
-| PenaltyManager      | 0x4fEc5B896AF3AFFeE74fC6F25c476fF53aAEfCe1 | https://mumbai.polygonscan.com/address/0xB7Ab2197eF273F759C174D553E37633c0E691460 |
-| FluidLocker (Logic) | 0x45009fB03ebB58f759E43BB01318a50f8C2f3f8b | https://mumbai.polygonscan.com/address/0x2441290537D452A5e281755fE1126275f27032ff |
-| Fontaine (Logic)    | 0x50De94359BdCAE78674e6918519DF0220aEfD514 | https://mumbai.polygonscan.com/address/0x392cfc9F4e839B1C49f422851ed004f2d7B81939 |
-| FluidLockerFactory  | 0x6bC1063D8A1D9Aa10438d937A233c2F953d40cC3 | https://mumbai.polygonscan.com/address/0x78cD0E886b6C8EfCf2E67612fa45Ff16f685815d |
+| Contract            | Address                                    | Explorer                                                                        |
+| ------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
+| FluidToken          | 0x3A193aC8FcaCCDa817c174D04081C105154a8441 | https://sepolia.basescan.org/address/0x3A193aC8FcaCCDa817c174D04081C105154a8441 |
+| EPProgramManager    | 0x7cEC6490CEfF2768A1ecfc6d71C1dF819A8a6E3c | https://sepolia.basescan.org/address/0x7cEC6490CEfF2768A1ecfc6d71C1dF819A8a6E3c |
+| PenaltyManager      | 0x4fEc5B896AF3AFFeE74fC6F25c476fF53aAEfCe1 | https://sepolia.basescan.org/address/0x4fEc5B896AF3AFFeE74fC6F25c476fF53aAEfCe1 |
+| FluidLocker (Logic) | 0x45009fB03ebB58f759E43BB01318a50f8C2f3f8b | https://sepolia.basescan.org/address/0x45009fB03ebB58f759E43BB01318a50f8C2f3f8b |
+| Fontaine (Logic)    | 0x50De94359BdCAE78674e6918519DF0220aEfD514 | https://sepolia.basescan.org/address/0x50De94359BdCAE78674e6918519DF0220aEfD514 |
+| FluidLockerFactory  | 0x6bC1063D8A1D9Aa10438d937A233c2F953d40cC3 | https://sepolia.basescan.org/address/0x6bC1063D8A1D9Aa10438d937A233c2F953d40cC3 |
 
 ## Foundry
 
