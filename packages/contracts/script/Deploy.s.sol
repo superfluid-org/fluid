@@ -28,7 +28,7 @@ contract DeployScript is Script {
         EPProgramManager programManager = new EPProgramManager();
 
         // Deploy Penalty Manager
-        PenaltyManager penaltyManager = new PenaltyManager(msg.sender, fluid);
+        PenaltyManager penaltyManager = new PenaltyManager(vm.addr(deployerPrivateKey), fluid);
 
         // Read the newly created GDA Penalty Pool address
         ISuperfluidPool penaltyDrainingPool = penaltyManager.PENALTY_DRAINING_POOL();
