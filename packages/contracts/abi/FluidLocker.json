@@ -1,0 +1,237 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "fluid",
+        "type": "address",
+        "internalType": "contract ISuperToken"
+      },
+      {
+        "name": "penaltyDrainingPool",
+        "type": "address",
+        "internalType": "contract ISuperfluidPool"
+      },
+      {
+        "name": "programManager",
+        "type": "address",
+        "internalType": "contract IEPProgramManager"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "EP_PROGRAM_MANAGER",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IEPProgramManager"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "FLUID",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ISuperToken"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "PENALTY_DRAINING_POOL",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ISuperfluidPool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "PENALTY_MANAGER",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IPenaltyManager"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "claim",
+    "inputs": [
+      { "name": "programId", "type": "uint8", "internalType": "uint8" },
+      {
+        "name": "totalProgramUnits",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      { "name": "nonce", "type": "uint256", "internalType": "uint256" },
+      { "name": "stackSignature", "type": "bytes", "internalType": "bytes" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claim",
+    "inputs": [
+      { "name": "programIds", "type": "uint8[]", "internalType": "uint8[]" },
+      {
+        "name": "totalProgramUnits",
+        "type": "uint128[]",
+        "internalType": "uint128[]"
+      },
+      { "name": "nonces", "type": "uint256[]", "internalType": "uint256[]" },
+      {
+        "name": "stackSignatures",
+        "type": "bytes[]",
+        "internalType": "bytes[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "drain",
+    "inputs": [
+      { "name": "drainPeriod", "type": "uint128", "internalType": "uint128" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "fontaine",
+    "inputs": [],
+    "outputs": [
+      { "name": "", "type": "address", "internalType": "contract IFontaine" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAvailableBalance",
+    "inputs": [],
+    "outputs": [
+      { "name": "aBalance", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getStakedBalance",
+    "inputs": [],
+    "outputs": [
+      { "name": "sBalance", "type": "uint256", "internalType": "uint256" }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
+      { "name": "owner", "type": "address", "internalType": "address" },
+      {
+        "name": "fontaineAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "lock",
+    "inputs": [
+      { "name": "amount", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "lockerOwner",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "stake",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "stakingUnlocksAt",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint128", "internalType": "uint128" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "transferLocker",
+    "inputs": [
+      { "name": "recipient", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "unstake",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  { "type": "error", "name": "FORBIDDEN", "inputs": [] },
+  { "type": "error", "name": "INVALID_DRAIN_PERIOD", "inputs": [] },
+  { "type": "error", "name": "InvalidInitialization", "inputs": [] },
+  { "type": "error", "name": "NOT_LOCKER_OWNER", "inputs": [] },
+  { "type": "error", "name": "NO_FLUID_TO_DRAIN", "inputs": [] },
+  { "type": "error", "name": "NO_FLUID_TO_STAKE", "inputs": [] },
+  { "type": "error", "name": "NO_FLUID_TO_UNSTAKE", "inputs": [] },
+  { "type": "error", "name": "NotInitializing", "inputs": [] },
+  { "type": "error", "name": "STAKING_COOLDOWN_NOT_ELAPSED", "inputs": [] },
+  {
+    "type": "error",
+    "name": "SafeCastOverflowedIntDowncast",
+    "inputs": [
+      { "name": "bits", "type": "uint8", "internalType": "uint8" },
+      { "name": "value", "type": "int256", "internalType": "int256" }
+    ]
+  }
+]

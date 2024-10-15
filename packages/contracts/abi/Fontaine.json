@@ -1,0 +1,102 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "fluid",
+        "type": "address",
+        "internalType": "contract ISuperToken"
+      },
+      {
+        "name": "penaltyDrainingPool",
+        "type": "address",
+        "internalType": "contract ISuperfluidPool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "FLUID",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ISuperToken"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "PENALTY_DRAINING_POOL",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ISuperfluidPool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "cancelDrain",
+    "inputs": [
+      { "name": "lockerOwner", "type": "address", "internalType": "address" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
+      {
+        "name": "connectedLocker",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "locker",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "processDrain",
+    "inputs": [
+      { "name": "lockerOwner", "type": "address", "internalType": "address" },
+      { "name": "drainFlowRate", "type": "int96", "internalType": "int96" },
+      { "name": "penaltyFlowRate", "type": "int96", "internalType": "int96" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  { "type": "error", "name": "DRAIN_ALREADY_ACTIVE", "inputs": [] },
+  { "type": "error", "name": "InvalidInitialization", "inputs": [] },
+  { "type": "error", "name": "NOT_CONNECTED_LOCKER", "inputs": [] },
+  { "type": "error", "name": "NO_ACTIVE_DRAIN", "inputs": [] },
+  { "type": "error", "name": "NotInitializing", "inputs": [] }
+]
