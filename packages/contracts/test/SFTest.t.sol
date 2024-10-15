@@ -7,6 +7,7 @@ import { SuperfluidFrameworkDeployer } from
     "@superfluid-finance/ethereum-contracts/contracts/utils/SuperfluidFrameworkDeployer.sol";
 import { ERC1820RegistryCompiled } from
     "@superfluid-finance/ethereum-contracts/contracts/libs/ERC1820RegistryCompiled.sol";
+import { ISuperfluidPool } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { TestToken } from "@superfluid-finance/ethereum-contracts/contracts/utils/TestToken.sol";
 import { SuperToken } from "@superfluid-finance/ethereum-contracts/contracts/superfluid/SuperToken.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
@@ -63,9 +64,11 @@ contract SFTest is Test {
             vm.stopPrank();
         }
 
+        vm.startPrank(FLUID_TREASURY);
         _fluidUnderlying.mint(FLUID_TREASURY, FLUID_SUPPLY);
         _fluidUnderlying.approve(address(_fluidSuperToken), FLUID_SUPPLY);
         _fluidSuperToken.upgrade(FLUID_SUPPLY);
+        vm.stopPrank();
 
         // FLUID Contracts Deployment Start
         vm.startPrank(ADMIN);
@@ -87,5 +90,9 @@ contract SFTest is Test {
         vm.stopPrank();
 
         // FLUID Contracts Deployment End
+    }
+
+    function _helperCreateProgram(uint96 pId, address admin, address signer) internal returns (ISuperfluidPool pool) {
+        pool = _programManager.createProgram(pId, admin, signer, _fluidSuperToken);
     }
 }
