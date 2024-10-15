@@ -67,7 +67,7 @@ interface IEPProgramManager {
      * @param token SuperToken to be distributed
      * @return distributionPool deployed Superfluid Pool contract address
      */
-    function createProgram(uint8 programId, address programAdmin, address signer, ISuperToken token)
+    function createProgram(uint96 programId, address programAdmin, address signer, ISuperToken token)
         external
         returns (ISuperfluidPool distributionPool);
 
@@ -77,7 +77,7 @@ interface IEPProgramManager {
      * @param programId program identifier to be updated
      * @param newSigner new signer address
      */
-    function updateProgramSigner(uint8 programId, address newSigner) external;
+    function updateProgramSigner(uint96 programId, address newSigner) external;
 
     /**
      * @notice Update units within the distribution pool associated to the given program
@@ -86,7 +86,7 @@ interface IEPProgramManager {
      * @param nonce nonce corresponding to the stack signature
      * @param stackSignature stack signature containing necessary info to update units
      */
-    function updateUnits(uint8 programId, uint128 newUnits, uint256 nonce, bytes memory stackSignature) external;
+    function updateUnits(uint96 programId, uint128 newUnits, uint256 nonce, bytes memory stackSignature) external;
 
     /**
      * @notice Batch update units within the distribution pools associated to the given programs
@@ -96,7 +96,7 @@ interface IEPProgramManager {
      * @param stackSignatures array of stack signatures containing necessary info to update units
      */
     function updateUnits(
-        uint8[] memory programIds,
+        uint96[] memory programIds,
         uint128[] memory newUnits,
         uint256[] memory nonces,
         bytes[] memory stackSignatures
@@ -111,7 +111,7 @@ interface IEPProgramManager {
      * @param stackSignature stack signature containing necessary info to update units
      */
     function updateUserUnits(
-        uint8 programId,
+        uint96 programId,
         address user,
         uint128 newUnits,
         uint256 nonce,
@@ -129,5 +129,5 @@ interface IEPProgramManager {
      * @param programId program identifier to be queried
      * @return programPool the GDA pool interface associated to the program identifier
      */
-    function getProgramPool(uint8 programId) external view returns (ISuperfluidPool programPool);
+    function getProgramPool(uint96 programId) external view returns (ISuperfluidPool programPool);
 }

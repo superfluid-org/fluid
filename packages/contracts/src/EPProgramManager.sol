@@ -30,7 +30,7 @@ contract EPProgramManager is IEPProgramManager {
     /// FIXME storage packing check
 
     /// @notice Stores the program details for a given program identifier
-    mapping(uint8 programId => EPProgram program) public programs;
+    mapping(uint96 programId => EPProgram program) public programs;
 
     /// @notice Stores the last valid nonce used for a given signer and a given user
     mapping(address signer => mapping(address user => uint256 lastValidNonce)) private _lastValidNonces;
@@ -42,7 +42,7 @@ contract EPProgramManager is IEPProgramManager {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IEPProgramManager
-    function createProgram(uint8 programId, address programAdmin, address signer, ISuperToken token)
+    function createProgram(uint96 programId, address programAdmin, address signer, ISuperToken token)
         external
         returns (ISuperfluidPool distributionPool)
     {
@@ -65,7 +65,7 @@ contract EPProgramManager is IEPProgramManager {
     }
 
     /// @inheritdoc IEPProgramManager
-    function updateProgramSigner(uint8 programId, address newSigner) external {
+    function updateProgramSigner(uint96 programId, address newSigner) external {
         // Ensure caller is program admin
         if (msg.sender != programs[programId].programAdmin) {
             revert NOT_PROGRAM_ADMIN();
@@ -78,13 +78,13 @@ contract EPProgramManager is IEPProgramManager {
     }
 
     /// @inheritdoc IEPProgramManager
-    function updateUnits(uint8 programId, uint128 newUnits, uint256 nonce, bytes memory stackSignature) external {
+    function updateUnits(uint96 programId, uint128 newUnits, uint256 nonce, bytes memory stackSignature) external {
         updateUserUnits(programId, msg.sender, newUnits, nonce, stackSignature);
     }
 
     /// @inheritdoc IEPProgramManager
     function updateUnits(
-        uint8[] memory programIds,
+        uint96[] memory programIds,
         uint128[] memory newUnits,
         uint256[] memory nonces,
         bytes[] memory stackSignatures
@@ -102,7 +102,7 @@ contract EPProgramManager is IEPProgramManager {
 
     /// @inheritdoc IEPProgramManager
     function updateUserUnits(
-        uint8 programId,
+        uint96 programId,
         address user,
         uint128 newUnits,
         uint256 nonce,
@@ -130,7 +130,7 @@ contract EPProgramManager is IEPProgramManager {
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IEPProgramManager
-    function getProgramPool(uint8 programId) external view returns (ISuperfluidPool programPool) {
+    function getProgramPool(uint96 programId) external view returns (ISuperfluidPool programPool) {
         programPool = programs[programId].distributionPool;
     }
 
