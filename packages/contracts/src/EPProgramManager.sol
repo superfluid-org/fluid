@@ -32,8 +32,8 @@ contract EPProgramManager is IEPProgramManager {
     /// @notice Stores the program details for a given program identifier
     mapping(uint96 programId => EPProgram program) public programs;
 
-    /// @notice Stores the last valid nonce used for a given signer and a given user
-    mapping(address signer => mapping(address user => uint256 lastValidNonce)) private _lastValidNonces;
+    /// @notice Stores the last valid nonce used for a given program identifier and a given user
+    mapping(uint96 programId => mapping(address user => uint256 lastValidNonce)) private _lastValidNonces;
 
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -110,13 +110,15 @@ contract EPProgramManager is IEPProgramManager {
     ) public {
         EPProgram memory p = programs[programId];
 
-        if (!_isNonceValid(p.stackSigner, user, nonce)) {
+        if (!_isNonceValid(programId, user, nonce)) {
             revert INVALID_SIGNATURE("nonce");
         }
 
-        _lastValidNonces[p.stackSigner][user] = nonce;
+        _lastValidNonces[programId][user] = nonce;
 
-        if (!_verifySignature(p.stackSigner, user, newUnits, nonce, stackSignature)) revert INVALID_SIGNATURE("signer");
+        if (!_verifySignature(p.stackSigner, user, newUnits, programId, nonce, stackSignature)) {
+            revert INVALID_SIGNATURE("signer");
+        }
 
         p.token.updateMemberUnits(p.distributionPool, user, newUnits);
 
@@ -134,27 +136,37 @@ contract EPProgramManager is IEPProgramManager {
         programPool = programs[programId].distributionPool;
     }
 
+    /// @inheritdoc IEPProgramManager
+    function getNextValidNonce(uint96 programId, address user) external view returns (uint256 validNonce) {
+        validNonce = _lastValidNonces[programId][user] + 1;
+    }
+
     //      ____      __                        __   ______                 __  _
     //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
     //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
-    function _isNonceValid(address signer, address user, uint256 nonce) internal view returns (bool isValid) {
-        isValid = nonce > _lastValidNonces[signer][user];
+    function _isNonceValid(uint96 programId, address user, uint256 nonce) internal view returns (bool isValid) {
+        isValid = nonce > _lastValidNonces[programId][user];
     }
 
-    function _verifySignature(address signer, address user, uint128 newUnits, uint256 nonce, bytes memory signature)
-        internal
-        pure
-        returns (bool isValid)
-    {
+    function _verifySignature(
+        address signer,
+        address user,
+        uint128 newUnits,
+        uint96 programId,
+        uint256 nonce,
+        bytes memory signature
+    ) internal pure returns (bool isValid) {
         if (signature.length != 65) {
             revert INVALID_SIGNATURE("signature length");
         }
 
         bytes32 ethSignedMessageHash = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(user, newUnits, nonce)))
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(user, newUnits, programId, nonce))
+            )
         );
         (bytes32 r, bytes32 s, uint8 v) = _splitSignature(signature);
 

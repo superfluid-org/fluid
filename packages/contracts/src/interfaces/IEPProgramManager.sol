@@ -42,9 +42,11 @@ interface IEPProgramManager {
     //  \____/\__,_/____/\__/\____/_/ /_/ /_/  /_____/_/  /_/   \____/_/  /____/
 
     /// @notice Error thrown when attempting to create a program with an alredy existsing program identifier
+    /// @dev Error Selector : 0x3a33ee23
     error PROGRAM_ALREADY_CREATED();
 
     /// @notice Error thrown when caller is not the program admin
+    /// @dev Error Selector : 0x4c7f89d7
     error NOT_PROGRAM_ADMIN();
 
     /// @notice Error thrown when caller is not the program admin
@@ -130,4 +132,12 @@ interface IEPProgramManager {
      * @return programPool the GDA pool interface associated to the program identifier
      */
     function getProgramPool(uint96 programId) external view returns (ISuperfluidPool programPool);
+
+    /**
+     * @notice Returns the next valid nonce for the given user and the given program identifier
+     * @param programId program identifier to be queried
+     * @param user user to be queried
+     * @return validNonce the next valid nonce for the given user and the given program identifier
+     */
+    function getNextValidNonce(uint96 programId, address user) external view returns (uint256 validNonce);
 }
