@@ -50,7 +50,11 @@
     "type": "function",
     "name": "createLockerContract",
     "inputs": [
-      { "name": "lockerOwner", "type": "address", "internalType": "address" }
+      {
+        "name": "lockerOwner",
+        "type": "address",
+        "internalType": "address"
+      }
     ],
     "outputs": [
       {
@@ -91,7 +95,11 @@
     "type": "function",
     "name": "getLockerAddress",
     "inputs": [
-      { "name": "user", "type": "address", "internalType": "address" }
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
     ],
     "outputs": [
       {
@@ -119,10 +127,18 @@
     "type": "function",
     "name": "isLockerCreated",
     "inputs": [
-      { "name": "locker", "type": "address", "internalType": "address" }
+      {
+        "name": "locker",
+        "type": "address",
+        "internalType": "address"
+      }
     ],
     "outputs": [
-      { "name": "isCreated", "type": "bool", "internalType": "bool" }
+      {
+        "name": "isCreated",
+        "type": "bool",
+        "internalType": "bool"
+      }
     ],
     "stateMutability": "view"
   }

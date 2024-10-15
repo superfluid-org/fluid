@@ -45,7 +45,11 @@
     "type": "function",
     "name": "cancelDrain",
     "inputs": [
-      { "name": "lockerOwner", "type": "address", "internalType": "address" }
+      {
+        "name": "lockerOwner",
+        "type": "address",
+        "internalType": "address"
+      }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -67,16 +71,34 @@
     "type": "function",
     "name": "locker",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "processDrain",
     "inputs": [
-      { "name": "lockerOwner", "type": "address", "internalType": "address" },
-      { "name": "drainFlowRate", "type": "int96", "internalType": "int96" },
-      { "name": "penaltyFlowRate", "type": "int96", "internalType": "int96" }
+      {
+        "name": "lockerOwner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "drainFlowRate",
+        "type": "int96",
+        "internalType": "int96"
+      },
+      {
+        "name": "penaltyFlowRate",
+        "type": "int96",
+        "internalType": "int96"
+      }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -94,9 +116,29 @@
     ],
     "anonymous": false
   },
-  { "type": "error", "name": "DRAIN_ALREADY_ACTIVE", "inputs": [] },
-  { "type": "error", "name": "InvalidInitialization", "inputs": [] },
-  { "type": "error", "name": "NOT_CONNECTED_LOCKER", "inputs": [] },
-  { "type": "error", "name": "NO_ACTIVE_DRAIN", "inputs": [] },
-  { "type": "error", "name": "NotInitializing", "inputs": [] }
+  {
+    "type": "error",
+    "name": "DRAIN_ALREADY_ACTIVE",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NOT_CONNECTED_LOCKER",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NO_ACTIVE_DRAIN",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
+    "inputs": []
+  }
 ]

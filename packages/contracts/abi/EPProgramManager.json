@@ -3,13 +3,21 @@
     "type": "function",
     "name": "createProgram",
     "inputs": [
-      { "name": "programId", "type": "uint8", "internalType": "uint8" },
+      {
+        "name": "programId",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
       {
         "name": "programAdmin",
         "type": "address",
         "internalType": "address"
       },
-      { "name": "signer", "type": "address", "internalType": "address" },
+      {
+        "name": "signer",
+        "type": "address",
+        "internalType": "address"
+      },
       {
         "name": "token",
         "type": "address",
@@ -27,9 +35,32 @@
   },
   {
     "type": "function",
+    "name": "getProgramPool",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "programPool",
+        "type": "address",
+        "internalType": "contract ISuperfluidPool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "programs",
     "inputs": [
-      { "name": "programId", "type": "uint8", "internalType": "uint8" }
+      {
+        "name": "programId",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
     ],
     "outputs": [
       {
@@ -37,7 +68,11 @@
         "type": "address",
         "internalType": "address"
       },
-      { "name": "stackSigner", "type": "address", "internalType": "address" },
+      {
+        "name": "stackSigner",
+        "type": "address",
+        "internalType": "address"
+      },
       {
         "name": "token",
         "type": "address",
@@ -55,8 +90,16 @@
     "type": "function",
     "name": "updateProgramSigner",
     "inputs": [
-      { "name": "programId", "type": "uint8", "internalType": "uint8" },
-      { "name": "newSigner", "type": "address", "internalType": "address" }
+      {
+        "name": "programId",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "newSigner",
+        "type": "address",
+        "internalType": "address"
+      }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -65,13 +108,21 @@
     "type": "function",
     "name": "updateUnits",
     "inputs": [
-      { "name": "programIds", "type": "uint8[]", "internalType": "uint8[]" },
+      {
+        "name": "programIds",
+        "type": "uint8[]",
+        "internalType": "uint8[]"
+      },
       {
         "name": "newUnits",
         "type": "uint128[]",
         "internalType": "uint128[]"
       },
-      { "name": "nonces", "type": "uint256[]", "internalType": "uint256[]" },
+      {
+        "name": "nonces",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
       {
         "name": "stackSignatures",
         "type": "bytes[]",
@@ -85,10 +136,26 @@
     "type": "function",
     "name": "updateUnits",
     "inputs": [
-      { "name": "programId", "type": "uint8", "internalType": "uint8" },
-      { "name": "newUnits", "type": "uint128", "internalType": "uint128" },
-      { "name": "nonce", "type": "uint256", "internalType": "uint256" },
-      { "name": "stackSignature", "type": "bytes", "internalType": "bytes" }
+      {
+        "name": "programId",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "newUnits",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stackSignature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -97,21 +164,59 @@
     "type": "function",
     "name": "updateUserUnits",
     "inputs": [
-      { "name": "programId", "type": "uint8", "internalType": "uint8" },
-      { "name": "user", "type": "address", "internalType": "address" },
-      { "name": "newUnits", "type": "uint128", "internalType": "uint128" },
-      { "name": "nonce", "type": "uint256", "internalType": "uint256" },
-      { "name": "stackSignature", "type": "bytes", "internalType": "bytes" }
+      {
+        "name": "programId",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "newUnits",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stackSignature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
-  { "type": "error", "name": "INVALID_PARAMETER", "inputs": [] },
+  {
+    "type": "error",
+    "name": "INVALID_PARAMETER",
+    "inputs": []
+  },
   {
     "type": "error",
     "name": "INVALID_SIGNATURE",
-    "inputs": [{ "name": "reason", "type": "string", "internalType": "string" }]
+    "inputs": [
+      {
+        "name": "reason",
+        "type": "string",
+        "internalType": "string"
+      }
+    ]
   },
-  { "type": "error", "name": "NOT_PROGRAM_ADMIN", "inputs": [] },
-  { "type": "error", "name": "PROGRAM_ALREADY_CREATED", "inputs": [] }
+  {
+    "type": "error",
+    "name": "NOT_PROGRAM_ADMIN",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PROGRAM_ALREADY_CREATED",
+    "inputs": []
+  }
 ]

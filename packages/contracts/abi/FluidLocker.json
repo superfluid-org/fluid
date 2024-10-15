@@ -76,14 +76,26 @@
     "type": "function",
     "name": "claim",
     "inputs": [
-      { "name": "programId", "type": "uint8", "internalType": "uint8" },
+      {
+        "name": "programId",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
       {
         "name": "totalProgramUnits",
         "type": "uint128",
         "internalType": "uint128"
       },
-      { "name": "nonce", "type": "uint256", "internalType": "uint256" },
-      { "name": "stackSignature", "type": "bytes", "internalType": "bytes" }
+      {
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stackSignature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -92,13 +104,21 @@
     "type": "function",
     "name": "claim",
     "inputs": [
-      { "name": "programIds", "type": "uint8[]", "internalType": "uint8[]" },
+      {
+        "name": "programIds",
+        "type": "uint8[]",
+        "internalType": "uint8[]"
+      },
       {
         "name": "totalProgramUnits",
         "type": "uint128[]",
         "internalType": "uint128[]"
       },
-      { "name": "nonces", "type": "uint256[]", "internalType": "uint256[]" },
+      {
+        "name": "nonces",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
       {
         "name": "stackSignatures",
         "type": "bytes[]",
@@ -112,7 +132,11 @@
     "type": "function",
     "name": "drain",
     "inputs": [
-      { "name": "drainPeriod", "type": "uint128", "internalType": "uint128" }
+      {
+        "name": "drainPeriod",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -122,7 +146,11 @@
     "name": "fontaine",
     "inputs": [],
     "outputs": [
-      { "name": "", "type": "address", "internalType": "contract IFontaine" }
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IFontaine"
+      }
     ],
     "stateMutability": "view"
   },
@@ -131,7 +159,49 @@
     "name": "getAvailableBalance",
     "inputs": [],
     "outputs": [
-      { "name": "aBalance", "type": "uint256", "internalType": "uint256" }
+      {
+        "name": "aBalance",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getFlowRatePerProgram",
+    "inputs": [
+      {
+        "name": "programIds",
+        "type": "uint8[]",
+        "internalType": "uint8[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "flowRates",
+        "type": "int96[]",
+        "internalType": "int96[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getFlowRatePerProgram",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "flowRate",
+        "type": "int96",
+        "internalType": "int96"
+      }
     ],
     "stateMutability": "view"
   },
@@ -140,7 +210,49 @@
     "name": "getStakedBalance",
     "inputs": [],
     "outputs": [
-      { "name": "sBalance", "type": "uint256", "internalType": "uint256" }
+      {
+        "name": "sBalance",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getUnitsPerProgram",
+    "inputs": [
+      {
+        "name": "programIds",
+        "type": "uint8[]",
+        "internalType": "uint8[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "units",
+        "type": "uint128[]",
+        "internalType": "uint128[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getUnitsPerProgram",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "units",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
     ],
     "stateMutability": "view"
   },
@@ -148,7 +260,11 @@
     "type": "function",
     "name": "initialize",
     "inputs": [
-      { "name": "owner", "type": "address", "internalType": "address" },
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      },
       {
         "name": "fontaineAddress",
         "type": "address",
@@ -162,7 +278,11 @@
     "type": "function",
     "name": "lock",
     "inputs": [
-      { "name": "amount", "type": "uint256", "internalType": "uint256" }
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -171,7 +291,13 @@
     "type": "function",
     "name": "lockerOwner",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "address", "internalType": "address" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
     "stateMutability": "view"
   },
   {
@@ -185,14 +311,24 @@
     "type": "function",
     "name": "stakingUnlocksAt",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "uint128", "internalType": "uint128" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "transferLocker",
     "inputs": [
-      { "name": "recipient", "type": "address", "internalType": "address" }
+      {
+        "name": "recipient",
+        "type": "address",
+        "internalType": "address"
+      }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -217,21 +353,65 @@
     ],
     "anonymous": false
   },
-  { "type": "error", "name": "FORBIDDEN", "inputs": [] },
-  { "type": "error", "name": "INVALID_DRAIN_PERIOD", "inputs": [] },
-  { "type": "error", "name": "InvalidInitialization", "inputs": [] },
-  { "type": "error", "name": "NOT_LOCKER_OWNER", "inputs": [] },
-  { "type": "error", "name": "NO_FLUID_TO_DRAIN", "inputs": [] },
-  { "type": "error", "name": "NO_FLUID_TO_STAKE", "inputs": [] },
-  { "type": "error", "name": "NO_FLUID_TO_UNSTAKE", "inputs": [] },
-  { "type": "error", "name": "NotInitializing", "inputs": [] },
-  { "type": "error", "name": "STAKING_COOLDOWN_NOT_ELAPSED", "inputs": [] },
+  {
+    "type": "error",
+    "name": "FORBIDDEN",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "INVALID_DRAIN_PERIOD",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NOT_LOCKER_OWNER",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NO_FLUID_TO_DRAIN",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NO_FLUID_TO_STAKE",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NO_FLUID_TO_UNSTAKE",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "STAKING_COOLDOWN_NOT_ELAPSED",
+    "inputs": []
+  },
   {
     "type": "error",
     "name": "SafeCastOverflowedIntDowncast",
     "inputs": [
-      { "name": "bits", "type": "uint8", "internalType": "uint8" },
-      { "name": "value", "type": "int256", "internalType": "int256" }
+      {
+        "name": "bits",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "value",
+        "type": "int256",
+        "internalType": "int256"
+      }
     ]
   }
 ]
