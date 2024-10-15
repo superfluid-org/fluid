@@ -1,4 +1,4 @@
-pragma solidity ^0.8.26;
+pragma solidity ^0.8.23;
 
 /* Openzeppelin Contracts & Interfaces */
 import { Ownable } from "@openzeppelin-v5/contracts/access/Ownable.sol";
