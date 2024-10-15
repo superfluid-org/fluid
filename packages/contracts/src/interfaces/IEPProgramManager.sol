@@ -116,4 +116,17 @@ interface IEPProgramManager {
         uint256 nonce,
         bytes memory stackSignature
     ) external;
+
+    //   _    ___                 ______                 __  _
+    //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
+    //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //  | |/ / /  __/ |/ |/ /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /**
+     * @notice Returns the distribution pool associated to the given program identifier
+     * @param programId program identifier to be queried
+     * @return programPool the GDA pool interface associated to the program identifier
+     */
+    function getProgramPool(uint8 programId) external view returns (ISuperfluidPool programPool);
 }

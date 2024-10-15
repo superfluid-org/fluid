@@ -102,6 +102,34 @@ interface IFluidLocker {
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /**
+     * @notice Returns the flowrate received by this Locker for the given program identifier
+     * @param programId program identifier to query
+     * @return flowRate the flowrate received by this Locker for the given program identifier
+     */
+    function getFlowRatePerProgram(uint8 programId) external view returns (int96 flowRate);
+
+    /**
+     * @notice Returns the flowrates received by this Locker for the given program identifiers
+     * @param programIds array of program identifiers to query
+     * @return flowRates array of flowrate received by this Locker for the given program identifiers
+     */
+    function getFlowRatePerProgram(uint8[] memory programIds) external view returns (int96[] memory flowRates);
+
+    /**
+     * @notice Returns the amount of GDA units owned by this Locker for the given program identifier
+     * @param programId program identifier to query
+     * @return units the amount of GDA units owned by this Locker for the given program identifier
+     */
+    function getUnitsPerProgram(uint8 programId) external view returns (uint128 units);
+
+    /**
+     * @notice Returns the amounts of GDA units owned by this Locker for the given program identifiers
+     * @param programIds array of program identifiers to query
+     * @return units array of GDA units amount owned by this Locker for the given program identifiers
+     */
+    function getUnitsPerProgram(uint8[] memory programIds) external view returns (uint128[] memory units);
+
+    /**
      * @notice Returns this Lockers' staked FLUID Token balance
      * @return sBalance amount of FLUID Token staked in this Locker
      */

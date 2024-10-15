@@ -128,6 +128,14 @@ contract FluidLocker is Initializable, IFluidLocker {
 
     /// @inheritdoc IFluidLocker
     function claim(uint8 programId, uint128 totalProgramUnits, uint256 nonce, bytes memory stackSignature) external {
+        // Get the corresponding program pool
+        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
+
+        if (!FLUID.isMemberConnected(address(programPool), address(this))) {
+            // Connect this locker to the Program Pool
+            FLUID.connectPool(programPool);
+        }
+
         EP_PROGRAM_MANAGER.updateUnits(programId, totalProgramUnits, nonce, stackSignature);
     }
 
@@ -138,6 +146,16 @@ contract FluidLocker is Initializable, IFluidLocker {
         uint256[] memory nonces,
         bytes[] memory stackSignatures
     ) external {
+        for (uint256 i = 0; i < programIds.length; ++i) {
+            // Get the corresponding program pool
+            ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programIds[i]);
+
+            if (!FLUID.isMemberConnected(address(programPool), address(this))) {
+                // Connect this locker to the Program Pool
+                FLUID.connectPool(programPool);
+            }
+        }
+
         EP_PROGRAM_MANAGER.updateUnits(programIds, totalProgramUnits, nonces, stackSignatures);
     }
 
@@ -228,6 +246,50 @@ contract FluidLocker is Initializable, IFluidLocker {
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
     //  | |/ / /  __/ |/ |/ /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /// @inheritdoc IFluidLocker
+    function getFlowRatePerProgram(uint8 programId) external view returns (int96 flowRate) {
+        // Get the corresponding program pool
+        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
+
+        // Get the flow rate
+        flowRate = FLUID.getFlowRate(address(programPool), address(this));
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getFlowRatePerProgram(uint8[] memory programIds) external view returns (int96[] memory flowRates) {
+        flowRates = new int96[](programIds.length);
+
+        for (uint256 i = 0; i < programIds.length; ++i) {
+            // Get the corresponding program pool
+            ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programIds[i]);
+
+            // Get the flow rate
+            flowRates[i] = FLUID.getFlowRate(address(programPool), address(this));
+        }
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getUnitsPerProgram(uint8 programId) external view returns (uint128 units) {
+        // Get the corresponding program pool
+        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
+
+        // Get this locker's unit within the given program identifier
+        units = programPool.getUnits(address(this));
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getUnitsPerProgram(uint8[] memory programIds) external view returns (uint128[] memory units) {
+        units = new uint128[](programIds.length);
+
+        for (uint256 i = 0; i < programIds.length; ++i) {
+            // Get the corresponding program pool
+            ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programIds[i]);
+
+            // Get the flow rate
+            units[i] = programPool.getUnits(address(this));
+        }
+    }
 
     /// @inheritdoc IFluidLocker
     function getStakedBalance() external view returns (uint256 sBalance) {
