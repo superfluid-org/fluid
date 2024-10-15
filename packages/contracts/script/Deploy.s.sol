@@ -14,7 +14,7 @@ import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
 import { PenaltyManager, IPenaltyManager } from "../src/PenaltyManager.sol";
 
-// forge script script/Deploy.s.sol:DeployScript --rpc-url $RPC_URL --broadcast --verify -vvvv
+// forge script script/Deploy.s.sol:DeployScript --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify -vvvv
 contract DeployScript is Script {
     function setUp() public { }
 

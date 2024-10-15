@@ -23,4 +23,6 @@ for chain in ${chains[@]}; do
 
     echo "$abi" > "$output_folder/${name}.json"
   done
+
+  echo "[DONE]: ABI extracted to 'packages/contracts/abi' directory."
 done
