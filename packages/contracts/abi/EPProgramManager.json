@@ -5,8 +5,8 @@
     "inputs": [
       {
         "name": "programId",
-        "type": "uint8",
-        "internalType": "uint8"
+        "type": "uint96",
+        "internalType": "uint96"
       },
       {
         "name": "programAdmin",
@@ -35,12 +35,36 @@
   },
   {
     "type": "function",
+    "name": "getNextValidNonce",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint96",
+        "internalType": "uint96"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "validNonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getProgramPool",
     "inputs": [
       {
         "name": "programId",
-        "type": "uint8",
-        "internalType": "uint8"
+        "type": "uint96",
+        "internalType": "uint96"
       }
     ],
     "outputs": [
@@ -58,8 +82,8 @@
     "inputs": [
       {
         "name": "programId",
-        "type": "uint8",
-        "internalType": "uint8"
+        "type": "uint96",
+        "internalType": "uint96"
       }
     ],
     "outputs": [
@@ -92,8 +116,8 @@
     "inputs": [
       {
         "name": "programId",
-        "type": "uint8",
-        "internalType": "uint8"
+        "type": "uint96",
+        "internalType": "uint96"
       },
       {
         "name": "newSigner",
@@ -110,8 +134,8 @@
     "inputs": [
       {
         "name": "programIds",
-        "type": "uint8[]",
-        "internalType": "uint8[]"
+        "type": "uint96[]",
+        "internalType": "uint96[]"
       },
       {
         "name": "newUnits",
@@ -138,8 +162,8 @@
     "inputs": [
       {
         "name": "programId",
-        "type": "uint8",
-        "internalType": "uint8"
+        "type": "uint96",
+        "internalType": "uint96"
       },
       {
         "name": "newUnits",
@@ -166,8 +190,8 @@
     "inputs": [
       {
         "name": "programId",
-        "type": "uint8",
-        "internalType": "uint8"
+        "type": "uint96",
+        "internalType": "uint96"
       },
       {
         "name": "user",

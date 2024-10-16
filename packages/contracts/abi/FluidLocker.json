@@ -78,8 +78,8 @@
     "inputs": [
       {
         "name": "programId",
-        "type": "uint8",
-        "internalType": "uint8"
+        "type": "uint96",
+        "internalType": "uint96"
       },
       {
         "name": "totalProgramUnits",
@@ -106,8 +106,8 @@
     "inputs": [
       {
         "name": "programIds",
-        "type": "uint8[]",
-        "internalType": "uint8[]"
+        "type": "uint96[]",
+        "internalType": "uint96[]"
       },
       {
         "name": "totalProgramUnits",
@@ -172,16 +172,16 @@
     "name": "getFlowRatePerProgram",
     "inputs": [
       {
-        "name": "programIds",
-        "type": "uint8[]",
-        "internalType": "uint8[]"
+        "name": "programId",
+        "type": "uint96",
+        "internalType": "uint96"
       }
     ],
     "outputs": [
       {
-        "name": "flowRates",
-        "type": "int96[]",
-        "internalType": "int96[]"
+        "name": "flowRate",
+        "type": "int96",
+        "internalType": "int96"
       }
     ],
     "stateMutability": "view"
@@ -191,16 +191,16 @@
     "name": "getFlowRatePerProgram",
     "inputs": [
       {
-        "name": "programId",
-        "type": "uint8",
-        "internalType": "uint8"
+        "name": "programIds",
+        "type": "uint96[]",
+        "internalType": "uint96[]"
       }
     ],
     "outputs": [
       {
-        "name": "flowRate",
-        "type": "int96",
-        "internalType": "int96"
+        "name": "flowRates",
+        "type": "int96[]",
+        "internalType": "int96[]"
       }
     ],
     "stateMutability": "view"
@@ -224,8 +224,8 @@
     "inputs": [
       {
         "name": "programIds",
-        "type": "uint8[]",
-        "internalType": "uint8[]"
+        "type": "uint96[]",
+        "internalType": "uint96[]"
       }
     ],
     "outputs": [
@@ -243,8 +243,8 @@
     "inputs": [
       {
         "name": "programId",
-        "type": "uint8",
-        "internalType": "uint8"
+        "type": "uint96",
+        "internalType": "uint96"
       }
     ],
     "outputs": [
