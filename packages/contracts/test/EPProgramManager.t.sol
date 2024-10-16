@@ -32,6 +32,9 @@ contract EPProgramManagerTest is SFTest {
         assertEq(stackSigner, _signer, "incorrect signer");
         assertEq(address(token), address(_fluidSuperToken), "incorrect token");
         assertEq(address(distributionPool), address(pool), "incorrect pool");
+        assertEq(
+            address(_programManager.getProgramPool(_pId)), address(pool), "getProgramPool returns an incorrect pool"
+        );
 
         vm.expectRevert(IEPProgramManager.PROGRAM_ALREADY_CREATED.selector);
         _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
@@ -70,7 +73,7 @@ contract EPProgramManagerTest is SFTest {
 
         ISuperfluidPool pool = _helperCreateProgram(programId, ADMIN, vm.addr(_signerPkey));
 
-        uint256 nonce = 1;
+        uint256 nonce = _programManager.getNextValidNonce(programId, _user);
         bytes32 digest = keccak256(abi.encodePacked(_user, _units, programId, nonce)).toEthSignedMessageHash();
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
         bytes memory validSignature = abi.encodePacked(r, s, v);
@@ -80,17 +83,103 @@ contract EPProgramManagerTest is SFTest {
 
         assertEq(pool.getUnits(_user), _units, "units not updated");
 
+        // Test updateUnits with an invalid nonce
         vm.expectRevert(abi.encodeWithSelector(IEPProgramManager.INVALID_SIGNATURE.selector, "nonce"));
         vm.prank(_user);
         _programManager.updateUnits(programId, _units, nonce, validSignature);
+
+        // Test updateUnits with an invalid signer
+        nonce = _programManager.getNextValidNonce(programId, _user);
+        (v, r, s) = vm.sign(_invalidSignerPkey, digest);
+        bytes memory invalidSignature = abi.encodePacked(r, s, v);
+
+        vm.expectRevert(abi.encodeWithSelector(IEPProgramManager.INVALID_SIGNATURE.selector, "signer"));
+        vm.prank(_user);
+        _programManager.updateUnits(programId, _units, nonce, invalidSignature);
+
+        // Test updateUnits with an invalid signature length
+        vm.expectRevert(abi.encodeWithSelector(IEPProgramManager.INVALID_SIGNATURE.selector, "signature length"));
+        vm.prank(_user);
+        _programManager.updateUnits(programId, _units, nonce, "0x");
     }
 
-    function testUpdateUnitsBatch() external { }
-    function testUpdateUnitsInvalidNonce() external { }
-    function testUpdateUnitsInvalidSigner() external { }
-    function testUpdateUnitsInvalidSignatureLength() external { }
+    function testUpdateUnitsBatch(uint8 _batchAmount, uint96 _signerPkey, address _user, uint128 _units) external {
+        vm.assume(_signerPkey != 0);
+        vm.assume(_user != address(0));
+        _units = uint128(bound(_units, 1, 1_000_000));
+        _batchAmount = uint8(bound(_batchAmount, 2, 8));
 
-    function testLogErrors() external pure {
-        console.logBytes4(IEPProgramManager.NOT_PROGRAM_ADMIN.selector);
+        uint96[] memory programIds = new uint96[](_batchAmount);
+        uint128[] memory newUnits = new uint128[](_batchAmount);
+        uint256[] memory nonces = new uint256[](_batchAmount);
+        bytes[] memory stackSignatures = new bytes[](_batchAmount);
+        ISuperfluidPool[] memory pools = new ISuperfluidPool[](_batchAmount);
+
+        for (uint8 i = 0; i < _batchAmount; ++i) {
+            programIds[i] = i;
+            pools[i] = _helperCreateProgram(programIds[i], ADMIN, vm.addr(_signerPkey));
+
+            newUnits[i] = _units;
+            nonces[i] = _programManager.getNextValidNonce(programIds[i], _user);
+            bytes32 digest =
+                keccak256(abi.encodePacked(_user, newUnits[i], programIds[i], nonces[i])).toEthSignedMessageHash();
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
+            stackSignatures[i] = abi.encodePacked(r, s, v);
+        }
+
+        vm.prank(_user);
+        _programManager.updateUnits(programIds, newUnits, nonces, stackSignatures);
+
+        for (uint8 i = 0; i < _batchAmount; ++i) {
+            assertEq(newUnits[i], pools[i].getUnits(_user), "incorrect units amounts");
+        }
+    }
+
+    function testUpdateUnitsBatchInvalidArrayLength(uint96 _signerPkey, address _user, uint128 _units) external {
+        vm.assume(_signerPkey != 0);
+        vm.assume(_user != address(0));
+        _units = uint128(bound(_units, 1, 1_000_000));
+
+        uint96[] memory programIds = new uint96[](2);
+        uint128[] memory newUnits = new uint128[](2);
+        uint256[] memory nonces = new uint256[](2);
+        bytes[] memory stackSignatures = new bytes[](2);
+        ISuperfluidPool[] memory pools = new ISuperfluidPool[](2);
+
+        for (uint8 i = 0; i < 2; ++i) {
+            programIds[i] = i;
+            pools[i] = _helperCreateProgram(programIds[i], ADMIN, vm.addr(_signerPkey));
+
+            newUnits[i] = _units;
+            nonces[i] = _programManager.getNextValidNonce(programIds[i], _user);
+            bytes32 digest =
+                keccak256(abi.encodePacked(_user, newUnits[i], programIds[i], nonces[i])).toEthSignedMessageHash();
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
+            stackSignatures[i] = abi.encodePacked(r, s, v);
+        }
+
+        uint96[] memory invalidProgramIds = new uint96[](1);
+        invalidProgramIds[0] = programIds[0];
+
+        vm.prank(_user);
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        _programManager.updateUnits(invalidProgramIds, newUnits, nonces, stackSignatures);
+
+        uint128[] memory invalidNewUnits = new uint128[](1);
+        invalidNewUnits[0] = newUnits[0];
+
+        vm.prank(_user);
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        _programManager.updateUnits(programIds, invalidNewUnits, nonces, stackSignatures);
+
+        uint256[] memory invalidNonces = new uint256[](1);
+        invalidNonces[0] = nonces[0];
+
+        bytes[] memory invalidStackSignatures = new bytes[](1);
+        invalidStackSignatures[0] = stackSignatures[0];
+
+        vm.prank(_user);
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        _programManager.updateUnits(programIds, newUnits, nonces, invalidStackSignatures);
     }
 }
