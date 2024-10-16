@@ -50,9 +50,11 @@ interface IEPProgramManager {
     error NOT_PROGRAM_ADMIN();
 
     /// @notice Error thrown when caller is not the program admin
+    /// @dev Error Selector : 0x4c4f685a
     error INVALID_PARAMETER();
 
     /// @notice Error thrown when a signature is of invalid
+    /// @dev Error Selector : 0x30f01ccf
     error INVALID_SIGNATURE(string reason);
 
     //      ______     __                        __   ______                 __  _
