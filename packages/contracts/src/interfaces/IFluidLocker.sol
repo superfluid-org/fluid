@@ -142,4 +142,10 @@ interface IFluidLocker {
      * @return aBalance amount of FLUID Token available in this Locker
      */
     function getAvailableBalance() external view returns (uint256 aBalance);
+
+    /**
+     * @notice Returns the fontaine beacon implementation contract address
+     * @return fontaineBeaconImpl The fontaine beacon implementation contract address
+     */
+    function getFontaineBeaconImplementation() external view returns (address fontaineBeaconImpl);
 }

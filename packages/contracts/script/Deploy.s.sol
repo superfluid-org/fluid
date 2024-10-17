@@ -34,19 +34,18 @@ function deployAll(ISuperToken fluid, address owner)
     // Read the newly created GDA Tax Distribution Pool address
     ISuperfluidPool taxDistributionPool = penaltyManager.TAX_DISTRIBUTION_POOL();
 
-    // Deploy the Fluid Locker Implementation contract
-    FluidLocker fluidLockerImpl =
-        new FluidLocker(fluid, taxDistributionPool, IEPProgramManager(address(programManager)));
-    lockerLogicAddress = address(fluidLockerImpl);
-
     // Deploy the Fontaine Implementation contract
     Fontaine fontaineImpl = new Fontaine(fluid, taxDistributionPool);
     fontaineLogicAddress = address(fontaineImpl);
 
+    // Deploy the Fluid Locker Implementation contract
+    FluidLocker fluidLockerImpl =
+        new FluidLocker(fluid, taxDistributionPool, IEPProgramManager(address(programManager)), fontaineLogicAddress);
+    lockerLogicAddress = address(fluidLockerImpl);
+
     // Deploy the Fluid Locker Factory contract
-    FluidLockerFactory lockerFactory = new FluidLockerFactory(
-        address(fluidLockerImpl), address(fontaineImpl), IPenaltyManager(address(penaltyManager))
-    );
+    FluidLockerFactory lockerFactory =
+        new FluidLockerFactory(address(fluidLockerImpl), IPenaltyManager(address(penaltyManager)));
     lockerFactoryAddress = address(lockerFactory);
 
     // Sets the FluidLockerFactory address in the PenaltyManager

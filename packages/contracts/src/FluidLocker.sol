@@ -5,6 +5,8 @@ pragma solidity ^0.8.23;
 import { Math } from "@openzeppelin-v5/contracts/utils/math/Math.sol";
 import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 import { Initializable } from "@openzeppelin-v5/contracts/proxy/utils/Initializable.sol";
+import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {
@@ -49,8 +51,8 @@ contract FluidLocker is Initializable, IFluidLocker {
     /// @notice Penalty Manager interface
     IPenaltyManager public immutable PENALTY_MANAGER;
 
-    /// @notice Connected Fontaine interface
-    IFontaine public fontaine;
+    /// @notice Fontaine Beacon contract address
+    UpgradeableBeacon public immutable FONTAINE_BEACON;
 
     /// @notice This locker owner address
     address public lockerOwner;
@@ -86,6 +88,10 @@ contract FluidLocker is Initializable, IFluidLocker {
     /// @notice Balance of $FLUID token staked in this locker
     uint256 private _stakedBalance;
 
+    mapping(uint16 unlockId => IFontaine fontaine) public fontaines;
+
+    uint16 fontaineCount;
+
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
     //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
@@ -97,8 +103,14 @@ contract FluidLocker is Initializable, IFluidLocker {
      * @param fluid FLUID SuperToken contract interface
      * @param taxDistributionPool Tax Distribution Pool GDA contract interface
      * @param programManager Ecosystem Partner Program Manager contract interface
+     * @param fontaineImplementation Fontaine implementation contract address
      */
-    constructor(ISuperToken fluid, ISuperfluidPool taxDistributionPool, IEPProgramManager programManager) {
+    constructor(
+        ISuperToken fluid,
+        ISuperfluidPool taxDistributionPool,
+        IEPProgramManager programManager,
+        address fontaineImplementation
+    ) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
 
@@ -106,19 +118,21 @@ contract FluidLocker is Initializable, IFluidLocker {
         FLUID = fluid;
         TAX_DISTRIBUTION_POOL = taxDistributionPool;
         EP_PROGRAM_MANAGER = programManager;
+
+        // Deploy the Fontaine beacon with the Fontaine implementation contract
+        FONTAINE_BEACON = new UpgradeableBeacon(fontaineImplementation);
+
+        // Transfer ownership of the Fontaine beacon to the deployer
+        FONTAINE_BEACON.transferOwnership(msg.sender);
     }
 
     /**
      * @notice Locker contract initializer
      * @param owner this Locker contract owner account
-     * @param fontaineAddress Fontaine contract address connected to this Locker
      */
-    function initialize(address owner, address fontaineAddress) external initializer {
+    function initialize(address owner) external initializer {
         // Sets the owner of this locker
         lockerOwner = owner;
-
-        // Sets the Fontaine contract associated to this Locker
-        fontaine = IFontaine(fontaineAddress);
     }
 
     //      ______     __                        __   ______                 __  _
@@ -174,6 +188,13 @@ contract FluidLocker is Initializable, IFluidLocker {
         if (unlockPeriod != 0 && (unlockPeriod < _MIN_UNLOCK_PERIOD || unlockPeriod > _MAX_UNLOCK_PERIOD)) {
             revert INVALID_UNLOCK_PERIOD();
         }
+
+        // // Use create2 to deploy a Fontaine Beacon Proxy with the hashed encoded associated Locker address as the salt
+        // address fontaineInstance =
+        //     address(new BeaconProxy{ salt: keccak256(abi.encode(lockerInstance)) }(address(FONTAINE_BEACON), ""));
+
+        // // Initialize the new Fontaine instance
+        // Fontaine(fontaineInstance).initialize(lockerInstance);
 
         // Get balance available for unlocking
         uint256 availableBalance = getAvailableBalance();
@@ -302,6 +323,11 @@ contract FluidLocker is Initializable, IFluidLocker {
         aBalance = FLUID.balanceOf(address(this)) - _stakedBalance;
     }
 
+    /// @inheritdoc IFluidLocker
+    function getFontaineBeaconImplementation() public view returns (address fontaineBeaconImpl) {
+        fontaineBeaconImpl = FONTAINE_BEACON.implementation();
+    }
+
     //      ____      __                        __   ______                 __  _
     //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -323,11 +349,21 @@ contract FluidLocker is Initializable, IFluidLocker {
         // Calculate the unlock and penalty flow rates based on requested amount and unlock period
         (int96 unlockFlowRate, int96 taxFlowRate) = _calculateVestUnlockFlowRates(amountToUnlock, unlockPeriod);
 
+        // Use create2 to deploy a Fontaine Beacon Proxy
+        // The salt used for deployment is the hashed encoded Locker address and unlock identifier
+        address newFontaine = address(
+            new BeaconProxy{ salt: keccak256(abi.encode(address(this), fontaineCount)) }(address(FONTAINE_BEACON), "")
+        );
+
+        // Persist the fontaine address
+        fontaines[fontaineCount] = IFontaine(newFontaine);
+        fontaineCount++;
+
         // Transfer the total amount to unlock to the connected Fontaine
-        FLUID.transfer(address(fontaine), amountToUnlock);
+        FLUID.transfer(address(newFontaine), amountToUnlock);
 
         // Initiate unlock process
-        fontaine.processUnlock(lockerOwner, unlockFlowRate, taxFlowRate);
+        IFontaine(newFontaine).processUnlock(lockerOwner, unlockFlowRate, taxFlowRate);
     }
 
     function _calculateVestUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)

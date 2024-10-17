@@ -27,9 +27,6 @@ contract FluidLockerFactory is IFluidLockerFactory {
     /// @notice Locker Beacon contract address
     UpgradeableBeacon public immutable LOCKER_BEACON;
 
-    /// @notice Fontaine Beacon contract address
-    UpgradeableBeacon public immutable FONTAINE_BEACON;
-
     /// @notice Penalty Manager interface
     IPenaltyManager private immutable _PENALTY_MANAGER;
 
@@ -45,24 +42,17 @@ contract FluidLockerFactory is IFluidLockerFactory {
     /**
      * @notice FLUID Locker Factory contract constructor
      * @param lockerImplementation Locker implementation contract address
-     * @param fontaineImplementation Fontaine implementation contract address
      * @param penaltyManager Penalty Manager interface contract address
      */
-    constructor(address lockerImplementation, address fontaineImplementation, IPenaltyManager penaltyManager) {
+    constructor(address lockerImplementation, IPenaltyManager penaltyManager) {
         // Sets the Penalty Manager interface
         _PENALTY_MANAGER = penaltyManager;
 
         // Deploy the Locker beacon with the Locker implementation contract
         LOCKER_BEACON = new UpgradeableBeacon(lockerImplementation);
 
-        // Deploy the Fontaine beacon with the Fontaine implementation contract
-        FONTAINE_BEACON = new UpgradeableBeacon(fontaineImplementation);
-
         // Transfer ownership of the Locker beacon to the deployer
         LOCKER_BEACON.transferOwnership(msg.sender);
-
-        // Transfer ownership of the Fontaine beacon to the deployer
-        FONTAINE_BEACON.transferOwnership(msg.sender);
     }
 
     //      ______     __                        __   ______                 __  _
@@ -82,17 +72,10 @@ contract FluidLockerFactory is IFluidLockerFactory {
         lockerInstance =
             address(new BeaconProxy{ salt: keccak256(abi.encode(lockerOwner)) }(address(LOCKER_BEACON), ""));
 
-        // Use create2 to deploy a Fontaine Beacon Proxy with the hashed encoded associated Locker address as the salt
-        address fontaineInstance =
-            address(new BeaconProxy{ salt: keccak256(abi.encode(lockerInstance)) }(address(FONTAINE_BEACON), ""));
-
         _lockers[lockerInstance] = true;
 
-        // Initialize the new Fontaine instance
-        Fontaine(fontaineInstance).initialize(lockerInstance);
-
         // Initialize the new Locker instance
-        FluidLocker(lockerInstance).initialize(lockerOwner, fontaineInstance);
+        FluidLocker(lockerInstance).initialize(lockerOwner);
 
         // Approve the newly created locker to interact with the Penalty Manager
         _PENALTY_MANAGER.approveLocker(lockerInstance);
@@ -134,10 +117,5 @@ contract FluidLockerFactory is IFluidLockerFactory {
     /// @inheritdoc IFluidLockerFactory
     function getLockerBeaconImplementation() public view returns (address lockerBeaconImpl) {
         lockerBeaconImpl = LOCKER_BEACON.implementation();
-    }
-
-    /// @inheritdoc IFluidLockerFactory
-    function getFontaineBeaconImplementation() public view returns (address fontaineBeaconImpl) {
-        fontaineBeaconImpl = FONTAINE_BEACON.implementation();
     }
 }

@@ -35,7 +35,5 @@ contract FluidLockerFactoryTest is SFTest {
         assertEq(_fluidLockerFactory.getLockerBeaconImplementation(), address(_fluidLockerLogic));
     }
 
-    function testGetFontaineBeaconImplementation() external view {
-        assertEq(_fluidLockerFactory.getFontaineBeaconImplementation(), address(_fontaineLogic));
-    }
+
 }

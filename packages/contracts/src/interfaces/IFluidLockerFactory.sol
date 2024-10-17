@@ -52,10 +52,4 @@ interface IFluidLockerFactory {
      * @return lockerBeaconImpl The locker beacon implementation contract address
      */
     function getLockerBeaconImplementation() external view returns (address lockerBeaconImpl);
-
-    /**
-     * @notice Returns the fontaine beacon implementation contract address
-     * @return fontaineBeaconImpl The fontaine beacon implementation contract address
-     */
-    function getFontaineBeaconImplementation() external view returns (address fontaineBeaconImpl);
 }
