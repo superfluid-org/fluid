@@ -15,16 +15,16 @@ contract GenerateSignature is Script {
     }
 
     function run() public {
+        address user = 0x37dB1380669155d6080c04a5e6Db029E306cD964;
         uint128 unitsToGrant = 5;
         uint96 programId = 0;
         uint256 nonce = 1;
 
-        _generateSignature(unitsToGrant, programId, nonce);
+        _generateSignature(user, unitsToGrant, programId, nonce);
     }
 
-    function _generateSignature(uint128 _unitsToGrant, uint96 _programId, uint256 _nonce) internal {
-        bytes32 message =
-            keccak256(abi.encodePacked(0x37dB1380669155d6080c04a5e6Db029E306cD964, _unitsToGrant, _programId, _nonce));
+    function _generateSignature(address _user, uint128 _unitsToGrant, uint96 _programId, uint256 _nonce) internal {
+        bytes32 message = keccak256(abi.encodePacked(_user, _unitsToGrant, _programId, _nonce));
 
         bytes32 digest = message.toEthSignedMessageHash();
 
@@ -33,17 +33,22 @@ contract GenerateSignature is Script {
 
         console2.log("Message : ");
         console2.logBytes32(message);
+        console2.log("");
 
         console2.log("Signed Message : ");
         console2.logBytes32(digest);
+        console2.log("");
 
         console2.log("Signer Address : ");
         console2.log(vm.addr(signerPrivateKey));
+        console2.log("");
 
         console2.log("Signature : ");
         console2.logBytes(validSignature);
+        console2.log("");
 
         console2.log("Signature Length: ");
         console2.log(validSignature.length);
+        console2.log("");
     }
 }
