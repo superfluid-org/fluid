@@ -20,11 +20,11 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to perform a forbidden operation
     error FORBIDDEN();
 
-    /// @notice Error thrown when attempting to drain this locker with an invalid drain period
-    error INVALID_DRAIN_PERIOD();
+    /// @notice Error thrown when attempting to unlock FLUID from a locker with an invalid unlock period
+    error INVALID_UNLOCK_PERIOD();
 
-    /// @notice Error thrown when attempting to drain a locker that does not have available $FLUID
-    error NO_FLUID_TO_DRAIN();
+    /// @notice Error thrown when attempting to unlock FLUID from a locker that does not have available $FLUID
+    error NO_FLUID_TO_UNLOCK();
 
     /// @notice Error thrown when attempting to unstake from locker that does not have staked $FLUID
     error NO_FLUID_TO_UNSTAKE();
@@ -71,11 +71,11 @@ interface IFluidLocker {
      */
     function lock(uint256 amount) external;
     /**
-     * @notice Drain the available FLUID Token from this locker
+     * @notice Unlock the available FLUID Token from this locker
      * @dev Only this Locker owner can call this function
-     * @param drainPeriod the desired draining period (instant drain if sets to 0)
+     * @param unlockPeriod the desired unlocking period (instant unlock if sets to 0)
      */
-    function drain(uint128 drainPeriod) external;
+    function unlock(uint128 unlockPeriod) external;
 
     /**
      * @notice Stake all the available FLUID Token of this locker

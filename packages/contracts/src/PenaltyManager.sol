@@ -20,7 +20,7 @@ using SuperTokenV1Library for ISuperToken;
 /**
  * @title Penalty Manager Contract
  * @author Superfluid
- * @notice Contract responsible for administrating the GDA pool that distribute drain tax to staker or liquidity provider
+ * @notice Contract responsible for administrating the GDA pool that distribute the unlocking tax to stakers or liquidity providers
  *
  */
 contract PenaltyManager is Ownable, IPenaltyManager {
@@ -36,7 +36,7 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     ISuperToken public immutable FLUID;
 
     /// @notice Superfluid pool interface
-    ISuperfluidPool public immutable PENALTY_DRAINING_POOL;
+    ISuperfluidPool public immutable TAX_DISTRIBUTION_POOL;
 
     /// @notice Locker Factory contract address
     address public lockerFactory;
@@ -65,7 +65,7 @@ contract PenaltyManager is Ownable, IPenaltyManager {
             PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
 
         // Create Superfluid GDA Pool
-        PENALTY_DRAINING_POOL = fluid.createPool(address(this), poolConfig);
+        TAX_DISTRIBUTION_POOL = fluid.createPool(address(this), poolConfig);
     }
 
     //      ______     __                        __   ______                 __  _
@@ -79,7 +79,7 @@ contract PenaltyManager is Ownable, IPenaltyManager {
         if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
 
         /// FIXME Define proper stakedBalance to GDA pool units calculation
-        FLUID.updateMemberUnits(PENALTY_DRAINING_POOL, msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
+        FLUID.updateMemberUnits(TAX_DISTRIBUTION_POOL, msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
     }
 
     /// @inheritdoc IPenaltyManager
@@ -87,7 +87,7 @@ contract PenaltyManager is Ownable, IPenaltyManager {
         if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
 
         /// FIXME Find proper liquidity provided to GDA pool units calculation
-        FLUID.updateMemberUnits(PENALTY_DRAINING_POOL, msg.sender, uint128(liquidityProvided) / _UNIT_DOWNSCALER);
+        FLUID.updateMemberUnits(TAX_DISTRIBUTION_POOL, msg.sender, uint128(liquidityProvided) / _UNIT_DOWNSCALER);
     }
 
     /// @inheritdoc IPenaltyManager

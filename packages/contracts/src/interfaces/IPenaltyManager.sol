@@ -4,7 +4,7 @@ pragma solidity ^0.8.23;
 /**
  * @title Penalty Manager Contract Interface
  * @author Superfluid
- * @notice Contract responsible for administrating the GDA pool that distribute drain tax to staker or liquidity provider
+ * @notice Contract responsible for administrating the GDA pool that distribute the unlocking tax to stakers or liquidity providers
  *
  */
 interface IPenaltyManager {

@@ -19,7 +19,7 @@ using SuperTokenV1Library for ISuperToken;
 /**
  * @title Fontaine Contract
  * @author Superfluid
- * @notice Contract responsible for flowing drained token from the locker to the locker owner
+ * @notice Contract responsible for flowing the token being unlocked from the locker to the locker owner
  *
  */
 contract Fontaine is Initializable, IFontaine {
@@ -35,7 +35,7 @@ contract Fontaine is Initializable, IFontaine {
     ISuperToken public immutable FLUID;
 
     /// @notice Superfluid pool interface
-    ISuperfluidPool public immutable PENALTY_DRAINING_POOL;
+    ISuperfluidPool public immutable TAX_DISTRIBUTION_POOL;
 
     /// @notice Locker address associated to this Fontaine
     address public locker;
@@ -49,15 +49,15 @@ contract Fontaine is Initializable, IFontaine {
     /**
      * @notice Fontaine contract constructor
      * @param fluid FLUID SuperToken interface
-     * @param penaltyDrainingPool Penalty Draining Pool GDA contract address
+     * @param taxDistributionPool Tax Distribution Pool GDA contract address
      */
-    constructor(ISuperToken fluid, ISuperfluidPool penaltyDrainingPool) {
+    constructor(ISuperToken fluid, ISuperfluidPool taxDistributionPool) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
 
         // Sets immutable states
         FLUID = fluid;
-        PENALTY_DRAINING_POOL = penaltyDrainingPool;
+        TAX_DISTRIBUTION_POOL = taxDistributionPool;
     }
 
     /**
@@ -75,31 +75,28 @@ contract Fontaine is Initializable, IFontaine {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFontaine
-    function processDrain(address lockerOwner, int96 drainFlowRate, int96 penaltyFlowRate)
-        external
-        onlyConnectedLocker
-    {
-        // Ensure that there is no active drain
+    function processUnlock(address lockerOwner, int96 unlockFlowRate, int96 taxFlowRate) external onlyConnectedLocker {
+        // Ensure that there is no active unlocking
         if (FLUID.getFlowRate(address(this), lockerOwner) != 0) {
-            revert DRAIN_ALREADY_ACTIVE();
+            revert UNLOCK_ALREADY_ACTIVE();
         }
 
-        // Distribute Penalty flow to Staker GDA Pool
-        FLUID.distributeFlow(address(this), PENALTY_DRAINING_POOL, penaltyFlowRate);
+        // Distribute Tax flow to Staker GDA Pool
+        FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, taxFlowRate);
 
-        // Create Drain flow from the Fontaine to the locker owner
-        FLUID.createFlow(lockerOwner, drainFlowRate);
+        // Create the unlocking flow from the Fontaine to the locker owner
+        FLUID.createFlow(lockerOwner, unlockFlowRate);
     }
 
     /// @inheritdoc IFontaine
-    function cancelDrain(address lockerOwner) external onlyConnectedLocker {
-        // Ensure that there is a drain to cancel
+    function cancelUnlock(address lockerOwner) external onlyConnectedLocker {
+        // Ensure that there is an unlocking process to cancel
         if (FLUID.getFlowRate(address(this), lockerOwner) == 0) {
-            revert NO_ACTIVE_DRAIN();
+            revert NO_ACTIVE_UNLOCK();
         }
 
         FLUID.deleteFlow(address(this), lockerOwner);
-        FLUID.distributeFlow(address(this), PENALTY_DRAINING_POOL, 0);
+        FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, 0);
 
         // Transfer entire FLUID balance back to the connected locker
         FLUID.transfer(msg.sender, FLUID.balanceOf(address(this)));

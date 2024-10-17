@@ -4,7 +4,7 @@ pragma solidity ^0.8.23;
 /**
  * @title Fontaine Contract Interface
  * @author Superfluid
- * @notice Contract responsible for flowing drained token from the locker to the locker owner
+ * @notice Contract responsible for flowing the unlocking token from the locker to the locker owner
  *
  */
 interface IFontaine {
@@ -17,11 +17,11 @@ interface IFontaine {
     /// @notice Error thrown when the caller is not the connected locker
     error NOT_CONNECTED_LOCKER();
 
-    /// @notice Error thrown when attempting to process a drain while another drain is active
-    error DRAIN_ALREADY_ACTIVE();
+    /// @notice Error thrown when attempting to process an unlock while another unlock is active
+    error UNLOCK_ALREADY_ACTIVE();
 
-    /// @notice Error thrown when attempting to cancel a non-existant drain
-    error NO_ACTIVE_DRAIN();
+    /// @notice Error thrown when attempting to cancel a non-existant unlock
+    error NO_ACTIVE_UNLOCK();
 
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -32,14 +32,14 @@ interface IFontaine {
     /**
      * @notice Creates a flow to the locker owner and distribute a flow to the penalty GDA pool
      * @param lockerOwner locker owner account address
-     * @param drainFlowRate FLUID flow rate from this contract to the locker owner
-     * @param penaltyFlowRate FLUID flow rate from this contract to the penalty GDA pool
+     * @param unlockFlowRate FLUID flow rate from this contract to the locker owner
+     * @param taxFlowRate FLUID flow rate from this contract to the penalty GDA pool
      */
-    function processDrain(address lockerOwner, int96 drainFlowRate, int96 penaltyFlowRate) external;
+    function processUnlock(address lockerOwner, int96 unlockFlowRate, int96 taxFlowRate) external;
 
     /**
      * @notice Stops the flow to the locker owner and transfer residual FLUID back to the connected locker
      * @param lockerOwner locker owner account address
      */
-    function cancelDrain(address lockerOwner) external;
+    function cancelUnlock(address lockerOwner) external;
 }

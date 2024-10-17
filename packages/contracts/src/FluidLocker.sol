@@ -41,7 +41,7 @@ contract FluidLocker is Initializable, IFluidLocker {
     ISuperToken public immutable FLUID;
 
     /// @notice Superfluid GDA pool interface
-    ISuperfluidPool public immutable PENALTY_DRAINING_POOL;
+    ISuperfluidPool public immutable TAX_DISTRIBUTION_POOL;
 
     /// @notice Distribution Program Manager interface
     IEPProgramManager public immutable EP_PROGRAM_MANAGER;
@@ -62,25 +62,25 @@ contract FluidLocker is Initializable, IFluidLocker {
     /// FIXME Discuss arbitrary decision
     uint128 private constant _STAKING_COOLDOWN_PERIOD = 3 days;
 
-    /// @notice Minimum drain period allowed
+    /// @notice Minimum unlock period allowed
     /// FIXME Discuss arbitrary decision
-    uint128 private constant _MIN_DRAIN_PERIOD = 7 days;
+    uint128 private constant _MIN_UNLOCK_PERIOD = 7 days;
 
-    /// @notice Maximum drain period allowed
+    /// @notice Maximum unlock period allowed
     /// FIXME Discuss arbitrary decision
-    uint128 private constant _MAX_DRAIN_PERIOD = 540 days;
+    uint128 private constant _MAX_UNLOCK_PERIOD = 540 days;
 
-    /// @notice Instant drain penalty percentage (expressed in basis points)
+    /// @notice Instant unlock penalty percentage (expressed in basis points)
     /// FIXME Discuss arbitrary decision
-    uint256 private constant _INSTANT_DRAIN_PENALTY_BP = 8_000;
+    uint256 private constant _INSTANT_UNLOCK_PENALTY_BP = 8_000;
 
     /// @notice Basis points denominator (for percentage calculation)
     uint256 private constant _BP_DENOMINATOR = 10_000;
 
-    /// @notice Scaler used for drain percentage calculation
+    /// @notice Scaler used for unlock percentage calculation
     uint256 private constant _SCALER = 1e18;
 
-    /// @notice Scaler used for drain percentage calculation
+    /// @notice Scaler used for unlock percentage calculation
     uint256 private constant _PERCENT_TO_BP = 100;
 
     /// @notice Balance of $FLUID token staked in this locker
@@ -95,16 +95,16 @@ contract FluidLocker is Initializable, IFluidLocker {
     /**
      * @notice Locker contract constructor
      * @param fluid FLUID SuperToken contract interface
-     * @param penaltyDrainingPool Penalty Draining Pool GDA contract interface
+     * @param taxDistributionPool Tax Distribution Pool GDA contract interface
      * @param programManager Ecosystem Partner Program Manager contract interface
      */
-    constructor(ISuperToken fluid, ISuperfluidPool penaltyDrainingPool, IEPProgramManager programManager) {
+    constructor(ISuperToken fluid, ISuperfluidPool taxDistributionPool, IEPProgramManager programManager) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
 
         // Sets immutable states
         FLUID = fluid;
-        PENALTY_DRAINING_POOL = penaltyDrainingPool;
+        TAX_DISTRIBUTION_POOL = taxDistributionPool;
         EP_PROGRAM_MANAGER = programManager;
     }
 
@@ -169,25 +169,25 @@ contract FluidLocker is Initializable, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function drain(uint128 drainPeriod) external onlyOwner {
-        // Enforce drain period validity
-        if (drainPeriod != 0 && (drainPeriod < _MIN_DRAIN_PERIOD || drainPeriod > _MAX_DRAIN_PERIOD)) {
-            revert INVALID_DRAIN_PERIOD();
+    function unlock(uint128 unlockPeriod) external onlyOwner {
+        // Enforce unlock period validity
+        if (unlockPeriod != 0 && (unlockPeriod < _MIN_UNLOCK_PERIOD || unlockPeriod > _MAX_UNLOCK_PERIOD)) {
+            revert INVALID_UNLOCK_PERIOD();
         }
 
-        // Get balance available for draining
+        // Get balance available for unlocking
         uint256 availableBalance = getAvailableBalance();
 
-        // Revert if there is no FLUID to drain
-        if (availableBalance == 0) revert NO_FLUID_TO_DRAIN();
+        // Revert if there is no FLUID to unlock
+        if (availableBalance == 0) revert NO_FLUID_TO_UNLOCK();
 
-        if (drainPeriod == 0) {
-            _instantDrain(availableBalance);
+        if (unlockPeriod == 0) {
+            _instantUnlock(availableBalance);
         } else {
-            _vestDrain(availableBalance, drainPeriod);
+            _vestUnlock(availableBalance, unlockPeriod);
         }
 
-        /// FIXME emit `drained locker` event
+        /// FIXME emit `unlocked locker` event
     }
 
     /// @inheritdoc IFluidLocker
@@ -196,9 +196,9 @@ contract FluidLocker is Initializable, IFluidLocker {
 
         if (amountToStake == 0) revert NO_FLUID_TO_STAKE();
 
-        if (!FLUID.isMemberConnected(address(PENALTY_DRAINING_POOL), address(this))) {
-            // Connect this locker to the Penalty Draining Pool
-            FLUID.connectPool(PENALTY_DRAINING_POOL);
+        if (!FLUID.isMemberConnected(address(TAX_DISTRIBUTION_POOL), address(this))) {
+            // Connect this locker to the Tax Distribution Pool
+            FLUID.connectPool(TAX_DISTRIBUTION_POOL);
         }
 
         // Update staked balance
@@ -228,8 +228,8 @@ contract FluidLocker is Initializable, IFluidLocker {
         // Call Penalty Manager to update staker's units
         PENALTY_MANAGER.updateStakerUnits(0);
 
-        // Disconnect this locker from the Penalty Draining Pool
-        FLUID.disconnectPool(PENALTY_DRAINING_POOL);
+        // Disconnect this locker from the Tax Distribution Pool
+        FLUID.disconnectPool(TAX_DISTRIBUTION_POOL);
 
         /// FIXME emit `unstaked` event
     }
@@ -308,45 +308,45 @@ contract FluidLocker is Initializable, IFluidLocker {
     //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
-    function _instantDrain(uint256 amountToDrain) internal {
-        // Calculate instant drain penalty amount
-        uint256 penaltyAmount = (amountToDrain * _INSTANT_DRAIN_PENALTY_BP) / _BP_DENOMINATOR;
+    function _instantUnlock(uint256 amountToUnlock) internal {
+        // Calculate instant unlock penalty amount
+        uint256 penaltyAmount = (amountToUnlock * _INSTANT_UNLOCK_PENALTY_BP) / _BP_DENOMINATOR;
 
-        // Distribute penalty to staker (connected to the PENALTY_DRAINING_POOL)
-        FLUID.distributeToPool(address(this), PENALTY_DRAINING_POOL, penaltyAmount);
+        // Distribute penalty to staker (connected to the TAX_DISTRIBUTION_POOL)
+        FLUID.distributeToPool(address(this), TAX_DISTRIBUTION_POOL, penaltyAmount);
 
         // Transfer the leftover $FLUID to the locker owner
-        FLUID.transfer(msg.sender, amountToDrain - penaltyAmount);
+        FLUID.transfer(msg.sender, amountToUnlock - penaltyAmount);
     }
 
-    function _vestDrain(uint256 amountToDrain, uint128 drainPeriod) internal {
-        // Calculate the drain and penalty flow rates based on requested amount and drain period
-        (int96 drainFlowRate, int96 penaltyFlowRate) = _calculateVestDrainFlowRates(amountToDrain, drainPeriod);
+    function _vestUnlock(uint256 amountToUnlock, uint128 unlockPeriod) internal {
+        // Calculate the unlock and penalty flow rates based on requested amount and unlock period
+        (int96 unlockFlowRate, int96 taxFlowRate) = _calculateVestUnlockFlowRates(amountToUnlock, unlockPeriod);
 
-        // Transfer the total amount to drain to the connected Fontaine
-        FLUID.transfer(address(fontaine), amountToDrain);
+        // Transfer the total amount to unlock to the connected Fontaine
+        FLUID.transfer(address(fontaine), amountToUnlock);
 
-        // Initiate drain process
-        fontaine.processDrain(lockerOwner, drainFlowRate, penaltyFlowRate);
+        // Initiate unlock process
+        fontaine.processUnlock(lockerOwner, unlockFlowRate, taxFlowRate);
     }
 
-    function _calculateVestDrainFlowRates(uint256 amountToDrain, uint128 drainPeriod)
+    function _calculateVestUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)
         internal
         pure
-        returns (int96 drainFlowRate, int96 penaltyFlowRate)
+        returns (int96 unlockFlowRate, int96 taxFlowRate)
     {
-        uint256 amountToUser = (amountToDrain * _getDrainPercentage(drainPeriod)) / _BP_DENOMINATOR;
-        uint256 penaltyAmount = amountToDrain - amountToUser;
+        uint256 amountToUser = (amountToUnlock * _getUnlockingPercentage(unlockPeriod)) / _BP_DENOMINATOR;
+        uint256 penaltyAmount = amountToUnlock - amountToUser;
 
-        drainFlowRate = int256(amountToUser / drainPeriod).toInt96();
-        penaltyFlowRate = int256(penaltyAmount / drainPeriod).toInt96();
+        unlockFlowRate = int256(amountToUser / unlockPeriod).toInt96();
+        taxFlowRate = int256(penaltyAmount / unlockPeriod).toInt96();
     }
 
-    function _getDrainPercentage(uint128 drainPeriod) internal pure returns (uint256 drainPercentageBP) {
-        drainPercentageBP = (
+    function _getUnlockingPercentage(uint128 unlockPeriod) internal pure returns (uint256 unlockingPercentageBP) {
+        unlockingPercentageBP = (
             _PERCENT_TO_BP
                 * (
-                    ((80 * _SCALER) / Math.sqrt(540 * _SCALER)) * (Math.sqrt(drainPeriod * _SCALER) / _SCALER)
+                    ((80 * _SCALER) / Math.sqrt(540 * _SCALER)) * (Math.sqrt(unlockPeriod * _SCALER) / _SCALER)
                         + 20 * _SCALER
                 )
         ) / _SCALER;
