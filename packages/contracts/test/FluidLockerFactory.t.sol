@@ -18,9 +18,18 @@ contract FluidLockerFactoryTest is SFTest {
         super.setUp();
     }
 
-    function testCreateLockerContract() external { }
-    function testIsLockerCreated() external { }
-    function testGetLockerAddress() external { }
+    function testCreateLockerContract(address _user) external {
+        vm.assume(_user != address(0));
+
+        address predictedAddress = _fluidLockerFactory.getLockerAddress(_user);
+        assertEq(_fluidLockerFactory.isLockerCreated(predictedAddress), false, "locker should not exists");
+
+        vm.prank(_user);
+        address userLockerAddress = _fluidLockerFactory.createLockerContract();
+
+        assertEq(_fluidLockerFactory.isLockerCreated(userLockerAddress), true, "locker should exists");
+        assertEq(predictedAddress, userLockerAddress, "predicted address should match");
+    }
 
     function testGetLockerBeaconImplementation() external view {
         assertEq(_fluidLockerFactory.getLockerBeaconImplementation(), address(_fluidLockerLogic));
