@@ -31,13 +31,11 @@ using SafeCast for int256;
  *
  */
 contract FluidLocker is Initializable, IFluidLocker {
-    //     _____ __        __
-    //    / ___// /_____ _/ /____  _____
-    //    \__ \/ __/ __ `/ __/ _ \/ ___/
-    //   ___/ / /_/ /_/ / /_/  __(__  )
-    //  /____/\__/\__,_/\__/\___/____/
-
-    /// FIXME storage packing
+    //      ____                          __        __    __        _____ __        __
+    //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
+    //     / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
 
     /// @notice FLUID SuperToken interface
     ISuperToken public immutable FLUID;
@@ -54,15 +52,9 @@ contract FluidLocker is Initializable, IFluidLocker {
     /// @notice Fontaine Beacon contract address
     UpgradeableBeacon public immutable FONTAINE_BEACON;
 
-    /// @notice This locker owner address
-    address public lockerOwner;
-
-    /// @notice Timestamp at which the staking cooldown period is elapsed
-    uint128 public stakingUnlocksAt;
-
     /// @notice Staking cooldown period
     /// FIXME Discuss arbitrary decision
-    uint128 private constant _STAKING_COOLDOWN_PERIOD = 3 days;
+    uint80 private constant _STAKING_COOLDOWN_PERIOD = 3 days;
 
     /// @notice Minimum unlock period allowed
     /// FIXME Discuss arbitrary decision
@@ -85,14 +77,26 @@ contract FluidLocker is Initializable, IFluidLocker {
     /// @notice Scaler used for unlock percentage calculation
     uint256 private constant _PERCENT_TO_BP = 100;
 
+    //     _____ __        __
+    //    / ___// /_____ _/ /____  _____
+    //    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /____/\__/\__,_/\__/\___/____/
+
+    /// @notice This locker owner address
+    address public lockerOwner;
+
+    /// @notice Timestamp at which the staking cooldown period is elapsed
+    uint80 public stakingUnlocksAt;
+
+    /// @notice Total unlock count
+    uint16 public fontaineCount;
+
     /// @notice Balance of $FLUID token staked in this locker
     uint256 private _stakedBalance;
 
     /// @notice Stores the Fontaine contract associated to the given unlock identifier
-    mapping(uint16 unlockId => IFontaine fontaine) public fontaines;
-
-    /// @notice Total unlock count
-    uint16 fontaineCount;
+    mapping(uint256 unlockId => IFontaine fontaine) public fontaines;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -232,7 +236,7 @@ contract FluidLocker is Initializable, IFluidLocker {
         _stakedBalance += amountToStake;
 
         // Update unlock timestamp
-        stakingUnlocksAt = uint128(block.timestamp) + _STAKING_COOLDOWN_PERIOD;
+        stakingUnlocksAt = uint80(block.timestamp) + _STAKING_COOLDOWN_PERIOD;
 
         // Call Penalty Manager to update staker's units
         PENALTY_MANAGER.updateStakerUnits(_stakedBalance);
