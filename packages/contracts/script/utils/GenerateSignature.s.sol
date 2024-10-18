@@ -23,7 +23,7 @@ contract GenerateSignature is Script {
         _generateSignature(user, unitsToGrant, programId, nonce);
     }
 
-    function _generateSignature(address _user, uint128 _unitsToGrant, uint96 _programId, uint256 _nonce) internal {
+    function _generateSignature(address _user, uint128 _unitsToGrant, uint96 _programId, uint256 _nonce) internal view {
         bytes32 message = keccak256(abi.encodePacked(_user, _unitsToGrant, _programId, _nonce));
 
         bytes32 digest = message.toEthSignedMessageHash();
