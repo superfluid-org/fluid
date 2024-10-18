@@ -14,7 +14,7 @@ contract GenerateSignature is Script {
         signerPrivateKey = vm.envUint("SIGNER_PRIVATE_KEY");
     }
 
-    function run() public {
+    function run() public view {
         address user = 0x37dB1380669155d6080c04a5e6Db029E306cD964;
         uint128 unitsToGrant = 5;
         uint96 programId = 0;
@@ -23,7 +23,10 @@ contract GenerateSignature is Script {
         _generateSignature(user, unitsToGrant, programId, nonce);
     }
 
-    function _generateSignature(address _user, uint128 _unitsToGrant, uint96 _programId, uint256 _nonce) internal view {
+    function _generateSignature(address _user, uint128 _unitsToGrant, uint96 _programId, uint256 _nonce)
+        internal
+        view
+    {
         bytes32 message = keccak256(abi.encodePacked(_user, _unitsToGrant, _programId, _nonce));
 
         bytes32 digest = message.toEthSignedMessageHash();
