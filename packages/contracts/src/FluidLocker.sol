@@ -88,8 +88,10 @@ contract FluidLocker is Initializable, IFluidLocker {
     /// @notice Balance of $FLUID token staked in this locker
     uint256 private _stakedBalance;
 
+    /// @notice Stores the Fontaine contract associated to the given unlock identifier
     mapping(uint16 unlockId => IFontaine fontaine) public fontaines;
 
+    /// @notice Total unlock count
     uint16 fontaineCount;
 
     //     ______                 __                  __
@@ -189,13 +191,6 @@ contract FluidLocker is Initializable, IFluidLocker {
             revert INVALID_UNLOCK_PERIOD();
         }
 
-        // // Use create2 to deploy a Fontaine Beacon Proxy with the hashed encoded associated Locker address as the salt
-        // address fontaineInstance =
-        //     address(new BeaconProxy{ salt: keccak256(abi.encode(lockerInstance)) }(address(FONTAINE_BEACON), ""));
-
-        // // Initialize the new Fontaine instance
-        // Fontaine(fontaineInstance).initialize(lockerInstance);
-
         // Get balance available for unlocking
         uint256 availableBalance = getAvailableBalance();
 
@@ -209,6 +204,17 @@ contract FluidLocker is Initializable, IFluidLocker {
         }
 
         /// FIXME emit `unlocked locker` event
+    }
+
+    /// @inheritdoc IFluidLocker
+    function cancelUnlock(uint16 unlockId) external onlyOwner {
+        // Get the Fontaine associated to the given unlock identifier
+        IFontaine fontaineToCancel = fontaines[unlockId];
+
+        // Cancel the ongoing unlock
+        fontaineToCancel.cancelUnlock(msg.sender);
+
+        /// FIXME emit `unlock cancelled locker` event
     }
 
     /// @inheritdoc IFluidLocker
@@ -355,15 +361,15 @@ contract FluidLocker is Initializable, IFluidLocker {
             new BeaconProxy{ salt: keccak256(abi.encode(address(this), fontaineCount)) }(address(FONTAINE_BEACON), "")
         );
 
-        // Persist the fontaine address
+        // Transfer the total amount to unlock to the newly created Fontaine
+        FLUID.transfer(newFontaine, amountToUnlock);
+
+        // Persist the fontaine address and increment fontaine counter
         fontaines[fontaineCount] = IFontaine(newFontaine);
         fontaineCount++;
 
-        // Transfer the total amount to unlock to the connected Fontaine
-        FLUID.transfer(address(newFontaine), amountToUnlock);
-
-        // Initiate unlock process
-        IFontaine(newFontaine).processUnlock(lockerOwner, unlockFlowRate, taxFlowRate);
+        // Initialize the new Fontaine instance (this initiate the unlock process)
+        IFontaine(newFontaine).initialize(address(this), lockerOwner, unlockFlowRate, taxFlowRate);
     }
 
     function _calculateVestUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)

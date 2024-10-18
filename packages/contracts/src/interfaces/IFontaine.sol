@@ -17,9 +17,6 @@ interface IFontaine {
     /// @notice Error thrown when the caller is not the connected locker
     error NOT_CONNECTED_LOCKER();
 
-    /// @notice Error thrown when attempting to process an unlock while another unlock is active
-    error UNLOCK_ALREADY_ACTIVE();
-
     /// @notice Error thrown when attempting to cancel a non-existant unlock
     error NO_ACTIVE_UNLOCK();
 
@@ -31,11 +28,14 @@ interface IFontaine {
 
     /**
      * @notice Creates a flow to the locker owner and distribute a flow to the penalty GDA pool
+     * @dev Fontaine contract initializer
+     * @param connectedLocker Locker contract address connected to this Fontaine
      * @param lockerOwner locker owner account address
      * @param unlockFlowRate FLUID flow rate from this contract to the locker owner
      * @param taxFlowRate FLUID flow rate from this contract to the penalty GDA pool
      */
-    function processUnlock(address lockerOwner, int96 unlockFlowRate, int96 taxFlowRate) external;
+    function initialize(address connectedLocker, address lockerOwner, int96 unlockFlowRate, int96 taxFlowRate)
+        external;
 
     /**
      * @notice Stops the flow to the locker owner and transfer residual FLUID back to the connected locker

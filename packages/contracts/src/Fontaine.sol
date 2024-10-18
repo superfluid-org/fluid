@@ -64,8 +64,17 @@ contract Fontaine is Initializable, IFontaine {
      * @notice Fontaine contract initializer
      * @param connectedLocker Locker contract address connected to this Fontaine
      */
-    function initialize(address connectedLocker) external initializer {
+    function initialize(address connectedLocker, address lockerOwner, int96 unlockFlowRate, int96 taxFlowRate)
+        external
+        initializer
+    {
         locker = connectedLocker;
+
+        // Distribute Tax flow to Staker GDA Pool
+        FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, taxFlowRate);
+
+        // Create the unlocking flow from the Fontaine to the locker owner
+        FLUID.createFlow(lockerOwner, unlockFlowRate);
     }
 
     //      ______     __                        __   ______                 __  _
@@ -75,27 +84,16 @@ contract Fontaine is Initializable, IFontaine {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFontaine
-    function processUnlock(address lockerOwner, int96 unlockFlowRate, int96 taxFlowRate) external onlyConnectedLocker {
-        // Ensure that there is no active unlocking
-        if (FLUID.getFlowRate(address(this), lockerOwner) != 0) {
-            revert UNLOCK_ALREADY_ACTIVE();
-        }
-
-        // Distribute Tax flow to Staker GDA Pool
-        FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, taxFlowRate);
-
-        // Create the unlocking flow from the Fontaine to the locker owner
-        FLUID.createFlow(lockerOwner, unlockFlowRate);
-    }
-
-    /// @inheritdoc IFontaine
     function cancelUnlock(address lockerOwner) external onlyConnectedLocker {
         // Ensure that there is an unlocking process to cancel
         if (FLUID.getFlowRate(address(this), lockerOwner) == 0) {
             revert NO_ACTIVE_UNLOCK();
         }
 
+        // Cancel the flow ongoing from this contract to the locker owner
         FLUID.deleteFlow(address(this), lockerOwner);
+
+        // Cancel the flow ongoing from this contract to the Staker GDA Pool
         FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, 0);
 
         // Transfer entire FLUID balance back to the connected locker

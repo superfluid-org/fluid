@@ -70,12 +70,20 @@ interface IFluidLocker {
      * @param amount amount of FLUID Token to lock
      */
     function lock(uint256 amount) external;
+
     /**
      * @notice Unlock the available FLUID Token from this locker
      * @dev Only this Locker owner can call this function
      * @param unlockPeriod the desired unlocking period (instant unlock if sets to 0)
      */
     function unlock(uint128 unlockPeriod) external;
+
+    /**
+     * @notice Cancel an ongoing unlock
+     * @dev Only this Locker owner can call this function
+     * @param unlockId the unlock identifier to be cancelled
+     */
+    function cancelUnlock(uint16 unlockId) external;
 
     /**
      * @notice Stake all the available FLUID Token of this locker
