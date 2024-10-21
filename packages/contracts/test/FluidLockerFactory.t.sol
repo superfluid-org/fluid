@@ -9,8 +9,6 @@ import {
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
-import { IFluidLockerFactory } from "../src/interfaces/IFluidLockerFactory.sol";
-
 using SuperTokenV1Library for ISuperToken;
 
 contract FluidLockerFactoryTest is SFTest {
