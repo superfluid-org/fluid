@@ -21,7 +21,7 @@ contract CreateProgram is Script {
         ISuperToken fluid = ISuperToken(vm.envAddress("FLUID_ADDRESS"));
         address signer = vm.envAddress("STACK_SIGNER_ADDRESS");
         IEPProgramManager programManager = IEPProgramManager(vm.envAddress("EP_PROGRAM_MANAGER_ADDRESS"));
-        uint8 programId = uint8(vm.envUint("PROGRAM_ID"));
+        uint256 programId = uint256(vm.envUint("PROGRAM_ID"));
 
         programManager.createProgram(programId, vm.addr(deployerPrivateKey), signer, fluid);
     }
