@@ -49,7 +49,7 @@ interface IEPProgramManager {
     /// @dev Error Selector : 0x4c7f89d7
     error NOT_PROGRAM_ADMIN();
 
-    /// @notice Error thrown when caller is not the program admin
+    /// @notice Error thrown when passing an invalid parameter
     /// @dev Error Selector : 0x4c4f685a
     error INVALID_PARAMETER();
 
