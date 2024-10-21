@@ -3,6 +3,8 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
 import { SuperfluidFrameworkDeployer } from
     "@superfluid-finance/ethereum-contracts/contracts/utils/SuperfluidFrameworkDeployer.sol";
 import { ERC1820RegistryCompiled } from
@@ -11,6 +13,7 @@ import { ISuperfluidPool } from "@superfluid-finance/ethereum-contracts/contract
 import { TestToken } from "@superfluid-finance/ethereum-contracts/contracts/utils/TestToken.sol";
 import { SuperToken } from "@superfluid-finance/ethereum-contracts/contracts/superfluid/SuperToken.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+
 import { EPProgramManager } from "../src/EPProgramManager.sol";
 import { FluidLocker } from "../src/FluidLocker.sol";
 import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
@@ -20,6 +23,7 @@ import { PenaltyManager } from "../src/PenaltyManager.sol";
 import { deployAll } from "../script/Deploy.s.sol";
 
 using SuperTokenV1Library for SuperToken;
+using ECDSA for bytes32;
 
 contract SFTest is Test {
     uint256 public constant INITIAL_BALANCE = 10000 ether;
@@ -92,7 +96,40 @@ contract SFTest is Test {
         // FLUID Contracts Deployment End
     }
 
+    //      __  __     __                   ______                 __  _
+    //     / / / /__  / /___  ___  _____   / ____/_  ______  _____/ /_(_)___  ____  _____
+    //    / /_/ / _ \/ / __ \/ _ \/ ___/  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   / __  /  __/ / /_/ /  __/ /     / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /_/ /_/\___/_/ .___/\___/_/     /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+    //              /_/
+
     function _helperCreateProgram(uint256 pId, address admin, address signer) internal returns (ISuperfluidPool pool) {
         pool = _programManager.createProgram(pId, admin, signer, _fluidSuperToken);
+    }
+
+    function _helperCreatePrograms(uint256[] memory pIds, address admin, address signer)
+        internal
+        returns (ISuperfluidPool[] memory pools)
+    {
+        pools = new ISuperfluidPool[](pIds.length);
+
+        for (uint256 i; i < pIds.length; ++i) {
+            pools[i] = _programManager.createProgram(pIds[i], admin, signer, _fluidSuperToken);
+        }
+    }
+
+    function _helperGenerateSignature(
+        uint256 _signerPkey,
+        address _locker,
+        uint128 _unitsToGrant,
+        uint256 _programId,
+        uint256 _nonce
+    ) internal pure returns (bytes memory signature) {
+        bytes32 message = keccak256(abi.encodePacked(_locker, _unitsToGrant, _programId, _nonce));
+
+        bytes32 digest = message.toEthSignedMessageHash();
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
+        signature = abi.encodePacked(r, s, v);
     }
 }

@@ -72,9 +72,7 @@ contract EPProgramManagerTest is SFTest {
         ISuperfluidPool pool = _helperCreateProgram(programId, ADMIN, vm.addr(_signerPkey));
 
         uint256 nonce = _programManager.getNextValidNonce(programId, _user);
-        bytes32 digest = keccak256(abi.encodePacked(_user, _units, programId, nonce)).toEthSignedMessageHash();
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
-        bytes memory validSignature = abi.encodePacked(r, s, v);
+        bytes memory validSignature = _helperGenerateSignature(_signerPkey, _user, _units, programId, nonce);
 
         vm.prank(_user);
         _programManager.updateUnits(programId, _units, nonce, validSignature);
@@ -88,8 +86,7 @@ contract EPProgramManagerTest is SFTest {
 
         // Test updateUnits with an invalid signer
         nonce = _programManager.getNextValidNonce(programId, _user);
-        (v, r, s) = vm.sign(_invalidSignerPkey, digest);
-        bytes memory invalidSignature = abi.encodePacked(r, s, v);
+        bytes memory invalidSignature = _helperGenerateSignature(_invalidSignerPkey, _user, _units, programId, nonce);
 
         vm.expectRevert(abi.encodeWithSelector(IEPProgramManager.INVALID_SIGNATURE.selector, "signer"));
         vm.prank(_user);
@@ -119,10 +116,7 @@ contract EPProgramManagerTest is SFTest {
 
             newUnits[i] = _units;
             nonces[i] = _programManager.getNextValidNonce(programIds[i], _user);
-            bytes32 digest =
-                keccak256(abi.encodePacked(_user, newUnits[i], programIds[i], nonces[i])).toEthSignedMessageHash();
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
-            stackSignatures[i] = abi.encodePacked(r, s, v);
+            stackSignatures[i] = _helperGenerateSignature(_signerPkey, _user, newUnits[i], programIds[i], nonces[i]);
         }
 
         vm.prank(_user);
@@ -150,10 +144,7 @@ contract EPProgramManagerTest is SFTest {
 
             newUnits[i] = _units;
             nonces[i] = _programManager.getNextValidNonce(programIds[i], _user);
-            bytes32 digest =
-                keccak256(abi.encodePacked(_user, newUnits[i], programIds[i], nonces[i])).toEthSignedMessageHash();
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
-            stackSignatures[i] = abi.encodePacked(r, s, v);
+            stackSignatures[i] = _helperGenerateSignature(_signerPkey, _user, newUnits[i], programIds[i], nonces[i]);
         }
 
         uint256[] memory invalidProgramIds = new uint256[](1);
