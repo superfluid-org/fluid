@@ -9,7 +9,7 @@ import {
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
-import { IFluidLocker } from "../src/interfaces/IFluidLocker.sol";
+import { FluidLocker, IFluidLocker } from "../src/FluidLocker.sol";
 
 using SuperTokenV1Library for ISuperToken;
 
@@ -101,6 +101,10 @@ contract FluidLockerTest is SFTest {
         assertEq(_fluidSuperToken.balanceOf(address(ALICE)), 2_000e18, "incorrect Alice bal after op");
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
         assertEq(bobLocker.getAvailableBalance(), 8_000e18, "incorrect Bob bal after op");
+
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.NO_FLUID_TO_UNLOCK.selector);
+        aliceLocker.unlock(0);
     }
 
     function testVestUnlock() external { }
@@ -121,9 +125,42 @@ contract FluidLockerTest is SFTest {
         assertEq(
             _penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)), funding / 1e6, "incorrect units"
         );
+
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.NO_FLUID_TO_STAKE.selector);
+        aliceLocker.stake();
     }
 
-    function testUnstake() external { }
+    function testUnstake() external {
+        uint256 funding = 10_000e18;
+        _helperFundLocker(address(aliceLocker), funding);
+        vm.startPrank(ALICE);
+        aliceLocker.stake();
+
+        assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available bal before op");
+        assertEq(aliceLocker.getStakedBalance(), funding, "incorrect staked bal before op");
+        assertEq(
+            _penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)),
+            funding / 1e6,
+            "incorrect units before op"
+        );
+
+        vm.expectRevert(IFluidLocker.STAKING_COOLDOWN_NOT_ELAPSED.selector);
+        aliceLocker.unstake();
+
+        vm.warp(uint256(FluidLocker(address(aliceLocker)).stakingUnlocksAt()) + 1);
+        aliceLocker.unstake();
+
+        assertEq(aliceLocker.getAvailableBalance(), funding, "incorrect available bal after op");
+        assertEq(aliceLocker.getStakedBalance(), 0, "incorrect staked bal after op");
+        assertEq(_penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)), 0, "incorrect units after op");
+
+        vm.expectRevert(IFluidLocker.NO_FLUID_TO_UNSTAKE.selector);
+        aliceLocker.unstake();
+
+        vm.stopPrank();
+    }
+
     function testTransferLocker() external { }
 
     function testGetFontaineBeaconImplementation() external view {
