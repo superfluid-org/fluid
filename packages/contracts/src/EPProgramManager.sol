@@ -46,6 +46,9 @@ contract EPProgramManager is IEPProgramManager {
         external
         returns (ISuperfluidPool distributionPool)
     {
+        // Ensure non-null program identifier
+        if (programId == 0) revert INVALID_PARAMETER();
+
         // Ensure program does not already exists
         if (address(programs[programId].distributionPool) != address(0)) {
             revert PROGRAM_ALREADY_CREATED();

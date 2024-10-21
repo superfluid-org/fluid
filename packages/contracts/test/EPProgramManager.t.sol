@@ -21,6 +21,7 @@ contract EPProgramManagerTest is SFTest {
     }
 
     function testCreateProgram(uint256 _pId, address _admin, address _signer) external {
+        vm.assume(_pId != 0);
         ISuperfluidPool pool = _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
 
         (address programAdmin, address stackSigner, ISuperToken token, ISuperfluidPool distributionPool) =
@@ -41,6 +42,7 @@ contract EPProgramManagerTest is SFTest {
     function testUpdateSigner(uint256 _pId, address _admin, address _nonAdmin, address _signer, address _newSigner)
         external
     {
+        vm.assume(_pId != 0);
         vm.assume(_signer != _newSigner);
         vm.assume(_admin != _nonAdmin);
 
@@ -65,9 +67,10 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_invalidSignerPkey != 0);
         vm.assume(_signerPkey != _invalidSignerPkey);
         vm.assume(_user != address(0));
+        vm.assume(_user != address(_penaltyManager.TAX_DISTRIBUTION_POOL()));
         _units = uint128(bound(_units, 1, 1_000_000));
 
-        uint256 programId = 0;
+        uint256 programId = 1;
 
         ISuperfluidPool pool = _helperCreateProgram(programId, ADMIN, vm.addr(_signerPkey));
 
@@ -101,6 +104,7 @@ contract EPProgramManagerTest is SFTest {
     function testUpdateUnitsBatch(uint8 _batchAmount, uint96 _signerPkey, address _user, uint128 _units) external {
         vm.assume(_signerPkey != 0);
         vm.assume(_user != address(0));
+        vm.assume(_user != address(_penaltyManager.TAX_DISTRIBUTION_POOL()));
         _units = uint128(bound(_units, 1, 1_000_000));
         _batchAmount = uint8(bound(_batchAmount, 2, 8));
 
@@ -111,7 +115,7 @@ contract EPProgramManagerTest is SFTest {
         ISuperfluidPool[] memory pools = new ISuperfluidPool[](_batchAmount);
 
         for (uint8 i = 0; i < _batchAmount; ++i) {
-            programIds[i] = i;
+            programIds[i] = i + 1;
             pools[i] = _helperCreateProgram(programIds[i], ADMIN, vm.addr(_signerPkey));
 
             newUnits[i] = _units;
@@ -139,7 +143,7 @@ contract EPProgramManagerTest is SFTest {
         ISuperfluidPool[] memory pools = new ISuperfluidPool[](2);
 
         for (uint8 i = 0; i < 2; ++i) {
-            programIds[i] = i;
+            programIds[i] = i + 1;
             pools[i] = _helperCreateProgram(programIds[i], ADMIN, vm.addr(_signerPkey));
 
             newUnits[i] = _units;
