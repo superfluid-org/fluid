@@ -39,8 +39,13 @@ function deployAll(ISuperToken fluid, address owner)
     fontaineLogicAddress = address(fontaineImpl);
 
     // Deploy the Fluid Locker Implementation contract
-    FluidLocker fluidLockerImpl =
-        new FluidLocker(fluid, taxDistributionPool, IEPProgramManager(address(programManager)), fontaineLogicAddress);
+    FluidLocker fluidLockerImpl = new FluidLocker(
+        fluid,
+        taxDistributionPool,
+        IEPProgramManager(programManagerAddress),
+        IPenaltyManager(penaltyManagerAddress),
+        fontaineLogicAddress
+    );
     lockerLogicAddress = address(fluidLockerImpl);
 
     // Deploy the Fluid Locker Factory contract

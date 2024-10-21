@@ -115,6 +115,7 @@ contract FluidLocker is Initializable, IFluidLocker {
         ISuperToken fluid,
         ISuperfluidPool taxDistributionPool,
         IEPProgramManager programManager,
+        IPenaltyManager penaltyManager,
         address fontaineImplementation
     ) {
         // Disable initializers to prevent implementation contract initalization
@@ -124,6 +125,7 @@ contract FluidLocker is Initializable, IFluidLocker {
         FLUID = fluid;
         TAX_DISTRIBUTION_POOL = taxDistributionPool;
         EP_PROGRAM_MANAGER = programManager;
+        PENALTY_MANAGER = penaltyManager;
 
         // Deploy the Fontaine beacon with the Fontaine implementation contract
         FONTAINE_BEACON = new UpgradeableBeacon(fontaineImplementation);
