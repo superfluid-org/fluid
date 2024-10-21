@@ -48,7 +48,7 @@ interface IFluidLocker {
      * @param nonce nonce associated to the signature provided by Stack
      * @param stackSignature stack signature containing necessary info to update units
      */
-    function claim(uint96 programId, uint128 totalProgramUnits, uint256 nonce, bytes memory stackSignature) external;
+    function claim(uint256 programId, uint128 totalProgramUnits, uint256 nonce, bytes memory stackSignature) external;
 
     /**
      * @notice Batch update this locker units within the given programs identifier's GDA pools
@@ -58,7 +58,7 @@ interface IFluidLocker {
      * @param stackSignatures array of stack signatures containing necessary info to update units
      */
     function claim(
-        uint96[] memory programIds,
+        uint256[] memory programIds,
         uint128[] memory totalProgramUnits,
         uint256[] memory nonces,
         bytes[] memory stackSignatures
@@ -115,28 +115,28 @@ interface IFluidLocker {
      * @param programId program identifier to query
      * @return flowRate the flowrate received by this Locker for the given program identifier
      */
-    function getFlowRatePerProgram(uint96 programId) external view returns (int96 flowRate);
+    function getFlowRatePerProgram(uint256 programId) external view returns (int96 flowRate);
 
     /**
      * @notice Returns the flowrates received by this Locker for the given program identifiers
      * @param programIds array of program identifiers to query
      * @return flowRates array of flowrate received by this Locker for the given program identifiers
      */
-    function getFlowRatePerProgram(uint96[] memory programIds) external view returns (int96[] memory flowRates);
+    function getFlowRatePerProgram(uint256[] memory programIds) external view returns (int96[] memory flowRates);
 
     /**
      * @notice Returns the amount of GDA units owned by this Locker for the given program identifier
      * @param programId program identifier to query
      * @return units the amount of GDA units owned by this Locker for the given program identifier
      */
-    function getUnitsPerProgram(uint96 programId) external view returns (uint128 units);
+    function getUnitsPerProgram(uint256 programId) external view returns (uint128 units);
 
     /**
      * @notice Returns the amounts of GDA units owned by this Locker for the given program identifiers
      * @param programIds array of program identifiers to query
      * @return units array of GDA units amount owned by this Locker for the given program identifiers
      */
-    function getUnitsPerProgram(uint96[] memory programIds) external view returns (uint128[] memory units);
+    function getUnitsPerProgram(uint256[] memory programIds) external view returns (uint128[] memory units);
 
     /**
      * @notice Returns this Lockers' staked FLUID Token balance

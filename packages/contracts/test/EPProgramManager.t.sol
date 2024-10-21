@@ -20,7 +20,7 @@ contract EPProgramManagerTest is SFTest {
         super.setUp();
     }
 
-    function testCreateProgram(uint96 _pId, address _admin, address _signer) external {
+    function testCreateProgram(uint256 _pId, address _admin, address _signer) external {
         ISuperfluidPool pool = _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
 
         (address programAdmin, address stackSigner, ISuperToken token, ISuperfluidPool distributionPool) =
@@ -38,7 +38,7 @@ contract EPProgramManagerTest is SFTest {
         _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
     }
 
-    function testUpdateSigner(uint96 _pId, address _admin, address _nonAdmin, address _signer, address _newSigner)
+    function testUpdateSigner(uint256 _pId, address _admin, address _nonAdmin, address _signer, address _newSigner)
         external
     {
         vm.assume(_signer != _newSigner);
@@ -67,7 +67,7 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_user != address(0));
         _units = uint128(bound(_units, 1, 1_000_000));
 
-        uint96 programId = 0;
+        uint256 programId = 0;
 
         ISuperfluidPool pool = _helperCreateProgram(programId, ADMIN, vm.addr(_signerPkey));
 
@@ -107,7 +107,7 @@ contract EPProgramManagerTest is SFTest {
         _units = uint128(bound(_units, 1, 1_000_000));
         _batchAmount = uint8(bound(_batchAmount, 2, 8));
 
-        uint96[] memory programIds = new uint96[](_batchAmount);
+        uint256[] memory programIds = new uint256[](_batchAmount);
         uint128[] memory newUnits = new uint128[](_batchAmount);
         uint256[] memory nonces = new uint256[](_batchAmount);
         bytes[] memory stackSignatures = new bytes[](_batchAmount);
@@ -138,7 +138,7 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_user != address(0));
         _units = uint128(bound(_units, 1, 1_000_000));
 
-        uint96[] memory programIds = new uint96[](2);
+        uint256[] memory programIds = new uint256[](2);
         uint128[] memory newUnits = new uint128[](2);
         uint256[] memory nonces = new uint256[](2);
         bytes[] memory stackSignatures = new bytes[](2);
@@ -156,7 +156,7 @@ contract EPProgramManagerTest is SFTest {
             stackSignatures[i] = abi.encodePacked(r, s, v);
         }
 
-        uint96[] memory invalidProgramIds = new uint96[](1);
+        uint256[] memory invalidProgramIds = new uint256[](1);
         invalidProgramIds[0] = programIds[0];
 
         vm.prank(_user);

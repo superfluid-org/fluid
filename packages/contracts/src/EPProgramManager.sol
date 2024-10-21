@@ -30,10 +30,10 @@ contract EPProgramManager is IEPProgramManager {
     /// FIXME storage packing check
 
     /// @notice Stores the program details for a given program identifier
-    mapping(uint96 programId => EPProgram program) public programs;
+    mapping(uint256 programId => EPProgram program) public programs;
 
     /// @notice Stores the last valid nonce used for a given program identifier and a given user
-    mapping(uint96 programId => mapping(address user => uint256 lastValidNonce)) private _lastValidNonces;
+    mapping(uint256 programId => mapping(address user => uint256 lastValidNonce)) private _lastValidNonces;
 
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -42,7 +42,7 @@ contract EPProgramManager is IEPProgramManager {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IEPProgramManager
-    function createProgram(uint96 programId, address programAdmin, address signer, ISuperToken token)
+    function createProgram(uint256 programId, address programAdmin, address signer, ISuperToken token)
         external
         returns (ISuperfluidPool distributionPool)
     {
@@ -65,7 +65,7 @@ contract EPProgramManager is IEPProgramManager {
     }
 
     /// @inheritdoc IEPProgramManager
-    function updateProgramSigner(uint96 programId, address newSigner) external {
+    function updateProgramSigner(uint256 programId, address newSigner) external {
         // Ensure caller is program admin
         if (msg.sender != programs[programId].programAdmin) {
             revert NOT_PROGRAM_ADMIN();
@@ -78,13 +78,13 @@ contract EPProgramManager is IEPProgramManager {
     }
 
     /// @inheritdoc IEPProgramManager
-    function updateUnits(uint96 programId, uint128 newUnits, uint256 nonce, bytes memory stackSignature) external {
+    function updateUnits(uint256 programId, uint128 newUnits, uint256 nonce, bytes memory stackSignature) external {
         updateUserUnits(programId, msg.sender, newUnits, nonce, stackSignature);
     }
 
     /// @inheritdoc IEPProgramManager
     function updateUnits(
-        uint96[] memory programIds,
+        uint256[] memory programIds,
         uint128[] memory newUnits,
         uint256[] memory nonces,
         bytes[] memory stackSignatures
@@ -102,7 +102,7 @@ contract EPProgramManager is IEPProgramManager {
 
     /// @inheritdoc IEPProgramManager
     function updateUserUnits(
-        uint96 programId,
+        uint256 programId,
         address user,
         uint128 newUnits,
         uint256 nonce,
@@ -132,12 +132,12 @@ contract EPProgramManager is IEPProgramManager {
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IEPProgramManager
-    function getProgramPool(uint96 programId) external view returns (ISuperfluidPool programPool) {
+    function getProgramPool(uint256 programId) external view returns (ISuperfluidPool programPool) {
         programPool = programs[programId].distributionPool;
     }
 
     /// @inheritdoc IEPProgramManager
-    function getNextValidNonce(uint96 programId, address user) external view returns (uint256 validNonce) {
+    function getNextValidNonce(uint256 programId, address user) external view returns (uint256 validNonce) {
         validNonce = _lastValidNonces[programId][user] + 1;
     }
 
@@ -147,7 +147,7 @@ contract EPProgramManager is IEPProgramManager {
     //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
-    function _isNonceValid(uint96 programId, address user, uint256 nonce) internal view returns (bool isValid) {
+    function _isNonceValid(uint256 programId, address user, uint256 nonce) internal view returns (bool isValid) {
         isValid = nonce > _lastValidNonces[programId][user];
     }
 
@@ -155,7 +155,7 @@ contract EPProgramManager is IEPProgramManager {
         address signer,
         address user,
         uint128 newUnits,
-        uint96 programId,
+        uint256 programId,
         uint256 nonce,
         bytes memory signature
     ) internal pure returns (bool isValid) {

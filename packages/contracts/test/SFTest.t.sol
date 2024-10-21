@@ -92,7 +92,7 @@ contract SFTest is Test {
         // FLUID Contracts Deployment End
     }
 
-    function _helperCreateProgram(uint96 pId, address admin, address signer) internal returns (ISuperfluidPool pool) {
+    function _helperCreateProgram(uint256 pId, address admin, address signer) internal returns (ISuperfluidPool pool) {
         pool = _programManager.createProgram(pId, admin, signer, _fluidSuperToken);
     }
 }
