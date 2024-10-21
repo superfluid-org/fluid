@@ -280,12 +280,12 @@ contract FluidLocker is Initializable, IFluidLocker {
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFluidLocker
-    function getFlowRatePerProgram(uint256 programId) external view returns (int96 flowRate) {
+    function getFlowRatePerProgram(uint256 programId) public view returns (int96 flowRate) {
         // Get the corresponding program pool
         ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
 
         // Get the flow rate
-        flowRate = FLUID.getFlowRate(address(programPool), address(this));
+        flowRate = programPool.getMemberFlowRate(address(this));
     }
 
     /// @inheritdoc IFluidLocker
@@ -293,16 +293,12 @@ contract FluidLocker is Initializable, IFluidLocker {
         flowRates = new int96[](programIds.length);
 
         for (uint256 i = 0; i < programIds.length; ++i) {
-            // Get the corresponding program pool
-            ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programIds[i]);
-
-            // Get the flow rate
-            flowRates[i] = FLUID.getFlowRate(address(programPool), address(this));
+            flowRates[i] = getFlowRatePerProgram(programIds[i]);
         }
     }
 
     /// @inheritdoc IFluidLocker
-    function getUnitsPerProgram(uint256 programId) external view returns (uint128 units) {
+    function getUnitsPerProgram(uint256 programId) public view returns (uint128 units) {
         // Get the corresponding program pool
         ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
 
@@ -315,11 +311,7 @@ contract FluidLocker is Initializable, IFluidLocker {
         units = new uint128[](programIds.length);
 
         for (uint256 i = 0; i < programIds.length; ++i) {
-            // Get the corresponding program pool
-            ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programIds[i]);
-
-            // Get the flow rate
-            units[i] = programPool.getUnits(address(this));
+            units[i] = getUnitsPerProgram(programIds[i]);
         }
     }
 
