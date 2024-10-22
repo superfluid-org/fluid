@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 
 import { SuperfluidFrameworkDeployer } from
     "@superfluid-finance/ethereum-contracts/contracts/utils/SuperfluidFrameworkDeployer.sol";
@@ -11,7 +12,7 @@ import { ERC1820RegistryCompiled } from
     "@superfluid-finance/ethereum-contracts/contracts/libs/ERC1820RegistryCompiled.sol";
 import { ISuperfluidPool } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { TestToken } from "@superfluid-finance/ethereum-contracts/contracts/utils/TestToken.sol";
-import { SuperToken } from "@superfluid-finance/ethereum-contracts/contracts/superfluid/SuperToken.sol";
+import { SuperToken, ISuperToken } from "@superfluid-finance/ethereum-contracts/contracts/superfluid/SuperToken.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
 import { EPProgramManager } from "../src/EPProgramManager.sol";
@@ -23,7 +24,9 @@ import { PenaltyManager } from "../src/PenaltyManager.sol";
 import { deployAll } from "../script/Deploy.s.sol";
 
 using SuperTokenV1Library for SuperToken;
+using SuperTokenV1Library for ISuperToken;
 using ECDSA for bytes32;
+using SafeCast for int256;
 
 contract SFTest is Test {
     uint256 public constant INITIAL_BALANCE = 10000 ether;
@@ -41,6 +44,7 @@ contract SFTest is Test {
 
     TestToken internal _fluidUnderlying;
     SuperToken internal _fluidSuperToken;
+    ISuperToken internal _fluid;
 
     EPProgramManager internal _programManager;
     FluidLocker internal _fluidLockerLogic;
@@ -90,6 +94,7 @@ contract SFTest is Test {
         _fluidLockerFactory = FluidLockerFactory(lockerFactoryAddress);
         _fluidLockerLogic = FluidLocker(lockerLogicAddress);
         _fontaineLogic = Fontaine(fontaineLogicAddress);
+        _fluid = ISuperToken(address(_fluidSuperToken));
 
         vm.stopPrank();
 
@@ -131,5 +136,42 @@ contract SFTest is Test {
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
         signature = abi.encodePacked(r, s, v);
+    }
+
+    function _helperDistributeToProgramPool(uint256 programId, uint256 amount, uint256 period)
+        internal
+        returns (int96 actualDistributionFlowRate)
+    {
+        ISuperfluidPool pool = _programManager.getProgramPool(programId);
+
+        int96 distributionFlowRate = int256(amount / period).toInt96();
+
+        (actualDistributionFlowRate,) =
+            _fluid.estimateFlowDistributionActualFlowRate(FLUID_TREASURY, pool, distributionFlowRate);
+
+        vm.startPrank(FLUID_TREASURY);
+        _fluid.distributeFlow(FLUID_TREASURY, pool, distributionFlowRate);
+        vm.stopPrank();
+    }
+
+    function _helperDistributeToProgramPool(
+        uint256[] memory programIds,
+        uint256[] memory amounts,
+        uint256[] memory periods
+    ) internal returns (int96[] memory actualDistributionFlowRates) {
+        actualDistributionFlowRates = new int96[](programIds.length);
+
+        for (uint256 i; i < programIds.length; ++i) {
+            ISuperfluidPool pool = _programManager.getProgramPool(programIds[i]);
+
+            int96 distributionFlowRate = int256(amounts[i] / periods[i]).toInt96();
+
+            (actualDistributionFlowRates[i],) =
+                _fluid.estimateFlowDistributionActualFlowRate(FLUID_TREASURY, pool, distributionFlowRate);
+
+            vm.startPrank(FLUID_TREASURY);
+            _fluid.distributeFlow(FLUID_TREASURY, pool, distributionFlowRate);
+            vm.stopPrank();
+        }
     }
 }
