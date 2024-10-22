@@ -3,6 +3,9 @@ pragma solidity ^0.8.23;
 
 import { SFTest } from "./SFTest.t.sol";
 
+import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
+import { Math } from "@openzeppelin-v5/contracts/utils/math/Math.sol";
+
 import {
     ISuperToken,
     ISuperfluidPool
@@ -10,8 +13,10 @@ import {
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
 import { FluidLocker, IFluidLocker } from "../src/FluidLocker.sol";
+import { IFontaine } from "../src/interfaces/IFontaine.sol";
 
 using SuperTokenV1Library for ISuperToken;
+using SafeCast for int256;
 
 contract FluidLockerTest is SFTest {
     uint256 public constant PROGRAM_0 = 1;
@@ -95,6 +100,10 @@ contract FluidLockerTest is SFTest {
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 10_000e18, "incorrect Locker bal before op");
         assertEq(bobLocker.getAvailableBalance(), 0, "incorrect Bob bal before op");
 
+        vm.prank(BOB);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.unlock(0);
+
         vm.prank(ALICE);
         aliceLocker.unlock(0);
 
@@ -107,7 +116,41 @@ contract FluidLockerTest is SFTest {
         aliceLocker.unlock(0);
     }
 
-    function testVestUnlock() external { }
+    function testVestUnlock(uint128 unlockPeriod) external {
+        unlockPeriod = uint128(bound(unlockPeriod, 7 days, 539 days));
+        uint256 funding = 10_000e18;
+        _helperFundLocker(address(aliceLocker), funding);
+        _helperBobStaking();
+
+        assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), funding, "incorrect Locker bal before op");
+        assertEq(FluidLocker(address(aliceLocker)).fontaineCount(), 0, "incorrect fontaine count");
+        assertEq(
+            address(FluidLocker(address(aliceLocker)).fontaines(0)),
+            address(IFontaine(address(0))),
+            "incorrect fontaine addrfoess"
+        );
+
+        (int96 taxFlowRate, int96 unlockFlowRate) = _helperCalculateUnlockFlowRates(funding, unlockPeriod);
+
+        vm.prank(ALICE);
+        aliceLocker.unlock(unlockPeriod);
+
+        IFontaine newFontaine = FluidLocker(address(aliceLocker)).fontaines(0);
+
+        assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
+        assertEq(
+            ISuperToken(_fluidSuperToken).getFlowRate(address(newFontaine), ALICE),
+            unlockFlowRate,
+            "incorrect unlock flowrate"
+        );
+        assertApproxEqAbs(
+            FluidLocker(address(aliceLocker)).TAX_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
+            taxFlowRate,
+            funding / 1e16,
+            "incorrect tax flowrate"
+        );
+    }
+
     function testCancelUnlock() external { }
 
     function testStake() external {
@@ -123,7 +166,7 @@ contract FluidLockerTest is SFTest {
         assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available bal after op");
         assertEq(aliceLocker.getStakedBalance(), funding, "incorrect staked bal after op");
         assertEq(
-            _penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)), funding / 1e6, "incorrect units"
+            _penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)), funding / 1e16, "incorrect units"
         );
 
         vm.prank(ALICE);
@@ -141,7 +184,7 @@ contract FluidLockerTest is SFTest {
         assertEq(aliceLocker.getStakedBalance(), funding, "incorrect staked bal before op");
         assertEq(
             _penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)),
-            funding / 1e6,
+            funding / 1e16,
             "incorrect units before op"
         );
 
@@ -176,5 +219,20 @@ contract FluidLockerTest is SFTest {
         _helperFundLocker(address(bobLocker), 10_000e18);
         vm.prank(BOB);
         bobLocker.stake();
+    }
+
+    function _helperCalculateUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)
+        internal
+        pure
+        returns (int96 taxFlowRate, int96 unlockFlowRate)
+    {
+        uint256 unlockingPercentageBP =
+            (100 * (((80 * 1e18) / Math.sqrt(540 * 1e18)) * (Math.sqrt(unlockPeriod * 1e18) / 1e18) + 20 * 1e18)) / 1e18;
+
+        uint256 amountToUser = (amountToUnlock * unlockingPercentageBP) / 10_000;
+        uint256 penaltyAmount = amountToUnlock - amountToUser;
+
+        taxFlowRate = int256(penaltyAmount / unlockPeriod).toInt96();
+        unlockFlowRate = int256(amountToUser / unlockPeriod).toInt96();
     }
 }
