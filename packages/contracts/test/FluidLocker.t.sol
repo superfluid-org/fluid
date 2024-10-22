@@ -24,6 +24,10 @@ contract FluidLockerTest is SFTest {
     uint256 public constant PROGRAM_2 = 3;
     uint256 public constant signerPkey = 0x69;
 
+    uint128 private constant _MIN_UNLOCK_PERIOD = 7 days;
+
+    uint128 private constant _MAX_UNLOCK_PERIOD = 540 days;
+
     ISuperfluidPool[] public programPools;
     IFluidLocker public aliceLocker;
     IFluidLocker public bobLocker;
@@ -55,6 +59,11 @@ contract FluidLockerTest is SFTest {
         aliceLocker.claim(PROGRAM_0, units, nonce, signature);
 
         assertEq(programPools[0].getUnits(address(aliceLocker)), units, "units not updated");
+        assertEq(aliceLocker.getUnitsPerProgram(PROGRAM_0), units, "getUnitsPerProgram invalid");
+
+        int96 distributionFlowrate = _helperDistributeToProgramPool(PROGRAM_0, 1_000_000e18, _MAX_UNLOCK_PERIOD);
+
+        assertEq(aliceLocker.getFlowRatePerProgram(PROGRAM_0), distributionFlowrate, "getFlowRatePerProgram invalid");
     }
 
     function testClaimBatch(uint128 units) external {
@@ -65,18 +74,31 @@ contract FluidLockerTest is SFTest {
         uint256[] memory nonces = new uint256[](3);
         bytes[] memory signatures = new bytes[](3);
 
+        uint256[] memory distributionAmounts = new uint256[](3);
+        uint256[] memory distributionPeriods = new uint256[](3);
+
         for (uint8 i = 0; i < 3; ++i) {
             programIds[i] = i + 1;
             newUnits[i] = units;
             nonces[i] = _programManager.getNextValidNonce(programIds[i], address(aliceLocker));
             signatures[i] = _helperGenerateSignature(signerPkey, address(aliceLocker), units, programIds[i], nonces[i]);
+            distributionAmounts[i] = 1_000_000e18;
+            distributionPeriods[i] = _MAX_UNLOCK_PERIOD;
         }
 
         vm.prank(ALICE);
         aliceLocker.claim(programIds, newUnits, nonces, signatures);
 
+        int96[] memory distributionFlowrates =
+            _helperDistributeToProgramPool(programIds, distributionAmounts, distributionPeriods);
+
+        uint128[] memory unitsPerProgram = aliceLocker.getUnitsPerProgram(programIds);
+        int96[] memory flowratePerProgram = aliceLocker.getFlowRatePerProgram(programIds);
+
         for (uint8 i = 0; i < 3; ++i) {
             assertEq(newUnits[i], programPools[i].getUnits(address(aliceLocker)), "incorrect units amounts");
+            assertEq(newUnits[i], unitsPerProgram[i], "getUnitsPerProgram invalid");
+            assertEq(distributionFlowrates[i], flowratePerProgram[i], "getFlowRatePerProgram invalid");
         }
     }
 
@@ -117,7 +139,7 @@ contract FluidLockerTest is SFTest {
     }
 
     function testVestUnlock(uint128 unlockPeriod) external {
-        unlockPeriod = uint128(bound(unlockPeriod, 7 days, 539 days));
+        unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
         uint256 funding = 10_000e18;
         _helperFundLocker(address(aliceLocker), funding);
         _helperBobStaking();
@@ -149,9 +171,20 @@ contract FluidLockerTest is SFTest {
             funding / 1e16,
             "incorrect tax flowrate"
         );
-    }
 
-    function testCancelUnlock() external { }
+        uint16 unlockId = 0;
+
+        vm.prank(ALICE);
+        aliceLocker.cancelUnlock(unlockId);
+
+        // assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
+        assertEq(ISuperToken(_fluidSuperToken).getFlowRate(address(newFontaine), ALICE), 0, "incorrect unlock flowrate");
+        assertEq(
+            FluidLocker(address(aliceLocker)).TAX_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
+            0,
+            "incorrect tax flowrate"
+        );
+    }
 
     function testStake() external {
         uint256 funding = 10_000e18;
