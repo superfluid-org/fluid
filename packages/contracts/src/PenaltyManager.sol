@@ -41,7 +41,7 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     /// @notice Locker Factory contract address
     address public lockerFactory;
 
-    uint128 private constant _UNIT_DOWNSCALER = 1e6;
+    uint128 private constant _UNIT_DOWNSCALER = 1e16;
 
     /// @notice Stores the approval status of a given locker contract address
     mapping(address locker => bool isApproved) private _approvedLockers;
