@@ -86,12 +86,10 @@ contract Fontaine is Initializable, IFontaine {
     /// @inheritdoc IFontaine
     function cancelUnlock(address lockerOwner) external onlyConnectedLocker {
         // Ensure that there is an unlocking process to cancel
-        if (FLUID.getFlowRate(address(this), lockerOwner) == 0) {
-            revert NO_ACTIVE_UNLOCK();
+        if (FLUID.getFlowRate(address(this), lockerOwner) != 0) {
+            // Cancel the flow ongoing from this contract to the locker owner
+            FLUID.deleteFlow(address(this), lockerOwner);
         }
-
-        // Cancel the flow ongoing from this contract to the locker owner
-        FLUID.deleteFlow(address(this), lockerOwner);
 
         // Cancel the flow ongoing from this contract to the Staker GDA Pool
         FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, 0);
