@@ -1,156 +1,63 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity ^0.8.19;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.23;
 
-// import { console2 } from "forge-std/Test.sol";
+import { SFTest } from "./SFTest.t.sol";
 
-// import { SFTest } from "./SFTest.t.sol";
-// import { AlfaBurningProgram } from "../src/AlfaBurningProgram.sol";
-// import { DistributorBase } from "../src/DistributorBase.sol";
-// import { EmissionRegulator } from "../src/EmissionRegulator.sol";
+import {
+    ISuperToken,
+    ISuperfluidPool
+} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
-// import { IFanToken } from "../src/interfaces/IFanToken.sol";
-// import { IEmissionRegulator } from "../src/interfaces/IEmissionRegulator.sol";
-// import {
-//     ISuperfluid,
-//     ISuperTokenFactory,
-//     ISuperToken,
-//     ISuperfluidPool
-// } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
-// import { PureSuperToken } from "@superfluid-finance/ethereum-contracts/contracts/tokens/PureSuperToken.sol";
-// import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+import { IPenaltyManager } from "../src/interfaces/IPenaltyManager.sol";
 
-// using SuperTokenV1Library for ISuperToken;
+using SuperTokenV1Library for ISuperToken;
 
-// contract AlfaBurningProgramTest is SFTest {
-//     AlfaBurningProgram private _burningProgram;
-//     EmissionRegulator private _regulator;
-//     ISuperToken private _afToken;
-//     uint256 private fanTokenDecimals;
+contract PenaltyManagerTest is SFTest {
+    // Units downscaler defined in PenaltyManager.sol
+    uint128 private constant _UNIT_DOWNSCALER = 1e16;
 
-//     uint256 private constant _PROGRAM_DURATION = 180 days;
+    function setUp() public override {
+        super.setUp();
+    }
 
-//     function setUp() public override {
-//         super.setUp();
+    function testUpdateStakerUnits(address caller, uint256 stakingAmount) external {
+        stakingAmount = bound(stakingAmount, 1e16, 10_000_000e18);
 
-//         fanTokenDecimals = fanToken.decimals();
+        vm.prank(caller);
+        vm.expectRevert(IPenaltyManager.NOT_APPROVED_LOCKER.selector);
+        _penaltyManager.updateStakerUnits(stakingAmount);
 
-//         // deal some FAN to ALICE for testing
-//         _mintFanTokens(ALICE, 100_000_000 * (10 ** fanTokenDecimals));
+        vm.prank(address(_fluidLockerFactory));
+        _penaltyManager.approveLocker(caller);
 
-//         _regulator = new EmissionRegulator();
+        vm.prank(caller);
+        _penaltyManager.updateStakerUnits(stakingAmount);
 
-//         _afToken = _deployPureSuperToken(_sf.host, "AlfaFrens", "AF", 100_000_000 ether);
+        assertEq(
+            _penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(caller),
+            stakingAmount / _UNIT_DOWNSCALER,
+            "incorrect amount of units"
+        );
+    }
 
-//         _burningProgram = new AlfaBurningProgram(
-//             _sf.host, _afToken, IFanToken(fanToken), IEmissionRegulator(_regulator), _PROGRAM_DURATION
-//         );
+    function testUpdateLiquidityProvidersUnits(address caller, uint256 lpAmount) external {
+        lpAmount = bound(lpAmount, 1e16, 10_000_000e18);
 
-//         fanToken.reinitialize(address(_burningProgram));
-//         _afToken.transfer(address(_burningProgram), 100_000_000 ether);
-//     }
+        vm.prank(caller);
+        vm.expectRevert(IPenaltyManager.NOT_APPROVED_LOCKER.selector);
+        _penaltyManager.updateLiquidityProvidersUnits(lpAmount);
 
-//     function testInstantRedeem(uint256 alfaAmount) external {
-//         alfaAmount = bound(alfaAmount, 1 * (10 ** fanTokenDecimals), 50_000_000 * (10 ** fanTokenDecimals));
+        vm.prank(address(_fluidLockerFactory));
+        _penaltyManager.approveLocker(caller);
 
-//         uint256 aliceAlfaBalanceBefore = fanToken.balanceOf(ALICE);
-//         uint256 aliceAFBalanceBefore = _afToken.balanceOf(ALICE);
+        vm.prank(caller);
+        _penaltyManager.updateLiquidityProvidersUnits(lpAmount);
 
-//         vm.prank(ALICE);
-//         _burningProgram.instantRedeem(alfaAmount);
-
-//         uint256 aliceAlfaBalanceAfter = fanToken.balanceOf(ALICE);
-//         uint256 aliceAFBalanceAfter = _afToken.balanceOf(ALICE);
-
-//         assertEq(
-//             aliceAlfaBalanceAfter,
-//             aliceAlfaBalanceBefore - alfaAmount,
-//             "testInstantRedeem: FanToken balance did not update"
-//         );
-//         assertEq(
-//             aliceAFBalanceAfter,
-//             aliceAFBalanceBefore + _regulator.getAlfaToAFRatio(alfaAmount),
-//             "testInstantRedeem: AF balance did not update"
-//         );
-//     }
-
-//     function testStreamedRedeem(uint256 alfaAmount) external {
-//         alfaAmount = bound(alfaAmount, 1 * (10 ** fanTokenDecimals), 50_000_000 * (10 ** fanTokenDecimals));
-
-//         ISuperfluidPool emissionPool = _burningProgram.emissionPool();
-
-//         uint256 aliceAlfaBalanceBefore = fanToken.balanceOf(ALICE);
-//         uint256 alicePoolUnitsBefore = emissionPool.getUnits(ALICE);
-
-//         vm.prank(ALICE);
-//         _burningProgram.streamedRedeem(alfaAmount);
-
-//         uint256 aliceAlfaBalanceAfter = fanToken.balanceOf(ALICE);
-//         uint256 alicePoolUnitsAfter = emissionPool.getUnits(ALICE);
-
-//         assertEq(
-//             aliceAlfaBalanceAfter,
-//             aliceAlfaBalanceBefore - alfaAmount,
-//             "testStreamedRedeem: FanToken balance did not update"
-//         );
-//         assertEq(
-//             alicePoolUnitsAfter,
-//             alicePoolUnitsBefore + _regulator.getAlfaToAFEmissionUnits(alfaAmount),
-//             "testStreamedRedeem: Pool Units did not update"
-//         );
-//     }
-
-//     function testProgramEnded(uint256 alfaAmount, uint256 timestamp) external {
-//         alfaAmount = bound(alfaAmount, 1 * (10 ** fanTokenDecimals), 50_000_000 * (10 ** fanTokenDecimals));
-
-//         timestamp = bound(timestamp, block.timestamp + _PROGRAM_DURATION + 1, block.timestamp + 36500 days);
-
-//         vm.warp(timestamp);
-
-//         vm.startPrank(ALICE);
-//         vm.expectRevert(DistributorBase.PROGRAM_HAS_ENDED.selector);
-//         _burningProgram.instantRedeem(alfaAmount);
-
-//         vm.expectRevert(DistributorBase.PROGRAM_HAS_ENDED.selector);
-//         _burningProgram.streamedRedeem(alfaAmount);
-//         vm.stopPrank();
-//     }
-
-//     function testStartFlow(uint256 alfaAmount) external {
-//         alfaAmount = bound(alfaAmount, 1 * (10 ** fanTokenDecimals), 50_000_000 * (10 ** fanTokenDecimals));
-
-//         vm.prank(ALICE);
-//         _burningProgram.streamedRedeem(alfaAmount);
-
-//         ISuperfluidPool emissionPool = _burningProgram.emissionPool();
-
-//         int96 flowBefore = emissionPool.getMemberFlowRate(ALICE);
-
-//         int96 distributionFlowBefore = _afToken.getFlowDistributionFlowRate(address(_burningProgram), emissionPool);
-
-//         _burningProgram.startFlow();
-
-//         int96 flowAfter = emissionPool.getMemberFlowRate(ALICE);
-//         int96 distributionFlowAfter = _afToken.getFlowDistributionFlowRate(address(_burningProgram), emissionPool);
-
-//         assertGt(
-//             distributionFlowAfter,
-//             distributionFlowBefore,
-//             "testStartFlow: distribution flow rate did not update correctly"
-//         );
-
-//         assertGt(flowAfter, flowBefore, "testStartFlow: flow rate did not update correctly");
-//     }
-
-//     function _deployPureSuperToken(ISuperfluid host, string memory name, string memory symbol, uint256 initialSupply)
-//         internal
-//         returns (ISuperToken pureSuperToken)
-//     {
-//         ISuperTokenFactory factory = host.getSuperTokenFactory();
-
-//         PureSuperToken pureSuperTokenProxy = new PureSuperToken();
-//         factory.initializeCustomSuperToken(address(pureSuperTokenProxy));
-//         pureSuperTokenProxy.initialize(name, symbol, initialSupply);
-
-//         pureSuperToken = ISuperToken(address(pureSuperTokenProxy));
-//     }
-// }
+        assertEq(
+            _penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(caller),
+            lpAmount / _UNIT_DOWNSCALER,
+            "incorrect amount of units"
+        );
+    }
+}
