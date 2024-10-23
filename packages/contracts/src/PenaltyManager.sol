@@ -83,14 +83,6 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     }
 
     /// @inheritdoc IPenaltyManager
-    function updateLiquidityProvidersUnits(uint256 liquidityProvided) external {
-        if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
-
-        /// FIXME Find proper liquidity provided to GDA pool units calculation
-        FLUID.updateMemberUnits(TAX_DISTRIBUTION_POOL, msg.sender, uint128(liquidityProvided) / _UNIT_DOWNSCALER);
-    }
-
-    /// @inheritdoc IPenaltyManager
     function setLockerFactory(address lockerFactoryAddress) external onlyOwner {
         lockerFactory = lockerFactoryAddress;
     }

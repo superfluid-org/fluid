@@ -34,13 +34,6 @@ interface IPenaltyManager {
     function updateStakerUnits(uint256 lockerStakedBalance) external;
 
     /**
-     * @notice Update the caller's (liquidity provider) units within the GDA Penalty Pool
-     * @dev Only approved lockers can perform this operation
-     * @param liquidityProvided locker's amount of liquidity provided
-     */
-    function updateLiquidityProvidersUnits(uint256 liquidityProvided) external;
-
-    /**
      * @notice Update the Locker Factory contract address
      * @dev Only the contract owner can perform this operation
      * @param lockerFactoryAddress Locker Factory contract address
