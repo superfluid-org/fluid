@@ -37,9 +37,6 @@ contract Fontaine is Initializable, IFontaine {
     /// @notice Superfluid pool interface
     ISuperfluidPool public immutable TAX_DISTRIBUTION_POOL;
 
-    /// @notice Locker address associated to this Fontaine
-    address public locker;
-
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
     //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
@@ -64,51 +61,12 @@ contract Fontaine is Initializable, IFontaine {
      * @notice Fontaine contract initializer
      * @param connectedLocker Locker contract address connected to this Fontaine
      */
-    function initialize(address connectedLocker, address lockerOwner, int96 unlockFlowRate, int96 taxFlowRate)
-        external
-        initializer
-    {
-        locker = connectedLocker;
-
+    function initialize(address lockerOwner, int96 unlockFlowRate, int96 taxFlowRate) external initializer {
         // Distribute Tax flow to Staker GDA Pool
         FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, taxFlowRate);
 
+        /// FIXME : revert if recipient is SuperApp
         // Create the unlocking flow from the Fontaine to the locker owner
         FLUID.createFlow(lockerOwner, unlockFlowRate);
-    }
-
-    //      ______     __                        __   ______                 __  _
-    //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
-    //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
-    //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
-    //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
-
-    /// @inheritdoc IFontaine
-    function cancelUnlock(address lockerOwner) external onlyConnectedLocker {
-        // Ensure that there is an unlocking process to cancel
-        if (FLUID.getFlowRate(address(this), lockerOwner) != 0) {
-            // Cancel the flow ongoing from this contract to the locker owner
-            FLUID.deleteFlow(address(this), lockerOwner);
-        }
-
-        // Cancel the flow ongoing from this contract to the Staker GDA Pool
-        FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, 0);
-
-        // Transfer entire FLUID balance back to the connected locker
-        FLUID.transfer(msg.sender, FLUID.balanceOf(address(this)));
-    }
-
-    //      __  ___          ___ _____
-    //     /  |/  /___  ____/ (_) __(_)__  __________
-    //    / /|_/ / __ \/ __  / / /_/ / _ \/ ___/ ___/
-    //   / /  / / /_/ / /_/ / / __/ /  __/ /  (__  )
-    //  /_/  /_/\____/\__,_/_/_/ /_/\___/_/  /____/
-
-    /**
-     * @dev Reverts if called by any account other than the connected locker.
-     */
-    modifier onlyConnectedLocker() {
-        if (msg.sender != locker) revert NOT_CONNECTED_LOCKER();
-        _;
     }
 }

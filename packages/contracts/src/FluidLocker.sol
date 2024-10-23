@@ -30,6 +30,7 @@ using SafeCast for int256;
  * @notice Contract responsible for locking and holding FLUID token on behalf of users
  *
  */
+/// FIXME Inherit ReentrancyGuard
 contract FluidLocker is Initializable, IFluidLocker {
     //      ____                          __        __    __        _____ __        __
     //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
@@ -210,17 +211,6 @@ contract FluidLocker is Initializable, IFluidLocker {
         }
 
         /// FIXME emit `unlocked locker` event
-    }
-
-    /// @inheritdoc IFluidLocker
-    function cancelUnlock(uint16 unlockId) external onlyOwner {
-        // Get the Fontaine associated to the given unlock identifier
-        IFontaine fontaineToCancel = fontaines[unlockId];
-
-        // Cancel the ongoing unlock
-        fontaineToCancel.cancelUnlock(msg.sender);
-
-        /// FIXME emit `unlock cancelled locker` event
     }
 
     /// @inheritdoc IFluidLocker

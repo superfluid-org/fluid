@@ -79,13 +79,6 @@ interface IFluidLocker {
     function unlock(uint128 unlockPeriod) external;
 
     /**
-     * @notice Cancel an ongoing unlock
-     * @dev Only this Locker owner can call this function
-     * @param unlockId the unlock identifier to be cancelled
-     */
-    function cancelUnlock(uint16 unlockId) external;
-
-    /**
      * @notice Stake all the available FLUID Token of this locker
      * @dev Only this Locker owner can call this function
      */
