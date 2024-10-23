@@ -375,11 +375,11 @@ contract FluidLocker is Initializable, IFluidLocker {
         pure
         returns (int96 unlockFlowRate, int96 taxFlowRate)
     {
-        uint256 amountToUser = (amountToUnlock * _getUnlockingPercentage(unlockPeriod)) / _BP_DENOMINATOR;
-        uint256 penaltyAmount = amountToUnlock - amountToUser;
+        int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
 
-        unlockFlowRate = int256(amountToUser / unlockPeriod).toInt96();
-        taxFlowRate = int256(penaltyAmount / unlockPeriod).toInt96();
+        unlockFlowRate = (globalFlowRate * int256(_getUnlockingPercentage(unlockPeriod))).toInt96()
+            / int256(_BP_DENOMINATOR).toInt96();
+        taxFlowRate = globalFlowRate - unlockFlowRate;
     }
 
     function _getUnlockingPercentage(uint128 unlockPeriod) internal pure returns (uint256 unlockingPercentageBP) {
