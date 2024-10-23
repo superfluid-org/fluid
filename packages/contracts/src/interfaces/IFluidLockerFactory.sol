@@ -20,13 +20,6 @@ interface IFluidLockerFactory {
      */
     function createLockerContract() external returns (address lockerInstance);
 
-    /**
-     * @notice Deploy a Locker and connected Fontaine for the given user
-     * @param lockerOwner Owner address of the Locker to be deployed
-     * @return lockerInstance Deployed Locker contract address
-     */
-    function createLockerContract(address lockerOwner) external returns (address lockerInstance);
-
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/

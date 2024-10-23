@@ -239,7 +239,7 @@ contract FluidLocker is Initializable, IFluidLocker {
     /// @inheritdoc IFluidLocker
     function unstake() external onlyOwner {
         if (block.timestamp < stakingUnlocksAt) {
-        revert STAKING_COOLDOWN_NOT_ELAPSED();
+            revert STAKING_COOLDOWN_NOT_ELAPSED();
         }
 
         // Enfore staked balance is not zero
@@ -349,7 +349,7 @@ contract FluidLocker is Initializable, IFluidLocker {
         fontaineCount++;
 
         // Initialize the new Fontaine instance (this initiate the unlock process)
-        IFontaine(newFontaine).initialize(address(this), lockerOwner, unlockFlowRate, taxFlowRate);
+        IFontaine(newFontaine).initialize(lockerOwner, unlockFlowRate, taxFlowRate);
     }
 
     function _calculateVestUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)

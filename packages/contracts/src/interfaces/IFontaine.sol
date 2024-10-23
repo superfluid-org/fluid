@@ -29,17 +29,9 @@ interface IFontaine {
     /**
      * @notice Creates a flow to the locker owner and distribute a flow to the penalty GDA pool
      * @dev Fontaine contract initializer
-     * @param connectedLocker Locker contract address connected to this Fontaine
      * @param lockerOwner locker owner account address
      * @param unlockFlowRate FLUID flow rate from this contract to the locker owner
      * @param taxFlowRate FLUID flow rate from this contract to the penalty GDA pool
      */
-    function initialize(address connectedLocker, address lockerOwner, int96 unlockFlowRate, int96 taxFlowRate)
-        external;
-
-    /**
-     * @notice Stops the flow to the locker owner and transfer residual FLUID back to the connected locker
-     * @param lockerOwner locker owner account address
-     */
-    function cancelUnlock(address lockerOwner) external;
+    function initialize(address lockerOwner, int96 unlockFlowRate, int96 taxFlowRate) external;
 }

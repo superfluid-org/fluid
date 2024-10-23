@@ -57,10 +57,7 @@ contract Fontaine is Initializable, IFontaine {
         TAX_DISTRIBUTION_POOL = taxDistributionPool;
     }
 
-    /**
-     * @notice Fontaine contract initializer
-     * @param connectedLocker Locker contract address connected to this Fontaine
-     */
+    /// @inheritdoc IFontaine
     function initialize(address lockerOwner, int96 unlockFlowRate, int96 taxFlowRate) external initializer {
         // Distribute Tax flow to Staker GDA Pool
         FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, taxFlowRate);

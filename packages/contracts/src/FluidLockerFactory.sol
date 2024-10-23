@@ -63,24 +63,7 @@ contract FluidLockerFactory is IFluidLockerFactory {
 
     /// @inheritdoc IFluidLockerFactory
     function createLockerContract() external returns (address lockerInstance) {
-        lockerInstance = createLockerContract(msg.sender);
-    }
-
-    /// @inheritdoc IFluidLockerFactory
-    function createLockerContract(address lockerOwner) public returns (address lockerInstance) {
-        // Use create2 to deploy a Locker Beacon Proxy with the hashed encoded LockerOwner as the salt
-        lockerInstance =
-            address(new BeaconProxy{ salt: keccak256(abi.encode(lockerOwner)) }(address(LOCKER_BEACON), ""));
-
-        _lockers[lockerInstance] = true;
-
-        // Initialize the new Locker instance
-        FluidLocker(lockerInstance).initialize(lockerOwner);
-
-        // Approve the newly created locker to interact with the Penalty Manager
-        _PENALTY_MANAGER.approveLocker(lockerInstance);
-
-        /// FIXME emit Locker Created event
+        lockerInstance = _createLockerContract(msg.sender);
     }
 
     //   _    ___                 ______                 __  _
@@ -117,5 +100,27 @@ contract FluidLockerFactory is IFluidLockerFactory {
     /// @inheritdoc IFluidLockerFactory
     function getLockerBeaconImplementation() public view returns (address lockerBeaconImpl) {
         lockerBeaconImpl = LOCKER_BEACON.implementation();
+    }
+
+    //      ____      __                        __   ______                 __  _
+    //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
+    //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    function _createLockerContract(address lockerOwner) internal returns (address lockerInstance) {
+        // Use create2 to deploy a Locker Beacon Proxy with the hashed encoded LockerOwner as the salt
+        lockerInstance =
+            address(new BeaconProxy{ salt: keccak256(abi.encode(lockerOwner)) }(address(LOCKER_BEACON), ""));
+
+        _lockers[lockerInstance] = true;
+
+        // Initialize the new Locker instance
+        FluidLocker(lockerInstance).initialize(lockerOwner);
+
+        // Approve the newly created locker to interact with the Penalty Manager
+        _PENALTY_MANAGER.approveLocker(lockerInstance);
+
+        /// FIXME emit Locker Created event
     }
 }
