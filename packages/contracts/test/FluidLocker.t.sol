@@ -186,6 +186,21 @@ contract FluidLockerTest is SFTest {
         );
     }
 
+    function testInvalidUnlockPeriod(uint128 unlockPeriod) external {
+        uint256 funding = 10_000e18;
+        _helperFundLocker(address(aliceLocker), funding);
+
+        unlockPeriod = uint128(bound(unlockPeriod, 0 + 1, _MIN_UNLOCK_PERIOD - 1));
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.INVALID_UNLOCK_PERIOD.selector);
+        aliceLocker.unlock(unlockPeriod);
+
+        unlockPeriod = uint128(bound(unlockPeriod, _MAX_UNLOCK_PERIOD + 1, 100_000 days));
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.INVALID_UNLOCK_PERIOD.selector);
+        aliceLocker.unlock(unlockPeriod);
+    }
+
     function testStake() external {
         uint256 funding = 10_000e18;
         _helperFundLocker(address(aliceLocker), funding);
