@@ -239,7 +239,7 @@ contract FluidLocker is Initializable, IFluidLocker {
     /// @inheritdoc IFluidLocker
     function unstake() external onlyOwner {
         if (block.timestamp < stakingUnlocksAt) {
-            revert STAKING_COOLDOWN_NOT_ELAPSED();
+        revert STAKING_COOLDOWN_NOT_ELAPSED();
         }
 
         // Enfore staked balance is not zero
@@ -255,14 +255,6 @@ contract FluidLocker is Initializable, IFluidLocker {
         FLUID.disconnectPool(TAX_DISTRIBUTION_POOL);
 
         /// FIXME emit `unstaked` event
-    }
-
-    /// @inheritdoc IFluidLocker
-    function transferLocker(address recipient) external onlyOwner {
-        if (recipient == address(0)) revert FORBIDDEN();
-        lockerOwner = recipient;
-
-        /// FIXME emit `ownership transferred` event
     }
 
     //   _    ___                 ______                 __  _

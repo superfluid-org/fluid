@@ -90,13 +90,6 @@ interface IFluidLocker {
      */
     function unstake() external;
 
-    /**
-     * @notice Transfer this Locker to the given `recipient`
-     * @dev Only this Locker owner can call this function
-     * @param recipient address to transfer this Locker to
-     */
-    function transferLocker(address recipient) external;
-
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
