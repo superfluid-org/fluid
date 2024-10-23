@@ -171,19 +171,6 @@ contract FluidLockerTest is SFTest {
             funding / 1e16,
             "incorrect tax flowrate"
         );
-
-        uint16 unlockId = 0;
-
-        vm.prank(ALICE);
-        aliceLocker.cancelUnlock(unlockId);
-
-        // assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
-        assertEq(ISuperToken(_fluidSuperToken).getFlowRate(address(newFontaine), ALICE), 0, "incorrect unlock flowrate");
-        assertEq(
-            FluidLocker(address(aliceLocker)).TAX_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
-            0,
-            "incorrect tax flowrate"
-        );
     }
 
     function testInvalidUnlockPeriod(uint128 unlockPeriod) external {

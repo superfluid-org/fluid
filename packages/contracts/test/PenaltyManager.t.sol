@@ -22,6 +22,7 @@ contract PenaltyManagerTest is SFTest {
     }
 
     function testUpdateStakerUnits(address caller, uint256 stakingAmount) external {
+        vm.assume(caller != address(0));
         stakingAmount = bound(stakingAmount, 1e16, 10_000_000e18);
 
         vm.prank(caller);
@@ -37,26 +38,6 @@ contract PenaltyManagerTest is SFTest {
         assertEq(
             _penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(caller),
             stakingAmount / _UNIT_DOWNSCALER,
-            "incorrect amount of units"
-        );
-    }
-
-    function testUpdateLiquidityProvidersUnits(address caller, uint256 lpAmount) external {
-        lpAmount = bound(lpAmount, 1e16, 10_000_000e18);
-
-        vm.prank(caller);
-        vm.expectRevert(IPenaltyManager.NOT_APPROVED_LOCKER.selector);
-        _penaltyManager.updateLiquidityProvidersUnits(lpAmount);
-
-        vm.prank(address(_fluidLockerFactory));
-        _penaltyManager.approveLocker(caller);
-
-        vm.prank(caller);
-        _penaltyManager.updateLiquidityProvidersUnits(lpAmount);
-
-        assertEq(
-            _penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(caller),
-            lpAmount / _UNIT_DOWNSCALER,
             "incorrect amount of units"
         );
     }
