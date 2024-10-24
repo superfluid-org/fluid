@@ -21,6 +21,8 @@ import { IFluidLocker } from "./interfaces/IFluidLocker.sol";
 import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
 import { IFontaine } from "./interfaces/IFontaine.sol";
 
+import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
+
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
 
@@ -31,7 +33,7 @@ using SafeCast for int256;
  *
  */
 /// FIXME Inherit ReentrancyGuard
-contract FluidLocker is Initializable, IFluidLocker {
+contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //      ____                          __        __    __        _____ __        __
     //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
     //     / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -151,7 +153,10 @@ contract FluidLocker is Initializable, IFluidLocker {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFluidLocker
-    function claim(uint256 programId, uint128 totalProgramUnits, uint256 nonce, bytes memory stackSignature) external {
+    function claim(uint256 programId, uint128 totalProgramUnits, uint256 nonce, bytes memory stackSignature)
+        external
+        nonReentrant
+    {
         // Get the corresponding program pool
         ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
 
@@ -169,7 +174,7 @@ contract FluidLocker is Initializable, IFluidLocker {
         uint128[] memory totalProgramUnits,
         uint256[] memory nonces,
         bytes[] memory stackSignatures
-    ) external {
+    ) external nonReentrant {
         for (uint256 i = 0; i < programIds.length; ++i) {
             // Get the corresponding program pool
             ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programIds[i]);
@@ -184,7 +189,7 @@ contract FluidLocker is Initializable, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function lock(uint256 amount) external {
+    function lock(uint256 amount) external nonReentrant {
         // Fetch the amount of FLUID Token to be locked from the caller
         FLUID.transferFrom(msg.sender, address(this), amount);
 
@@ -192,7 +197,7 @@ contract FluidLocker is Initializable, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function unlock(uint128 unlockPeriod) external onlyOwner {
+    function unlock(uint128 unlockPeriod) external nonReentrant onlyOwner {
         // Enforce unlock period validity
         if (unlockPeriod != 0 && (unlockPeriod < _MIN_UNLOCK_PERIOD || unlockPeriod > _MAX_UNLOCK_PERIOD)) {
             revert INVALID_UNLOCK_PERIOD();
@@ -214,7 +219,7 @@ contract FluidLocker is Initializable, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function stake() external onlyOwner {
+    function stake() external nonReentrant onlyOwner {
         uint256 amountToStake = getAvailableBalance();
 
         if (amountToStake == 0) revert NO_FLUID_TO_STAKE();
@@ -237,7 +242,7 @@ contract FluidLocker is Initializable, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function unstake() external onlyOwner {
+    function unstake() external nonReentrant onlyOwner {
         if (block.timestamp < stakingUnlocksAt) {
             revert STAKING_COOLDOWN_NOT_ELAPSED();
         }
