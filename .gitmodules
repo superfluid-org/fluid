@@ -11,3 +11,6 @@
 [submodule "packages/contracts/lib/superfluid-protocol-monorepo"]
 	path = packages/contracts/lib/superfluid-protocol-monorepo
 	url = https://github.com/superfluid-finance/protocol-monorepo
+[submodule "packages/contracts/lib/solady"]
+	path = packages/contracts/lib/solady
+	url = https://github.com/vectorized/solady
