@@ -9,6 +9,9 @@ import {
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
+/* Solady ECDSA Library */
+import { ECDSA } from "solady/utils/ECDSA.sol";
+
 /* FLUID Interfaces */
 import { IEPProgramManager } from "./interfaces/IEPProgramManager.sol";
 
@@ -29,6 +32,9 @@ contract EPProgramManager is IEPProgramManager {
 
     /// FIXME storage packing check
 
+    /// @notice Signature length requirement (r: 32 bytes, s: 32 bytes, v: 1 byte)
+    uint256 private constant _SIGNATURE_LENGTH = 65;
+
     /// @notice Stores the program details for a given program identifier
     mapping(uint256 programId => EPProgram program) public programs;
 
@@ -46,10 +52,11 @@ contract EPProgramManager is IEPProgramManager {
         external
         returns (ISuperfluidPool distributionPool)
     {
-        // Ensure non-null program identifier
+        // Input validation
         if (programId == 0) revert INVALID_PARAMETER();
-
-        // Ensure program does not already exists
+        if (programAdmin == address(0)) revert INVALID_PARAMETER();
+        if (signer == address(0)) revert INVALID_PARAMETER();
+        if (address(token) == address(0)) revert INVALID_PARAMETER();
         if (address(programs[programId].distributionPool) != address(0)) {
             revert PROGRAM_ALREADY_CREATED();
         }
@@ -62,13 +69,24 @@ contract EPProgramManager is IEPProgramManager {
         distributionPool = token.createPool(address(this), poolConfig);
 
         // Persist program details
-        programs[programId] = EPProgram(programAdmin, signer, token, distributionPool);
+        programs[programId] = EPProgram({
+            programAdmin: programAdmin,
+            stackSigner: signer,
+            token: token,
+            distributionPool: distributionPool
+        });
 
         /// FIXME emit ProgramCreated event
     }
 
     /// @inheritdoc IEPProgramManager
-    function updateProgramSigner(uint256 programId, address newSigner) external {
+    function updateProgramSigner(uint256 programId, address newSigner)
+        external
+        programExists(programId)
+        onlyProgramAdmin(programId)
+    {
+        if (newSigner == address(0)) revert INVALID_PARAMETER();
+
         // Ensure caller is program admin
         if (msg.sender != programs[programId].programAdmin) {
             revert NOT_PROGRAM_ADMIN();
@@ -94,11 +112,12 @@ contract EPProgramManager is IEPProgramManager {
     ) external {
         uint256 length = programIds.length;
 
+        if (length == 0) revert INVALID_PARAMETER();
         if (length != newUnits.length || length != nonces.length || length != stackSignatures.length) {
             revert INVALID_PARAMETER();
         }
 
-        for (uint256 i = 0; i < length; ++i) {
+        for (uint256 i; i < length; ++i) {
             updateUserUnits(programIds[i], msg.sender, newUnits[i], nonces[i], stackSignatures[i]);
         }
     }
@@ -110,20 +129,27 @@ contract EPProgramManager is IEPProgramManager {
         uint128 newUnits,
         uint256 nonce,
         bytes memory stackSignature
-    ) public {
-        EPProgram memory p = programs[programId];
+    ) public programExists(programId) {
+        // Input validation
+        if (user == address(0)) revert INVALID_PARAMETER();
+        if (stackSignature.length != _SIGNATURE_LENGTH) {
+            revert INVALID_SIGNATURE("signature length");
+        }
 
+        // Verify and update nonce
         if (!_isNonceValid(programId, user, nonce)) {
             revert INVALID_SIGNATURE("nonce");
         }
-
         _lastValidNonces[programId][user] = nonce;
 
-        if (!_verifySignature(p.stackSigner, user, newUnits, programId, nonce, stackSignature)) {
+        EPProgram memory program = programs[programId];
+
+        // Verify signature
+        if (!_verifySignature(program.stackSigner, user, newUnits, programId, nonce, stackSignature)) {
             revert INVALID_SIGNATURE("signer");
         }
 
-        p.token.updateMemberUnits(p.distributionPool, user, newUnits);
+        program.token.updateMemberUnits(program.distributionPool, user, newUnits);
 
         /// FIXME emit UserUnitsUpdated event
     }
@@ -150,10 +176,28 @@ contract EPProgramManager is IEPProgramManager {
     //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
+    /**
+     * @notice Checks if a nonce is valid for a given program and user
+     * @dev A nonce is valid if it's greater than the last used nonce
+     * @param programId The program identifier
+     * @param user The user address
+     * @param nonce The nonce to validate
+     * @return isValid True if the nonce is valid
+     */
     function _isNonceValid(uint256 programId, address user, uint256 nonce) internal view returns (bool isValid) {
         isValid = nonce > _lastValidNonces[programId][user];
     }
 
+    /**
+     * @notice Verifies a signature for updating units
+     *  @param signer The expected signer address
+     *  @param user The user whose units are being updated
+     *  @param newUnits The new units value
+     *  @param programId The program identifier
+     *  @param nonce The nonce used in the signature
+     *  @param signature The signature to verify
+     *  @return isValid True if the signature is valid
+     */
     function _verifySignature(
         address signer,
         address user,
@@ -161,29 +205,37 @@ contract EPProgramManager is IEPProgramManager {
         uint256 programId,
         uint256 nonce,
         bytes memory signature
-    ) internal pure returns (bool isValid) {
-        if (signature.length != 65) {
-            revert INVALID_SIGNATURE("signature length");
-        }
+    ) internal view returns (bool isValid) {
+        bytes32 hash = ECDSA.toEthSignedMessageHash(keccak256(abi.encodePacked(user, newUnits, programId, nonce)));
 
-        bytes32 ethSignedMessageHash = keccak256(
-            abi.encodePacked(
-                "\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(user, newUnits, programId, nonce))
-            )
-        );
-        (bytes32 r, bytes32 s, uint8 v) = _splitSignature(signature);
-
-        isValid = ecrecover(ethSignedMessageHash, v, r, s) == signer;
+        isValid = ECDSA.recover(hash, signature) == signer;
     }
 
-    function _splitSignature(bytes memory sig) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
-        assembly {
-            // first 32 bytes, after the length prefix
-            r := mload(add(sig, 32))
-            // second 32 bytes
-            s := mload(add(sig, 64))
-            // final byte (first byte of the next 32 bytes)
-            v := byte(0, mload(add(sig, 96)))
+    //      __  ___          ___ _____
+    //     /  |/  /___  ____/ (_) __(_)__  __________
+    //    / /|_/ / __ \/ __  / / /_/ / _ \/ ___/ ___/
+    //   / /  / / /_/ / /_/ / / __/ /  __/ /  (__  )
+    //  /_/  /_/\____/\__,_/_/_/ /_/\___/_/  /____/
+
+    /**
+     * @notice Ensures the program exists
+     * @param programId identifier of the program to check
+     */
+    modifier programExists(uint256 programId) {
+        if (address(programs[programId].distributionPool) == address(0)) {
+            revert PROGRAM_NOT_FOUND();
         }
+        _;
+    }
+
+    /**
+     * @notice Ensures the caller is the program admin
+     * @param programId identifier of the program to check
+     */
+    modifier onlyProgramAdmin(uint256 programId) {
+        if (msg.sender != programs[programId].programAdmin) {
+            revert NOT_PROGRAM_ADMIN();
+        }
+        _;
     }
 }

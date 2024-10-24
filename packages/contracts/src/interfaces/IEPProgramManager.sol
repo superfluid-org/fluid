@@ -49,12 +49,16 @@ interface IEPProgramManager {
     /// @dev Error Selector : 0x4c7f89d7
     error NOT_PROGRAM_ADMIN();
 
+    /// @notice Error thrown when attempting an operation on a non-existent program
+    error PROGRAM_NOT_FOUND();
+
     /// @notice Error thrown when passing an invalid parameter
     /// @dev Error Selector : 0x4c4f685a
     error INVALID_PARAMETER();
 
     /// @notice Error thrown when a signature is of invalid
     /// @dev Error Selector : 0x30f01ccf
+    /// @param reason Description of what part of the signature was invalid
     error INVALID_SIGNATURE(string reason);
 
     //      ______     __                        __   ______                 __  _
