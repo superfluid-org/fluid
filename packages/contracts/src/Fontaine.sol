@@ -6,8 +6,10 @@ import { Initializable } from "@openzeppelin-v5/contracts/proxy/utils/Initializa
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {
+    ISuperfluid,
     ISuperfluidPool,
-    ISuperToken
+    ISuperToken,
+    ISuperApp
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
@@ -58,12 +60,14 @@ contract Fontaine is Initializable, IFontaine {
     }
 
     /// @inheritdoc IFontaine
-    function initialize(address lockerOwner, int96 unlockFlowRate, int96 taxFlowRate) external initializer {
+    function initialize(address unlockRecipient, int96 unlockFlowRate, int96 taxFlowRate) external initializer {
+        // Ensure recipient is not a SuperApp
+        if (ISuperfluid(FLUID.getHost()).isApp(ISuperApp(unlockRecipient))) revert CANNOT_UNLOCK_TO_SUPERAPP();
+
         // Distribute Tax flow to Staker GDA Pool
         FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, taxFlowRate);
 
-        /// FIXME : revert if recipient is SuperApp
         // Create the unlocking flow from the Fontaine to the locker owner
-        FLUID.createFlow(lockerOwner, unlockFlowRate);
+        FLUID.createFlow(unlockRecipient, unlockFlowRate);
     }
 }

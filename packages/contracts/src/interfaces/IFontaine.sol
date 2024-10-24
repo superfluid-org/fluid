@@ -20,6 +20,9 @@ interface IFontaine {
     /// @notice Error thrown when attempting to cancel a non-existant unlock
     error NO_ACTIVE_UNLOCK();
 
+    /// @notice Error thrown when attempting to unlock to a SuperApp
+    error CANNOT_UNLOCK_TO_SUPERAPP();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -29,9 +32,9 @@ interface IFontaine {
     /**
      * @notice Creates a flow to the locker owner and distribute a flow to the penalty GDA pool
      * @dev Fontaine contract initializer
-     * @param lockerOwner locker owner account address
+     * @param unlockRecipient recipient account address
      * @param unlockFlowRate FLUID flow rate from this contract to the locker owner
      * @param taxFlowRate FLUID flow rate from this contract to the penalty GDA pool
      */
-    function initialize(address lockerOwner, int96 unlockFlowRate, int96 taxFlowRate) external;
+    function initialize(address unlockRecipient, int96 unlockFlowRate, int96 taxFlowRate) external;
 }
