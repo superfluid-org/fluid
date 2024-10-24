@@ -75,8 +75,9 @@ interface IFluidLocker {
      * @notice Unlock the available FLUID Token from this locker
      * @dev Only this Locker owner can call this function
      * @param unlockPeriod the desired unlocking period (instant unlock if sets to 0)
+     * @param recipient account to receive the unlocked FLUID tokens
      */
-    function unlock(uint128 unlockPeriod) external;
+    function unlock(uint128 unlockPeriod, address recipient) external;
 
     /**
      * @notice Stake all the available FLUID Token of this locker
