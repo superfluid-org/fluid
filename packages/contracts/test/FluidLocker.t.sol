@@ -124,10 +124,14 @@ contract FluidLockerTest is SFTest {
 
         vm.prank(BOB);
         vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
-        aliceLocker.unlock(0);
+        aliceLocker.unlock(0, ALICE);
 
         vm.prank(ALICE);
-        aliceLocker.unlock(0);
+        vm.expectRevert(IFluidLocker.FORBIDDEN.selector);
+        aliceLocker.unlock(0, address(0));
+
+        vm.prank(ALICE);
+        aliceLocker.unlock(0, ALICE);
 
         assertEq(_fluidSuperToken.balanceOf(address(ALICE)), 2_000e18, "incorrect Alice bal after op");
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
@@ -135,7 +139,7 @@ contract FluidLockerTest is SFTest {
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.NO_FLUID_TO_UNLOCK.selector);
-        aliceLocker.unlock(0);
+        aliceLocker.unlock(0, ALICE);
     }
 
     function testVestUnlock(uint128 unlockPeriod) external {
@@ -155,7 +159,7 @@ contract FluidLockerTest is SFTest {
         (int96 taxFlowRate, int96 unlockFlowRate) = _helperCalculateUnlockFlowRates(funding, unlockPeriod);
 
         vm.prank(ALICE);
-        aliceLocker.unlock(unlockPeriod);
+        aliceLocker.unlock(unlockPeriod, ALICE);
 
         IFontaine newFontaine = FluidLocker(address(aliceLocker)).fontaines(0);
 
@@ -180,12 +184,12 @@ contract FluidLockerTest is SFTest {
         unlockPeriod = uint128(bound(unlockPeriod, 0 + 1, _MIN_UNLOCK_PERIOD - 1));
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.INVALID_UNLOCK_PERIOD.selector);
-        aliceLocker.unlock(unlockPeriod);
+        aliceLocker.unlock(unlockPeriod, ALICE);
 
         unlockPeriod = uint128(bound(unlockPeriod, _MAX_UNLOCK_PERIOD + 1, 100_000 days));
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.INVALID_UNLOCK_PERIOD.selector);
-        aliceLocker.unlock(unlockPeriod);
+        aliceLocker.unlock(unlockPeriod, ALICE);
     }
 
     function testStake() external {

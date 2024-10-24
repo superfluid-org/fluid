@@ -22,6 +22,9 @@ contract EPProgramManagerTest is SFTest {
 
     function testCreateProgram(uint256 _pId, address _admin, address _signer) external {
         vm.assume(_pId != 0);
+        vm.assume(_admin != address(0));
+        vm.assume(_signer != address(0));
+
         ISuperfluidPool pool = _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
 
         (address programAdmin, address stackSigner, ISuperToken token, ISuperfluidPool distributionPool) =
@@ -43,6 +46,9 @@ contract EPProgramManagerTest is SFTest {
         external
     {
         vm.assume(_pId != 0);
+        vm.assume(_admin != address(0));
+        vm.assume(_signer != address(0));
+        vm.assume(_newSigner != address(0));
         vm.assume(_signer != _newSigner);
         vm.assume(_admin != _nonAdmin);
 
