@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import { Script } from "forge-std/Script.sol";
+import { Script, console2 } from "forge-std/Script.sol";
 import {
     ISuperfluid,
     ISuperfluidPool,
@@ -10,7 +10,7 @@ import {
 
 import { IEPProgramManager } from "../../src/EPProgramManager.sol";
 
-// forge script script/CreateProgram.s.sol:CreateProgram --rpc-url $RPC_URL --broadcast --verify -vvvv
+// forge script script/utils/CreateProgram.s.sol:CreateProgram --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast -vvvv
 contract CreateProgram is Script {
     function setUp() public { }
 
@@ -21,7 +21,7 @@ contract CreateProgram is Script {
         ISuperToken fluid = ISuperToken(vm.envAddress("FLUID_ADDRESS"));
         address signer = vm.envAddress("STACK_SIGNER_ADDRESS");
         IEPProgramManager programManager = IEPProgramManager(vm.envAddress("EP_PROGRAM_MANAGER_ADDRESS"));
-        uint256 programId = uint256(vm.envUint("PROGRAM_ID"));
+        uint256 programId = vm.envUint("PROGRAM_ID");
 
         programManager.createProgram(programId, vm.addr(deployerPrivateKey), signer, fluid);
     }
