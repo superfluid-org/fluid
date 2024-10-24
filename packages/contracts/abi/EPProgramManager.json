@@ -5,8 +5,8 @@
     "inputs": [
       {
         "name": "programId",
-        "type": "uint96",
-        "internalType": "uint96"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "programAdmin",
@@ -39,8 +39,8 @@
     "inputs": [
       {
         "name": "programId",
-        "type": "uint96",
-        "internalType": "uint96"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "user",
@@ -63,8 +63,8 @@
     "inputs": [
       {
         "name": "programId",
-        "type": "uint96",
-        "internalType": "uint96"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [
@@ -82,8 +82,8 @@
     "inputs": [
       {
         "name": "programId",
-        "type": "uint96",
-        "internalType": "uint96"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [
@@ -116,8 +116,8 @@
     "inputs": [
       {
         "name": "programId",
-        "type": "uint96",
-        "internalType": "uint96"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "newSigner",
@@ -133,37 +133,9 @@
     "name": "updateUnits",
     "inputs": [
       {
-        "name": "programIds",
-        "type": "uint96[]",
-        "internalType": "uint96[]"
-      },
-      {
-        "name": "newUnits",
-        "type": "uint128[]",
-        "internalType": "uint128[]"
-      },
-      {
-        "name": "nonces",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
-      },
-      {
-        "name": "stackSignatures",
-        "type": "bytes[]",
-        "internalType": "bytes[]"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "updateUnits",
-    "inputs": [
-      {
         "name": "programId",
-        "type": "uint96",
-        "internalType": "uint96"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "newUnits",
@@ -186,12 +158,40 @@
   },
   {
     "type": "function",
+    "name": "updateUnits",
+    "inputs": [
+      {
+        "name": "programIds",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "newUnits",
+        "type": "uint128[]",
+        "internalType": "uint128[]"
+      },
+      {
+        "name": "nonces",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "stackSignatures",
+        "type": "bytes[]",
+        "internalType": "bytes[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "updateUserUnits",
     "inputs": [
       {
         "name": "programId",
-        "type": "uint96",
-        "internalType": "uint96"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "user",

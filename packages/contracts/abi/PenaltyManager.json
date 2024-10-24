@@ -30,7 +30,7 @@
   },
   {
     "type": "function",
-    "name": "PENALTY_DRAINING_POOL",
+    "name": "TAX_DISTRIBUTION_POOL",
     "inputs": [],
     "outputs": [
       {
@@ -108,19 +108,6 @@
         "name": "newOwner",
         "type": "address",
         "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "updateLiquidityProvidersUnits",
-    "inputs": [
-      {
-        "name": "liquidityProvided",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "outputs": [],

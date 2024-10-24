@@ -7,11 +7,11 @@ Latest deployed contract address
 | Contract            | Address                                    | Explorer                                                                        |
 | ------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
 | FluidToken          | 0x3A193aC8FcaCCDa817c174D04081C105154a8441 | https://sepolia.basescan.org/address/0x3A193aC8FcaCCDa817c174D04081C105154a8441 |
-| EPProgramManager    | 0x376120A6c56c5CA10a9b5eC8F7aFBC2d576f2C35 | https://sepolia.basescan.org/address/0x376120A6c56c5CA10a9b5eC8F7aFBC2d576f2C35 |
-| PenaltyManager      | 0x52b0852A204515856387aaf3d6f21b77E66e03a8 | https://sepolia.basescan.org/address/0x52b0852A204515856387aaf3d6f21b77E66e03a8 |
-| FluidLocker (Logic) | 0xd1094dD59ca5cBF53Fc89DBce4Eb3F25f148Ed6A | https://sepolia.basescan.org/address/0xd1094dD59ca5cBF53Fc89DBce4Eb3F25f148Ed6A |
-| Fontaine (Logic)    | 0x7De77d385828cA2329B05114b9DdAdB824Af1742 | https://sepolia.basescan.org/address/0x7De77d385828cA2329B05114b9DdAdB824Af1742 |
-| FluidLockerFactory  | 0xeFE0b1044c26b8050F94A73B7213394D2E0aa504 | https://sepolia.basescan.org/address/0xeFE0b1044c26b8050F94A73B7213394D2E0aa504 |
+| EPProgramManager    | 0x39b890FD826cAED6e56D890398441400f691f340 | https://sepolia.basescan.org/address/0x39b890FD826cAED6e56D890398441400f691f340 |
+| PenaltyManager      | 0xC999838C313a58d50a26138D393C6Aa43b6532A0 | https://sepolia.basescan.org/address/0xC999838C313a58d50a26138D393C6Aa43b6532A0 |
+| FluidLocker (Logic) | 0xE3078A37BFcDd69394aa1A24ff8b5613C0688efd | https://sepolia.basescan.org/address/0xE3078A37BFcDd69394aa1A24ff8b5613C0688efd |
+| Fontaine (Logic)    | 0x15605dD67d8E75DeD4218C3458Ad27EB0e33fF68 | https://sepolia.basescan.org/address/0x15605dD67d8E75DeD4218C3458Ad27EB0e33fF68 |
+| FluidLockerFactory  | 0x719a0a7B1acb0863D755484d958ec558a635c785 | https://sepolia.basescan.org/address/0x719a0a7B1acb0863D755484d958ec558a635c785 |
 
 ## Foundry
 

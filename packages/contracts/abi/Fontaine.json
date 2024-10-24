@@ -8,7 +8,7 @@
         "internalType": "contract ISuperToken"
       },
       {
-        "name": "penaltyDrainingPool",
+        "name": "taxDistributionPool",
         "type": "address",
         "internalType": "contract ISuperfluidPool"
       }
@@ -30,7 +30,7 @@
   },
   {
     "type": "function",
-    "name": "PENALTY_DRAINING_POOL",
+    "name": "TAX_DISTRIBUTION_POOL",
     "inputs": [],
     "outputs": [
       {
@@ -43,59 +43,20 @@
   },
   {
     "type": "function",
-    "name": "cancelDrain",
-    "inputs": [
-      {
-        "name": "lockerOwner",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "initialize",
     "inputs": [
       {
-        "name": "connectedLocker",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "locker",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "processDrain",
-    "inputs": [
-      {
-        "name": "lockerOwner",
+        "name": "unlockRecipient",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "drainFlowRate",
+        "name": "unlockFlowRate",
         "type": "int96",
         "internalType": "int96"
       },
       {
-        "name": "penaltyFlowRate",
+        "name": "taxFlowRate",
         "type": "int96",
         "internalType": "int96"
       }
@@ -118,7 +79,7 @@
   },
   {
     "type": "error",
-    "name": "DRAIN_ALREADY_ACTIVE",
+    "name": "CANNOT_UNLOCK_TO_SUPERAPP",
     "inputs": []
   },
   {
@@ -133,7 +94,7 @@
   },
   {
     "type": "error",
-    "name": "NO_ACTIVE_DRAIN",
+    "name": "NO_ACTIVE_UNLOCK",
     "inputs": []
   },
   {

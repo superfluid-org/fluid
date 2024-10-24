@@ -8,30 +8,12 @@
         "internalType": "address"
       },
       {
-        "name": "fontaineImplementation",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
         "name": "penaltyManager",
         "type": "address",
         "internalType": "contract IPenaltyManager"
       }
     ],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "FONTAINE_BEACON",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract UpgradeableBeacon"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -49,25 +31,6 @@
   {
     "type": "function",
     "name": "createLockerContract",
-    "inputs": [
-      {
-        "name": "lockerOwner",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "lockerInstance",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "createLockerContract",
     "inputs": [],
     "outputs": [
       {
@@ -77,19 +40,6 @@
       }
     ],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "getFontaineBeaconImplementation",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "fontaineBeaconImpl",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",

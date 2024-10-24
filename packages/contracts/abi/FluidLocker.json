@@ -8,7 +8,7 @@
         "internalType": "contract ISuperToken"
       },
       {
-        "name": "penaltyDrainingPool",
+        "name": "taxDistributionPool",
         "type": "address",
         "internalType": "contract ISuperfluidPool"
       },
@@ -16,6 +16,16 @@
         "name": "programManager",
         "type": "address",
         "internalType": "contract IEPProgramManager"
+      },
+      {
+        "name": "penaltyManager",
+        "type": "address",
+        "internalType": "contract IPenaltyManager"
+      },
+      {
+        "name": "fontaineImplementation",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "nonpayable"
@@ -48,13 +58,13 @@
   },
   {
     "type": "function",
-    "name": "PENALTY_DRAINING_POOL",
+    "name": "FONTAINE_BEACON",
     "inputs": [],
     "outputs": [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract ISuperfluidPool"
+        "internalType": "contract UpgradeableBeacon"
       }
     ],
     "stateMutability": "view"
@@ -74,31 +84,16 @@
   },
   {
     "type": "function",
-    "name": "claim",
-    "inputs": [
+    "name": "TAX_DISTRIBUTION_POOL",
+    "inputs": [],
+    "outputs": [
       {
-        "name": "programId",
-        "type": "uint96",
-        "internalType": "uint96"
-      },
-      {
-        "name": "totalProgramUnits",
-        "type": "uint128",
-        "internalType": "uint128"
-      },
-      {
-        "name": "nonce",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "stackSignature",
-        "type": "bytes",
-        "internalType": "bytes"
+        "name": "",
+        "type": "address",
+        "internalType": "contract ISuperfluidPool"
       }
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -106,8 +101,8 @@
     "inputs": [
       {
         "name": "programIds",
-        "type": "uint96[]",
-        "internalType": "uint96[]"
+        "type": "uint256[]",
+        "internalType": "uint256[]"
       },
       {
         "name": "totalProgramUnits",
@@ -130,12 +125,27 @@
   },
   {
     "type": "function",
-    "name": "drain",
+    "name": "claim",
     "inputs": [
       {
-        "name": "drainPeriod",
+        "name": "programId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalProgramUnits",
         "type": "uint128",
         "internalType": "uint128"
+      },
+      {
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stackSignature",
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [],
@@ -143,11 +153,30 @@
   },
   {
     "type": "function",
-    "name": "fontaine",
+    "name": "fontaineCount",
     "inputs": [],
     "outputs": [
       {
         "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "fontaines",
+    "inputs": [
+      {
+        "name": "unlockId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "fontaine",
         "type": "address",
         "internalType": "contract IFontaine"
       }
@@ -172,9 +201,28 @@
     "name": "getFlowRatePerProgram",
     "inputs": [
       {
+        "name": "programIds",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "flowRates",
+        "type": "int96[]",
+        "internalType": "int96[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getFlowRatePerProgram",
+    "inputs": [
+      {
         "name": "programId",
-        "type": "uint96",
-        "internalType": "uint96"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [
@@ -188,19 +236,13 @@
   },
   {
     "type": "function",
-    "name": "getFlowRatePerProgram",
-    "inputs": [
-      {
-        "name": "programIds",
-        "type": "uint96[]",
-        "internalType": "uint96[]"
-      }
-    ],
+    "name": "getFontaineBeaconImplementation",
+    "inputs": [],
     "outputs": [
       {
-        "name": "flowRates",
-        "type": "int96[]",
-        "internalType": "int96[]"
+        "name": "fontaineBeaconImpl",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -223,28 +265,9 @@
     "name": "getUnitsPerProgram",
     "inputs": [
       {
-        "name": "programIds",
-        "type": "uint96[]",
-        "internalType": "uint96[]"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "units",
-        "type": "uint128[]",
-        "internalType": "uint128[]"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getUnitsPerProgram",
-    "inputs": [
-      {
         "name": "programId",
-        "type": "uint96",
-        "internalType": "uint96"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [
@@ -258,15 +281,29 @@
   },
   {
     "type": "function",
+    "name": "getUnitsPerProgram",
+    "inputs": [
+      {
+        "name": "programIds",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "units",
+        "type": "uint128[]",
+        "internalType": "uint128[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "initialize",
     "inputs": [
       {
         "name": "owner",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "fontaineAddress",
         "type": "address",
         "internalType": "address"
       }
@@ -314,20 +351,20 @@
     "outputs": [
       {
         "name": "",
-        "type": "uint128",
-        "internalType": "uint128"
+        "type": "uint80",
+        "internalType": "uint80"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "transferLocker",
+    "name": "unlock",
     "inputs": [
       {
-        "name": "recipient",
-        "type": "address",
-        "internalType": "address"
+        "name": "unlockPeriod",
+        "type": "uint128",
+        "internalType": "uint128"
       }
     ],
     "outputs": [],
@@ -360,7 +397,7 @@
   },
   {
     "type": "error",
-    "name": "INVALID_DRAIN_PERIOD",
+    "name": "INVALID_UNLOCK_PERIOD",
     "inputs": []
   },
   {
@@ -375,12 +412,12 @@
   },
   {
     "type": "error",
-    "name": "NO_FLUID_TO_DRAIN",
+    "name": "NO_FLUID_TO_STAKE",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "NO_FLUID_TO_STAKE",
+    "name": "NO_FLUID_TO_UNLOCK",
     "inputs": []
   },
   {
@@ -391,6 +428,11 @@
   {
     "type": "error",
     "name": "NotInitializing",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Reentrancy",
     "inputs": []
   },
   {
