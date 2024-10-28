@@ -87,11 +87,6 @@ contract EPProgramManager is IEPProgramManager {
     {
         if (newSigner == address(0)) revert INVALID_PARAMETER();
 
-        // Ensure caller is program admin
-        if (msg.sender != programs[programId].programAdmin) {
-            revert NOT_PROGRAM_ADMIN();
-        }
-
         // Update the program signer
         programs[programId].stackSigner = newSigner;
 
