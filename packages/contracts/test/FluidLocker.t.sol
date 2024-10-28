@@ -14,6 +14,9 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 
 import { FluidLocker, IFluidLocker } from "../src/FluidLocker.sol";
 import { IFontaine } from "../src/interfaces/IFontaine.sol";
+import { IEPProgramManager } from "../src/interfaces/IEPProgramManager.sol";
+import { IPenaltyManager } from "../src/interfaces/IPenaltyManager.sol";
+import { Fontaine } from "../src/Fontaine.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -47,6 +50,11 @@ contract FluidLockerTest is SFTest {
 
         vm.prank(BOB);
         bobLocker = IFluidLocker(_fluidLockerFactory.createLockerContract());
+    }
+
+    function testInitialize(address owner) external {
+        vm.expectRevert();
+        FluidLocker(address(aliceLocker)).initialize(owner);
     }
 
     function testClaim(uint128 units) external {
@@ -273,5 +281,51 @@ contract FluidLockerTest is SFTest {
 
         taxFlowRate = int256(penaltyAmount / unlockPeriod).toInt96();
         unlockFlowRate = int256(amountToUser / unlockPeriod).toInt96();
+    }
+}
+
+contract FluidLockerLayoutTest is FluidLocker {
+    constructor()
+        FluidLocker(
+            ISuperToken(address(0)),
+            ISuperfluidPool(address(0)),
+            IEPProgramManager(address(0)),
+            IPenaltyManager(address(0)),
+            address(new Fontaine(ISuperToken(address(0)), ISuperfluidPool(address(0))))
+        )
+    { }
+
+    function testStorageLayout() external pure {
+        uint256 slot;
+        uint256 offset;
+
+        // FluidLocker storage
+
+        assembly {
+            slot := lockerOwner.slot
+            offset := lockerOwner.offset
+        }
+        require(slot == 0 && offset == 0, "lockerOwner changed location");
+
+        assembly {
+            slot := stakingUnlocksAt.slot
+            offset := stakingUnlocksAt.offset
+        }
+        require(slot == 0 && offset == 20, "stakingUnlocksAt changed location");
+
+        assembly {
+            slot := fontaineCount.slot
+            offset := fontaineCount.offset
+        }
+        require(slot == 0 && offset == 30, "fontaineCount changed location");
+
+        /// private state : _stakedBalance 
+        /// slot = 1 - offset = 0
+
+        assembly {
+            slot := fontaines.slot
+            offset := fontaines.offset
+        }
+        require(slot == 2 && offset == 0, "fontaines changed location");
     }
 }
