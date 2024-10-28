@@ -23,6 +23,7 @@ contract PenaltyManagerTest is SFTest {
 
     function testUpdateStakerUnits(address caller, uint256 stakingAmount) external {
         vm.assume(caller != address(0));
+        vm.assume(caller != address(_penaltyManager.TAX_DISTRIBUTION_POOL()));
         stakingAmount = bound(stakingAmount, 1e16, 10_000_000e18);
 
         vm.prank(caller);
