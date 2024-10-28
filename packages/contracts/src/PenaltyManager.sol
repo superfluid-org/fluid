@@ -24,13 +24,11 @@ using SuperTokenV1Library for ISuperToken;
  *
  */
 contract PenaltyManager is Ownable, IPenaltyManager {
-    //     _____ __        __
-    //    / ___// /_____ _/ /____  _____
-    //    \__ \/ __/ __ `/ __/ _ \/ ___/
-    //   ___/ / /_/ /_/ / /_/  __(__  )
-    //  /____/\__/\__,_/\__/\___/____/
-
-    /// FIXME storage packing
+    //      ____                          __        __    __        _____ __        __
+    //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
+    //     / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
 
     /// @notice $FLUID SuperToken interface
     ISuperToken public immutable FLUID;
@@ -38,10 +36,17 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     /// @notice Superfluid pool interface
     ISuperfluidPool public immutable TAX_DISTRIBUTION_POOL;
 
+    /// @notice Value used to convert staked amount into GDA pool units
+    uint128 private constant _UNIT_DOWNSCALER = 1e16;
+
+    //     _____ __        __
+    //    / ___// /_____ _/ /____  _____
+    //    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /____/\__/\__,_/\__/\___/____/
+
     /// @notice Locker Factory contract address
     address public lockerFactory;
-
-    uint128 private constant _UNIT_DOWNSCALER = 1e16;
 
     /// @notice Stores the approval status of a given locker contract address
     mapping(address locker => bool isApproved) private _approvedLockers;

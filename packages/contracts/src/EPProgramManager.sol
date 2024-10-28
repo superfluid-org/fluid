@@ -24,16 +24,20 @@ using SuperTokenV1Library for ISuperToken;
  *
  */
 contract EPProgramManager is IEPProgramManager {
+    //      ____                          __        __    __        _____ __        __
+    //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
+    //     / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
+
+    /// @notice Signature length requirement (r: 32 bytes, s: 32 bytes, v: 1 byte)
+    uint256 private constant _SIGNATURE_LENGTH = 65;
+
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
     //   ___/ / /_/ /_/ / /_/  __(__  )
     //  /____/\__/\__,_/\__/\___/____/
-
-    /// FIXME storage packing check
-
-    /// @notice Signature length requirement (r: 32 bytes, s: 32 bytes, v: 1 byte)
-    uint256 private constant _SIGNATURE_LENGTH = 65;
 
     /// @notice Stores the program details for a given program identifier
     mapping(uint256 programId => EPProgram program) public programs;

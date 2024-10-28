@@ -32,7 +32,6 @@ using SafeCast for int256;
  * @notice Contract responsible for locking and holding FLUID token on behalf of users
  *
  */
-/// FIXME Inherit ReentrancyGuard
 contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //      ____                          __        __    __        _____ __        __
     //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____

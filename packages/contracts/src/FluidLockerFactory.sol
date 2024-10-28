@@ -18,17 +18,23 @@ import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
  *
  */
 contract FluidLockerFactory is IFluidLockerFactory {
-    //     _____ __        __
-    //    / ___// /_____ _/ /____  _____
-    //    \__ \/ __/ __ `/ __/ _ \/ ___/
-    //   ___/ / /_/ /_/ / /_/  __(__  )
-    //  /____/\__/\__,_/\__/\___/____/
+    //      ____                          __        __    __        _____ __        __
+    //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
+    //     / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
 
     /// @notice Locker Beacon contract address
     UpgradeableBeacon public immutable LOCKER_BEACON;
 
     /// @notice Penalty Manager interface
     IPenaltyManager private immutable _PENALTY_MANAGER;
+
+    //     _____ __        __
+    //    / ___// /_____ _/ /____  _____
+    //    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /____/\__/\__,_/\__/\___/____/
 
     /// @notice Stores wheather or not a locker has been created
     mapping(address locker => bool isCreated) internal _lockers;
