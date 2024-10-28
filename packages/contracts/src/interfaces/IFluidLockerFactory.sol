@@ -8,6 +8,18 @@ pragma solidity ^0.8.23;
  *
  */
 interface IFluidLockerFactory {
+    //     ______           __                     ______
+    //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
+    //   / /   / / / / ___/ __/ __ \/ __ `__ \   / __/ / ___/ ___/ __ \/ ___/ ___/
+    //  / /___/ /_/ (__  ) /_/ /_/ / / / / / /  / /___/ /  / /  / /_/ / /  (__  )
+    //  \____/\__,_/____/\__/\____/_/ /_/ /_/  /_____/_/  /_/   \____/_/  /____/
+
+    /// @notice Error thrown when the attempting to create a locker while this operation is paused
+    error LOCKER_CREATION_PAUSED();
+
+    /// @notice Error thrown when the attempting to perform a governance protected operation
+    error NOT_GOVERNOR();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -19,6 +31,32 @@ interface IFluidLockerFactory {
      * @return lockerInstance Deployed Locker contract address
      */
     function createLockerContract() external returns (address lockerInstance);
+
+    /**
+     * @notice Upgrade this proxy logic
+     * @dev Only the governor address can perform this operation
+     * @param newImplementation new logic contract address
+     */
+    function upgradeTo(address newImplementation) external;
+
+    /**
+     * @notice Sets the governor address
+     * @dev Only the governor address can perform this operation
+     * @param newGovernor new governor address
+     */
+    function setGovernor(address newGovernor) external;
+
+    /**
+     * @notice Pause the locker creation operations
+     * @dev Only the governor address can perform this operation
+     */
+    function pauseLockerCreation() external;
+
+    /**
+     * @notice Unpause the locker creation operations
+     * @dev Only the governor address can perform this operation
+     */
+    function unpauseLockerCreation() external;
 
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____

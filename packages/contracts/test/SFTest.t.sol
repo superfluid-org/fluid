@@ -87,7 +87,7 @@ contract SFTest is Test {
             address lockerFactoryAddress,
             address lockerLogicAddress,
             address fontaineLogicAddress
-        ) = deployAll(_fluidSuperToken, ADMIN);
+        ) = deployAll(_fluidSuperToken, ADMIN, ADMIN);
 
         _programManager = EPProgramManager(programManagerAddress);
         _penaltyManager = PenaltyManager(penaltyManagerAddress);
