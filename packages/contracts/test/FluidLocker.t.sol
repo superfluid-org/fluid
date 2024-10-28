@@ -319,8 +319,8 @@ contract FluidLockerLayoutTest is FluidLocker {
         }
         require(slot == 0 && offset == 30, "fontaineCount changed location");
 
-        /// private state : _stakedBalance 
-        /// slot = 1 - offset = 0
+        // private state : _stakedBalance
+        // slot = 1 - offset = 0
 
         assembly {
             slot := fontaines.slot

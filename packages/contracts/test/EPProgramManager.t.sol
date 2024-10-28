@@ -42,10 +42,32 @@ contract EPProgramManagerTest is SFTest {
         _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
     }
 
-    function testUpdateSigner(uint256 _pId, address _admin, address _nonAdmin, address _signer, address _newSigner)
-        external
-    {
+    function testCreateProgramReverts(uint256 _pId, address _admin, address _signer) external {
         vm.assume(_pId != 0);
+        vm.assume(_admin != address(0));
+        vm.assume(_signer != address(0));
+
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        _programManager.createProgram(0, _admin, _signer, _fluidSuperToken);
+
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        _programManager.createProgram(_pId, address(0), _signer, _fluidSuperToken);
+
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        _programManager.createProgram(_pId, _admin, address(0), _fluidSuperToken);
+
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        _programManager.createProgram(_pId, _admin, _signer, ISuperToken(address(0)));
+    }
+
+    function testUpdateProgramSigner(
+        uint256 _pId,
+        address _admin,
+        address _nonAdmin,
+        address _signer,
+        address _newSigner
+    ) external {
+        vm.assume(_pId > 1);
         vm.assume(_admin != address(0));
         vm.assume(_signer != address(0));
         vm.assume(_newSigner != address(0));
@@ -66,6 +88,14 @@ contract EPProgramManagerTest is SFTest {
         vm.prank(_nonAdmin);
         vm.expectRevert(IEPProgramManager.NOT_PROGRAM_ADMIN.selector);
         _programManager.updateProgramSigner(_pId, _signer);
+
+        vm.prank(_admin);
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        _programManager.updateProgramSigner(_pId, address(0));
+
+        vm.prank(_admin);
+        vm.expectRevert(IEPProgramManager.PROGRAM_NOT_FOUND.selector);
+        _programManager.updateProgramSigner(1, _newSigner);
     }
 
     function testUpdateUnits(uint96 _signerPkey, uint96 _invalidSignerPkey, address _user, uint128 _units) external {
@@ -105,6 +135,11 @@ contract EPProgramManagerTest is SFTest {
         vm.expectRevert(abi.encodeWithSelector(IEPProgramManager.INVALID_SIGNATURE.selector, "signature length"));
         vm.prank(_user);
         _programManager.updateUnits(programId, _units, nonce, "0x");
+
+        // Test updateUnits with an invalid user address
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        vm.prank(address(0));
+        _programManager.updateUnits(programId, _units, nonce, validSignature);
     }
 
     function testUpdateUnitsBatch(uint8 _batchAmount, uint96 _signerPkey, address _user, uint128 _units) external {
@@ -157,8 +192,7 @@ contract EPProgramManagerTest is SFTest {
             stackSignatures[i] = _helperGenerateSignature(_signerPkey, _user, newUnits[i], programIds[i], nonces[i]);
         }
 
-        uint256[] memory invalidProgramIds = new uint256[](1);
-        invalidProgramIds[0] = programIds[0];
+        uint256[] memory invalidProgramIds = new uint256[](0);
 
         vm.prank(_user);
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
