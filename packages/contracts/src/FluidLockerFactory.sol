@@ -71,6 +71,10 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
         _disableInitializers();
     }
 
+    /**
+     * @notice FLUID Locker Factory contract initializer
+     * @param _governor the governor address
+     */
     function initialize(address _governor) external initializer {
         // Sets the governor address
         governor = _governor;

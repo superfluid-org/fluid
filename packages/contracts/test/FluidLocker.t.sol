@@ -291,7 +291,8 @@ contract FluidLockerLayoutTest is FluidLocker {
             ISuperfluidPool(address(0)),
             IEPProgramManager(address(0)),
             IPenaltyManager(address(0)),
-            address(new Fontaine(ISuperToken(address(0)), ISuperfluidPool(address(0))))
+            address(new Fontaine(ISuperToken(address(0)), ISuperfluidPool(address(0)))),
+            msg.sender
         )
     { }
 

@@ -27,39 +27,39 @@ function deployAll(ISuperToken fluid, address governor, address owner)
     )
 {
     // Deploy Ecosystem Partner Program Manager
-    EPProgramManager programManager = new EPProgramManager();
-    programManagerAddress = address(programManager);
+    programManagerAddress = address(new EPProgramManager());
 
     // Deploy Penalty Manager
     PenaltyManager penaltyManager = new PenaltyManager(owner, fluid);
     penaltyManagerAddress = address(penaltyManager);
 
-    // Read the newly created GDA Tax Distribution Pool address
-    ISuperfluidPool taxDistributionPool = penaltyManager.TAX_DISTRIBUTION_POOL();
-
     // Deploy the Fontaine Implementation contract
-    Fontaine fontaineImpl = new Fontaine(fluid, taxDistributionPool);
+    Fontaine fontaineImpl = new Fontaine(fluid, penaltyManager.TAX_DISTRIBUTION_POOL());
     fontaineLogicAddress = address(fontaineImpl);
 
     // Deploy the Fluid Locker Implementation contract
-    FluidLocker fluidLockerImpl = new FluidLocker(
-        fluid,
-        taxDistributionPool,
-        IEPProgramManager(programManagerAddress),
-        IPenaltyManager(penaltyManagerAddress),
-        fontaineLogicAddress
+    lockerLogicAddress = address(
+        new FluidLocker(
+            fluid,
+            penaltyManager.TAX_DISTRIBUTION_POOL(),
+            IEPProgramManager(programManagerAddress),
+            IPenaltyManager(penaltyManagerAddress),
+            fontaineLogicAddress,
+            governor
+        )
     );
-    lockerLogicAddress = address(fluidLockerImpl);
 
     // Deploy the Fluid Locker Factory contract
     FluidLockerFactory lockerFactoryLogic =
-        new FluidLockerFactory(address(fluidLockerImpl), IPenaltyManager(address(penaltyManager)));
+        new FluidLockerFactory(lockerLogicAddress, IPenaltyManager(address(penaltyManager)));
 
-    bytes memory callData = abi.encodeWithSelector(FluidLockerFactory.initialize.selector, governor);
-
-    ERC1967Proxy lockerFactoryProxy = new ERC1967Proxy(address(lockerFactoryLogic), callData);
+    ERC1967Proxy lockerFactoryProxy = new ERC1967Proxy(
+        address(lockerFactoryLogic), abi.encodeWithSelector(FluidLockerFactory.initialize.selector, governor)
+    );
 
     FluidLockerFactory lockerFactory = FluidLockerFactory(address(lockerFactoryProxy));
+    lockerFactory.LOCKER_BEACON().transferOwnership(governor);
+
     lockerFactoryAddress = address(lockerFactory);
 
     // Sets the FluidLockerFactory address in the PenaltyManager

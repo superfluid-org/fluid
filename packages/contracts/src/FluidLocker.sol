@@ -118,7 +118,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         ISuperfluidPool taxDistributionPool,
         IEPProgramManager programManager,
         IPenaltyManager penaltyManager,
-        address fontaineImplementation
+        address fontaineImplementation,
+        address governor
     ) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
@@ -132,8 +133,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Deploy the Fontaine beacon with the Fontaine implementation contract
         FONTAINE_BEACON = new UpgradeableBeacon(fontaineImplementation);
 
-        // Transfer ownership of the Fontaine beacon to the deployer
-        FONTAINE_BEACON.transferOwnership(msg.sender);
+        // Transfer ownership of the Fontaine beacon to the governor address
+        FONTAINE_BEACON.transferOwnership(governor);
     }
 
     /**
