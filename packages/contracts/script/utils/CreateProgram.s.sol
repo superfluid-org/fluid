@@ -23,6 +23,8 @@ contract CreateProgram is Script {
         IEPProgramManager programManager = IEPProgramManager(vm.envAddress("EP_PROGRAM_MANAGER_ADDRESS"));
         uint256 programId = vm.envUint("PROGRAM_ID");
 
-        programManager.createProgram(programId, vm.addr(deployerPrivateKey), signer, fluid);
+        ISuperfluidPool pool = programManager.createProgram(programId, vm.addr(deployerPrivateKey), signer, fluid);
+
+        console2.log("Program %s created with Distribution Pool at %s", programId, address(pool));
     }
 }
