@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import { Script } from "forge-std/Script.sol";
+import { Script, console2 } from "forge-std/Script.sol";
 
 import { ERC1967Proxy } from "@openzeppelin-v5/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -83,6 +83,18 @@ contract DeployScript is Script {
         }
 
         vm.startBroadcast(deployerPrivateKey);
-        deployAll(fluid, governor, vm.addr(deployerPrivateKey));
+        (
+            address programManagerAddress,
+            address penaltyManagerAddress,
+            address lockerFactoryAddress,
+            address lockerLogicAddress,
+            address fontaineLogicAddress
+        ) = deployAll(fluid, governor, vm.addr(deployerPrivateKey));
+
+        console2.log("EPProgramManager      : deployed at %s ", programManagerAddress);
+        console2.log("PenaltyManager        : deployed at %s ", penaltyManagerAddress);
+        console2.log("FluidLocker (Logic)   : deployed at %s ", lockerLogicAddress);
+        console2.log("Fontaine (Logic)      : deployed at %s ", fontaineLogicAddress);
+        console2.log("FluidLockerFactory    : deployed at %s ", lockerFactoryAddress);
     }
 }

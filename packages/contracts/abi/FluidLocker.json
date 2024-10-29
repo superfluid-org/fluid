@@ -100,42 +100,14 @@
     "name": "claim",
     "inputs": [
       {
-        "name": "programIds",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
-      },
-      {
-        "name": "totalProgramUnits",
-        "type": "uint128[]",
-        "internalType": "uint128[]"
-      },
-      {
-        "name": "nonces",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
-      },
-      {
-        "name": "stackSignatures",
-        "type": "bytes[]",
-        "internalType": "bytes[]"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "claim",
-    "inputs": [
-      {
         "name": "programId",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
         "name": "totalProgramUnits",
-        "type": "uint128",
-        "internalType": "uint128"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "nonce",
@@ -146,6 +118,34 @@
         "name": "stackSignature",
         "type": "bytes",
         "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claim",
+    "inputs": [
+      {
+        "name": "programIds",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "totalProgramUnits",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "nonces",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "stackSignatures",
+        "type": "bytes[]",
+        "internalType": "bytes[]"
       }
     ],
     "outputs": [],
@@ -365,6 +365,11 @@
         "name": "unlockPeriod",
         "type": "uint128",
         "internalType": "uint128"
+      },
+      {
+        "name": "recipient",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
