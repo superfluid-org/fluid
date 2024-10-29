@@ -126,7 +126,7 @@ contract SFTest is Test {
     function _helperGenerateSignature(
         uint256 _signerPkey,
         address _locker,
-        uint128 _unitsToGrant,
+        uint256 _unitsToGrant,
         uint256 _programId,
         uint256 _nonce
     ) internal pure returns (bytes memory signature) {

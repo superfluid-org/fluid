@@ -57,8 +57,8 @@ contract FluidLockerTest is SFTest {
         FluidLocker(address(aliceLocker)).initialize(owner);
     }
 
-    function testClaim(uint128 units) external {
-        units = uint128(bound(units, 1, 1_000_000));
+    function testClaim(uint256 units) external {
+        units = bound(units, 1, 1_000_000);
 
         uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, address(aliceLocker));
         bytes memory signature = _helperGenerateSignature(signerPkey, address(aliceLocker), units, PROGRAM_0, nonce);
@@ -74,11 +74,11 @@ contract FluidLockerTest is SFTest {
         assertEq(aliceLocker.getFlowRatePerProgram(PROGRAM_0), distributionFlowrate, "getFlowRatePerProgram invalid");
     }
 
-    function testClaimBatch(uint128 units) external {
-        units = uint128(bound(units, 1, 1_000_000));
+    function testClaimBatch(uint256 units) external {
+        units = bound(units, 1, 1_000_000);
 
         uint256[] memory programIds = new uint256[](3);
-        uint128[] memory newUnits = new uint128[](3);
+        uint256[] memory newUnits = new uint256[](3);
         uint256[] memory nonces = new uint256[](3);
         bytes[] memory signatures = new bytes[](3);
 

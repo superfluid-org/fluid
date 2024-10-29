@@ -98,13 +98,13 @@ contract EPProgramManagerTest is SFTest {
         _programManager.updateProgramSigner(1, _newSigner);
     }
 
-    function testUpdateUnits(uint96 _signerPkey, uint96 _invalidSignerPkey, address _user, uint128 _units) external {
+    function testUpdateUnits(uint96 _signerPkey, uint96 _invalidSignerPkey, address _user, uint256 _units) external {
         vm.assume(_signerPkey != 0);
         vm.assume(_invalidSignerPkey != 0);
         vm.assume(_signerPkey != _invalidSignerPkey);
         vm.assume(_user != address(0));
         vm.assume(_user != address(_penaltyManager.TAX_DISTRIBUTION_POOL()));
-        _units = uint128(bound(_units, 1, 1_000_000));
+        _units = bound(_units, 1, 1_000_000);
 
         uint256 programId = 1;
 
@@ -142,15 +142,15 @@ contract EPProgramManagerTest is SFTest {
         _programManager.updateUnits(programId, _units, nonce, validSignature);
     }
 
-    function testUpdateUnitsBatch(uint8 _batchAmount, uint96 _signerPkey, address _user, uint128 _units) external {
+    function testUpdateUnitsBatch(uint8 _batchAmount, uint96 _signerPkey, address _user, uint256 _units) external {
         vm.assume(_signerPkey != 0);
         vm.assume(_user != address(0));
         vm.assume(_user != address(_penaltyManager.TAX_DISTRIBUTION_POOL()));
-        _units = uint128(bound(_units, 1, 1_000_000));
+        _units = bound(_units, 1, 1_000_000);
         _batchAmount = uint8(bound(_batchAmount, 2, 8));
 
         uint256[] memory programIds = new uint256[](_batchAmount);
-        uint128[] memory newUnits = new uint128[](_batchAmount);
+        uint256[] memory newUnits = new uint256[](_batchAmount);
         uint256[] memory nonces = new uint256[](_batchAmount);
         bytes[] memory stackSignatures = new bytes[](_batchAmount);
         ISuperfluidPool[] memory pools = new ISuperfluidPool[](_batchAmount);
@@ -172,13 +172,13 @@ contract EPProgramManagerTest is SFTest {
         }
     }
 
-    function testUpdateUnitsBatchInvalidArrayLength(uint96 _signerPkey, address _user, uint128 _units) external {
+    function testUpdateUnitsBatchInvalidArrayLength(uint96 _signerPkey, address _user, uint256 _units) external {
         vm.assume(_signerPkey != 0);
         vm.assume(_user != address(0));
-        _units = uint128(bound(_units, 1, 1_000_000));
+        _units = bound(_units, 1, 1_000_000);
 
         uint256[] memory programIds = new uint256[](2);
-        uint128[] memory newUnits = new uint128[](2);
+        uint256[] memory newUnits = new uint256[](2);
         uint256[] memory nonces = new uint256[](2);
         bytes[] memory stackSignatures = new bytes[](2);
         ISuperfluidPool[] memory pools = new ISuperfluidPool[](2);
@@ -198,7 +198,7 @@ contract EPProgramManagerTest is SFTest {
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
         _programManager.updateUnits(invalidProgramIds, newUnits, nonces, stackSignatures);
 
-        uint128[] memory invalidNewUnits = new uint128[](1);
+        uint256[] memory invalidNewUnits = new uint256[](1);
         invalidNewUnits[0] = newUnits[0];
 
         vm.prank(_user);

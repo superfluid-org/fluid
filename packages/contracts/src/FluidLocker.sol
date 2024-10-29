@@ -152,7 +152,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFluidLocker
-    function claim(uint256 programId, uint128 totalProgramUnits, uint256 nonce, bytes memory stackSignature)
+    function claim(uint256 programId, uint256 totalProgramUnits, uint256 nonce, bytes memory stackSignature)
         external
         nonReentrant
     {
@@ -170,7 +170,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @inheritdoc IFluidLocker
     function claim(
         uint256[] memory programIds,
-        uint128[] memory totalProgramUnits,
+        uint256[] memory totalProgramUnits,
         uint256[] memory nonces,
         bytes[] memory stackSignatures
     ) external nonReentrant {

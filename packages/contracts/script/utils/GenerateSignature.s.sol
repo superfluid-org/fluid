@@ -16,14 +16,14 @@ contract GenerateSignature is Script {
 
     function run() public view {
         address user = 0x37dB1380669155d6080c04a5e6Db029E306cD964;
-        uint128 unitsToGrant = 5;
+        uint256 unitsToGrant = 5;
         uint256 programId = 0;
         uint256 nonce = 1;
 
         _generateSignature(user, unitsToGrant, programId, nonce);
     }
 
-    function _generateSignature(address _user, uint128 _unitsToGrant, uint256 _programId, uint256 _nonce)
+    function _generateSignature(address _user, uint256 _unitsToGrant, uint256 _programId, uint256 _nonce)
         internal
         view
     {

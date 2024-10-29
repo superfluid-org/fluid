@@ -98,14 +98,14 @@ contract EPProgramManager is IEPProgramManager {
     }
 
     /// @inheritdoc IEPProgramManager
-    function updateUnits(uint256 programId, uint128 newUnits, uint256 nonce, bytes memory stackSignature) external {
+    function updateUnits(uint256 programId, uint256 newUnits, uint256 nonce, bytes memory stackSignature) external {
         updateUserUnits(programId, msg.sender, newUnits, nonce, stackSignature);
     }
 
     /// @inheritdoc IEPProgramManager
     function updateUnits(
         uint256[] memory programIds,
-        uint128[] memory newUnits,
+        uint256[] memory newUnits,
         uint256[] memory nonces,
         bytes[] memory stackSignatures
     ) external {
@@ -125,7 +125,7 @@ contract EPProgramManager is IEPProgramManager {
     function updateUserUnits(
         uint256 programId,
         address user,
-        uint128 newUnits,
+        uint256 newUnits,
         uint256 nonce,
         bytes memory stackSignature
     ) public programExists(programId) {
@@ -148,7 +148,7 @@ contract EPProgramManager is IEPProgramManager {
             revert INVALID_SIGNATURE("signer");
         }
 
-        program.token.updateMemberUnits(program.distributionPool, user, newUnits);
+        program.token.updateMemberUnits(program.distributionPool, user, uint128(newUnits));
 
         /// FIXME emit UserUnitsUpdated event
     }
@@ -200,7 +200,7 @@ contract EPProgramManager is IEPProgramManager {
     function _verifySignature(
         address signer,
         address user,
-        uint128 newUnits,
+        uint256 newUnits,
         uint256 programId,
         uint256 nonce,
         bytes memory signature
