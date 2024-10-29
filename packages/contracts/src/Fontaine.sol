@@ -31,8 +31,6 @@ contract Fontaine is Initializable, IFontaine {
     //   ___/ / /_/ /_/ / /_/  __(__  )
     //  /____/\__/\__,_/\__/\___/____/
 
-    /// FIXME storage packing
-
     /// @notice $FLUID SuperToken interface
     ISuperToken public immutable FLUID;
 

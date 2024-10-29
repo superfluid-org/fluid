@@ -32,7 +32,6 @@ using SafeCast for int256;
  * @notice Contract responsible for locking and holding FLUID token on behalf of users
  *
  */
-/// FIXME Inherit ReentrancyGuard
 contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //      ____                          __        __    __        _____ __        __
     //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
@@ -153,7 +152,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFluidLocker
-    function claim(uint256 programId, uint128 totalProgramUnits, uint256 nonce, bytes memory stackSignature)
+    function claim(uint256 programId, uint256 totalProgramUnits, uint256 nonce, bytes memory stackSignature)
         external
         nonReentrant
     {
@@ -171,7 +170,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @inheritdoc IFluidLocker
     function claim(
         uint256[] memory programIds,
-        uint128[] memory totalProgramUnits,
+        uint256[] memory totalProgramUnits,
         uint256[] memory nonces,
         bytes[] memory stackSignatures
     ) external nonReentrant {
@@ -197,10 +196,14 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function unlock(uint128 unlockPeriod) external nonReentrant onlyOwner {
+    function unlock(uint128 unlockPeriod, address recipient) external nonReentrant onlyOwner {
         // Enforce unlock period validity
         if (unlockPeriod != 0 && (unlockPeriod < _MIN_UNLOCK_PERIOD || unlockPeriod > _MAX_UNLOCK_PERIOD)) {
             revert INVALID_UNLOCK_PERIOD();
+        }
+
+        if (recipient == address(0)) {
+            revert FORBIDDEN();
         }
 
         // Get balance available for unlocking
@@ -210,9 +213,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         if (availableBalance == 0) revert NO_FLUID_TO_UNLOCK();
 
         if (unlockPeriod == 0) {
-            _instantUnlock(availableBalance);
+            _instantUnlock(availableBalance, recipient);
         } else {
-            _vestUnlock(availableBalance, unlockPeriod);
+            _vestUnlock(availableBalance, unlockPeriod, recipient);
         }
 
         /// FIXME emit `unlocked locker` event
@@ -325,7 +328,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
-    function _instantUnlock(uint256 amountToUnlock) internal {
+    function _instantUnlock(uint256 amountToUnlock, address recipient) internal {
         // Calculate instant unlock penalty amount
         uint256 penaltyAmount = (amountToUnlock * _INSTANT_UNLOCK_PENALTY_BP) / _BP_DENOMINATOR;
 
@@ -333,10 +336,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         FLUID.distributeToPool(address(this), TAX_DISTRIBUTION_POOL, penaltyAmount);
 
         // Transfer the leftover $FLUID to the locker owner
-        FLUID.transfer(msg.sender, amountToUnlock - penaltyAmount);
+        FLUID.transfer(recipient, amountToUnlock - penaltyAmount);
     }
 
-    function _vestUnlock(uint256 amountToUnlock, uint128 unlockPeriod) internal {
+    function _vestUnlock(uint256 amountToUnlock, uint128 unlockPeriod, address recipient) internal {
         // Calculate the unlock and penalty flow rates based on requested amount and unlock period
         (int96 unlockFlowRate, int96 taxFlowRate) = _calculateVestUnlockFlowRates(amountToUnlock, unlockPeriod);
 
@@ -354,7 +357,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         fontaineCount++;
 
         // Initialize the new Fontaine instance (this initiate the unlock process)
-        IFontaine(newFontaine).initialize(lockerOwner, unlockFlowRate, taxFlowRate);
+        IFontaine(newFontaine).initialize(recipient, unlockFlowRate, taxFlowRate);
     }
 
     function _calculateVestUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)

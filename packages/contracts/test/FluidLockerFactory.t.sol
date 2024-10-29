@@ -27,11 +27,13 @@ contract FluidLockerFactoryTest is SFTest {
 
         assertEq(_fluidLockerFactory.isLockerCreated(userLockerAddress), true, "locker should exists");
         assertEq(predictedAddress, userLockerAddress, "predicted address should match");
+
+        vm.prank(_user);
+        vm.expectRevert();
+        _fluidLockerFactory.createLockerContract();
     }
 
     function testGetLockerBeaconImplementation() external view {
         assertEq(_fluidLockerFactory.getLockerBeaconImplementation(), address(_fluidLockerLogic));
     }
-
-
 }

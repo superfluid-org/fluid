@@ -14,6 +14,9 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 
 import { FluidLocker, IFluidLocker } from "../src/FluidLocker.sol";
 import { IFontaine } from "../src/interfaces/IFontaine.sol";
+import { IEPProgramManager } from "../src/interfaces/IEPProgramManager.sol";
+import { IPenaltyManager } from "../src/interfaces/IPenaltyManager.sol";
+import { Fontaine } from "../src/Fontaine.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -49,8 +52,13 @@ contract FluidLockerTest is SFTest {
         bobLocker = IFluidLocker(_fluidLockerFactory.createLockerContract());
     }
 
-    function testClaim(uint128 units) external {
-        units = uint128(bound(units, 1, 1_000_000));
+    function testInitialize(address owner) external {
+        vm.expectRevert();
+        FluidLocker(address(aliceLocker)).initialize(owner);
+    }
+
+    function testClaim(uint256 units) external {
+        units = bound(units, 1, 1_000_000);
 
         uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, address(aliceLocker));
         bytes memory signature = _helperGenerateSignature(signerPkey, address(aliceLocker), units, PROGRAM_0, nonce);
@@ -66,11 +74,11 @@ contract FluidLockerTest is SFTest {
         assertEq(aliceLocker.getFlowRatePerProgram(PROGRAM_0), distributionFlowrate, "getFlowRatePerProgram invalid");
     }
 
-    function testClaimBatch(uint128 units) external {
-        units = uint128(bound(units, 1, 1_000_000));
+    function testClaimBatch(uint256 units) external {
+        units = bound(units, 1, 1_000_000);
 
         uint256[] memory programIds = new uint256[](3);
-        uint128[] memory newUnits = new uint128[](3);
+        uint256[] memory newUnits = new uint256[](3);
         uint256[] memory nonces = new uint256[](3);
         bytes[] memory signatures = new bytes[](3);
 
@@ -124,10 +132,14 @@ contract FluidLockerTest is SFTest {
 
         vm.prank(BOB);
         vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
-        aliceLocker.unlock(0);
+        aliceLocker.unlock(0, ALICE);
 
         vm.prank(ALICE);
-        aliceLocker.unlock(0);
+        vm.expectRevert(IFluidLocker.FORBIDDEN.selector);
+        aliceLocker.unlock(0, address(0));
+
+        vm.prank(ALICE);
+        aliceLocker.unlock(0, ALICE);
 
         assertEq(_fluidSuperToken.balanceOf(address(ALICE)), 2_000e18, "incorrect Alice bal after op");
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
@@ -135,7 +147,7 @@ contract FluidLockerTest is SFTest {
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.NO_FLUID_TO_UNLOCK.selector);
-        aliceLocker.unlock(0);
+        aliceLocker.unlock(0, ALICE);
     }
 
     function testVestUnlock(uint128 unlockPeriod) external {
@@ -155,7 +167,7 @@ contract FluidLockerTest is SFTest {
         (int96 taxFlowRate, int96 unlockFlowRate) = _helperCalculateUnlockFlowRates(funding, unlockPeriod);
 
         vm.prank(ALICE);
-        aliceLocker.unlock(unlockPeriod);
+        aliceLocker.unlock(unlockPeriod, ALICE);
 
         IFontaine newFontaine = FluidLocker(address(aliceLocker)).fontaines(0);
 
@@ -180,12 +192,12 @@ contract FluidLockerTest is SFTest {
         unlockPeriod = uint128(bound(unlockPeriod, 0 + 1, _MIN_UNLOCK_PERIOD - 1));
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.INVALID_UNLOCK_PERIOD.selector);
-        aliceLocker.unlock(unlockPeriod);
+        aliceLocker.unlock(unlockPeriod, ALICE);
 
         unlockPeriod = uint128(bound(unlockPeriod, _MAX_UNLOCK_PERIOD + 1, 100_000 days));
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.INVALID_UNLOCK_PERIOD.selector);
-        aliceLocker.unlock(unlockPeriod);
+        aliceLocker.unlock(unlockPeriod, ALICE);
     }
 
     function testStake() external {
@@ -269,5 +281,51 @@ contract FluidLockerTest is SFTest {
 
         taxFlowRate = int256(penaltyAmount / unlockPeriod).toInt96();
         unlockFlowRate = int256(amountToUser / unlockPeriod).toInt96();
+    }
+}
+
+contract FluidLockerLayoutTest is FluidLocker {
+    constructor()
+        FluidLocker(
+            ISuperToken(address(0)),
+            ISuperfluidPool(address(0)),
+            IEPProgramManager(address(0)),
+            IPenaltyManager(address(0)),
+            address(new Fontaine(ISuperToken(address(0)), ISuperfluidPool(address(0))))
+        )
+    { }
+
+    function testStorageLayout() external pure {
+        uint256 slot;
+        uint256 offset;
+
+        // FluidLocker storage
+
+        assembly {
+            slot := lockerOwner.slot
+            offset := lockerOwner.offset
+        }
+        require(slot == 0 && offset == 0, "lockerOwner changed location");
+
+        assembly {
+            slot := stakingUnlocksAt.slot
+            offset := stakingUnlocksAt.offset
+        }
+        require(slot == 0 && offset == 20, "stakingUnlocksAt changed location");
+
+        assembly {
+            slot := fontaineCount.slot
+            offset := fontaineCount.offset
+        }
+        require(slot == 0 && offset == 30, "fontaineCount changed location");
+
+        // private state : _stakedBalance
+        // slot = 1 - offset = 0
+
+        assembly {
+            slot := fontaines.slot
+            offset := fontaines.offset
+        }
+        require(slot == 2 && offset == 0, "fontaines changed location");
     }
 }

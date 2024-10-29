@@ -48,7 +48,7 @@ interface IFluidLocker {
      * @param nonce nonce associated to the signature provided by Stack
      * @param stackSignature stack signature containing necessary info to update units
      */
-    function claim(uint256 programId, uint128 totalProgramUnits, uint256 nonce, bytes memory stackSignature) external;
+    function claim(uint256 programId, uint256 totalProgramUnits, uint256 nonce, bytes memory stackSignature) external;
 
     /**
      * @notice Batch update this locker units within the given programs identifier's GDA pools
@@ -59,7 +59,7 @@ interface IFluidLocker {
      */
     function claim(
         uint256[] memory programIds,
-        uint128[] memory totalProgramUnits,
+        uint256[] memory totalProgramUnits,
         uint256[] memory nonces,
         bytes[] memory stackSignatures
     ) external;
@@ -75,8 +75,9 @@ interface IFluidLocker {
      * @notice Unlock the available FLUID Token from this locker
      * @dev Only this Locker owner can call this function
      * @param unlockPeriod the desired unlocking period (instant unlock if sets to 0)
+     * @param recipient account to receive the unlocked FLUID tokens
      */
-    function unlock(uint128 unlockPeriod) external;
+    function unlock(uint128 unlockPeriod, address recipient) external;
 
     /**
      * @notice Stake all the available FLUID Token of this locker

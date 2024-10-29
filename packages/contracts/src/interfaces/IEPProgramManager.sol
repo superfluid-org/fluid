@@ -49,12 +49,16 @@ interface IEPProgramManager {
     /// @dev Error Selector : 0x4c7f89d7
     error NOT_PROGRAM_ADMIN();
 
+    /// @notice Error thrown when attempting an operation on a non-existent program
+    error PROGRAM_NOT_FOUND();
+
     /// @notice Error thrown when passing an invalid parameter
     /// @dev Error Selector : 0x4c4f685a
     error INVALID_PARAMETER();
 
     /// @notice Error thrown when a signature is of invalid
     /// @dev Error Selector : 0x30f01ccf
+    /// @param reason Description of what part of the signature was invalid
     error INVALID_SIGNATURE(string reason);
 
     //      ______     __                        __   ______                 __  _
@@ -90,7 +94,7 @@ interface IEPProgramManager {
      * @param nonce nonce corresponding to the stack signature
      * @param stackSignature stack signature containing necessary info to update units
      */
-    function updateUnits(uint256 programId, uint128 newUnits, uint256 nonce, bytes memory stackSignature) external;
+    function updateUnits(uint256 programId, uint256 newUnits, uint256 nonce, bytes memory stackSignature) external;
 
     /**
      * @notice Batch update units within the distribution pools associated to the given programs
@@ -101,7 +105,7 @@ interface IEPProgramManager {
      */
     function updateUnits(
         uint256[] memory programIds,
-        uint128[] memory newUnits,
+        uint256[] memory newUnits,
         uint256[] memory nonces,
         bytes[] memory stackSignatures
     ) external;
@@ -117,7 +121,7 @@ interface IEPProgramManager {
     function updateUserUnits(
         uint256 programId,
         address user,
-        uint128 newUnits,
+        uint256 newUnits,
         uint256 nonce,
         bytes memory stackSignature
     ) external;

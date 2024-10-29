@@ -4,6 +4,8 @@ pragma solidity ^0.8.23;
 /* Openzeppelin Contracts & Interfaces */
 import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import { ERC1967Utils } from "@openzeppelin-v5/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import { Initializable } from "@openzeppelin-v5/contracts/proxy/utils/Initializable.sol";
 
 /* FLUID Contracts & Interfaces */
 import { FluidLocker } from "./FluidLocker.sol";
@@ -17,18 +19,30 @@ import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
  * @notice Deploys new Fluid Locker contracts and their associated Fontaine
  *
  */
-contract FluidLockerFactory is IFluidLockerFactory {
-    //     _____ __        __
-    //    / ___// /_____ _/ /____  _____
-    //    \__ \/ __/ __ `/ __/ _ \/ ___/
-    //   ___/ / /_/ /_/ / /_/  __(__  )
-    //  /____/\__/\__,_/\__/\___/____/
+contract FluidLockerFactory is Initializable, IFluidLockerFactory {
+    //      ____                          __        __    __        _____ __        __
+    //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
+    //     / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
 
     /// @notice Locker Beacon contract address
     UpgradeableBeacon public immutable LOCKER_BEACON;
 
     /// @notice Penalty Manager interface
     IPenaltyManager private immutable _PENALTY_MANAGER;
+
+    //     _____ __        __
+    //    / ___// /_____ _/ /____  _____
+    //    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /____/\__/\__,_/\__/\___/____/
+
+    /// @notice Pause Status of this contract
+    bool public isPaused;
+
+    /// @notice Governance Multisig address
+    address public governor;
 
     /// @notice Stores wheather or not a locker has been created
     mapping(address locker => bool isCreated) internal _lockers;
@@ -53,6 +67,13 @@ contract FluidLockerFactory is IFluidLockerFactory {
 
         // Transfer ownership of the Locker beacon to the deployer
         LOCKER_BEACON.transferOwnership(msg.sender);
+
+        _disableInitializers();
+    }
+
+    function initialize(address _governor) external initializer {
+        // Sets the governor address
+        governor = _governor;
     }
 
     //      ______     __                        __   ______                 __  _
@@ -63,7 +84,28 @@ contract FluidLockerFactory is IFluidLockerFactory {
 
     /// @inheritdoc IFluidLockerFactory
     function createLockerContract() external returns (address lockerInstance) {
+        if (isPaused) revert LOCKER_CREATION_PAUSED();
         lockerInstance = _createLockerContract(msg.sender);
+    }
+
+    /// @inheritdoc IFluidLockerFactory
+    function upgradeTo(address newImplementation) external onlyGovernor {
+        ERC1967Utils.upgradeToAndCall(newImplementation, new bytes(0));
+    }
+
+    /// @inheritdoc IFluidLockerFactory
+    function setGovernor(address newGovernor) external onlyGovernor {
+        governor = newGovernor;
+    }
+
+    /// @inheritdoc IFluidLockerFactory
+    function pauseLockerCreation() external onlyGovernor {
+        isPaused = true;
+    }
+
+    /// @inheritdoc IFluidLockerFactory
+    function unpauseLockerCreation() external onlyGovernor {
+        isPaused = false;
     }
 
     //   _    ___                 ______                 __  _
@@ -122,5 +164,19 @@ contract FluidLockerFactory is IFluidLockerFactory {
         _PENALTY_MANAGER.approveLocker(lockerInstance);
 
         /// FIXME emit Locker Created event
+    }
+
+    //      __  ___          ___ _____
+    //     /  |/  /___  ____/ (_) __(_)__  __________
+    //    / /|_/ / __ \/ __  / / /_/ / _ \/ ___/ ___/
+    //   / /  / / /_/ / /_/ / / __/ /  __/ /  (__  )
+    //  /_/  /_/\____/\__,_/_/_/ /_/\___/_/  /____/
+
+    /**
+     * @dev Throws if called by any account other than the Locker Factory contract
+     */
+    modifier onlyGovernor() {
+        if (msg.sender != governor) revert NOT_GOVERNOR();
+        _;
     }
 }
