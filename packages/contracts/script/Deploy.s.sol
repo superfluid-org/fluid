@@ -11,7 +11,8 @@ import {
     ISuperToken
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
-import { EPProgramManager, IEPProgramManager } from "../src/EPProgramManager.sol";
+import { IEPProgramManager } from "../src/interfaces/IEPProgramManager.sol";
+import { FluidEPProgramManager } from "../src/FluidEPProgramManager.sol";
 import { FluidLocker } from "../src/FluidLocker.sol";
 import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
@@ -27,7 +28,8 @@ function deployAll(ISuperToken fluid, address governor, address owner)
     )
 {
     // Deploy Ecosystem Partner Program Manager
-    programManagerAddress = address(new EPProgramManager());
+    FluidEPProgramManager programManager = new FluidEPProgramManager(owner);
+    programManagerAddress = address(programManager);
 
     // Deploy Penalty Manager
     PenaltyManager penaltyManager = new PenaltyManager(owner, fluid);
@@ -64,6 +66,9 @@ function deployAll(ISuperToken fluid, address governor, address owner)
 
     // Sets the FluidLockerFactory address in the PenaltyManager
     penaltyManager.setLockerFactory(lockerFactoryAddress);
+
+    // Sets the FluidLockerFactory address in the ProgramManager
+    programManager.setLockerFactory(lockerFactoryAddress);
 }
 
 // forge script script/Deploy.s.sol:DeployScript --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify -vvvv

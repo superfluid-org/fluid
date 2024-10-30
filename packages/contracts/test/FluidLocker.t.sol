@@ -60,8 +60,8 @@ contract FluidLockerTest is SFTest {
     function testClaim(uint256 units) external {
         units = bound(units, 1, 1_000_000);
 
-        uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, address(aliceLocker));
-        bytes memory signature = _helperGenerateSignature(signerPkey, address(aliceLocker), units, PROGRAM_0, nonce);
+        uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, ALICE);
+        bytes memory signature = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce);
 
         vm.prank(ALICE);
         aliceLocker.claim(PROGRAM_0, units, nonce, signature);
@@ -88,8 +88,8 @@ contract FluidLockerTest is SFTest {
         for (uint8 i = 0; i < 3; ++i) {
             programIds[i] = i + 1;
             newUnits[i] = units;
-            nonces[i] = _programManager.getNextValidNonce(programIds[i], address(aliceLocker));
-            signatures[i] = _helperGenerateSignature(signerPkey, address(aliceLocker), units, programIds[i], nonces[i]);
+            nonces[i] = _programManager.getNextValidNonce(programIds[i], ALICE);
+            signatures[i] = _helperGenerateSignature(signerPkey, ALICE, units, programIds[i], nonces[i]);
             distributionAmounts[i] = 1_000_000e18;
             distributionPeriods[i] = _MAX_UNLOCK_PERIOD;
         }

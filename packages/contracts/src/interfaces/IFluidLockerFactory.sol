@@ -67,9 +67,17 @@ interface IFluidLockerFactory {
     /**
      * @notice Returns wheather or not a locker has been deployed
      * @param locker Locker address to be queried
-     * @return isCreated true if the locker is created, false otherwise
+     * @return isCreated True if the locker is created, false otherwise
      */
     function isLockerCreated(address locker) external view returns (bool isCreated);
+
+    /**
+     * @notice Returns the users' locker address
+     * @param user User address to be queried
+     * @return isCreated True if the locker is created, false otherwise
+     * @return lockerAddress The user's locker contract address
+     */
+    function getUserLocker(address user) external view returns (bool isCreated, address lockerAddress);
 
     /**
      * @notice Returns the locker contract address of the given user

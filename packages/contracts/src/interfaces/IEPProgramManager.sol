@@ -103,7 +103,7 @@ interface IEPProgramManager {
      * @param nonces array nonces corresponding to the stack signatures
      * @param stackSignatures array of stack signatures containing necessary info to update units
      */
-    function updateUnits(
+    function batchUpdateUnits(
         uint256[] memory programIds,
         uint256[] memory newUnits,
         uint256[] memory nonces,
@@ -112,18 +112,34 @@ interface IEPProgramManager {
 
     /**
      * @notice Update units within the distribution pool associated to the given program
-     * @param programId program identifier associated to the distribution pool
      * @param user address to grants the units to
+     * @param programId program identifier associated to the distribution pool
      * @param newUnits unit amount to be granted
      * @param nonce nonce corresponding to the stack signature
      * @param stackSignature stack signature containing necessary info to update units
      */
     function updateUserUnits(
-        uint256 programId,
         address user,
+        uint256 programId,
         uint256 newUnits,
         uint256 nonce,
         bytes memory stackSignature
+    ) external;
+
+    /**
+     * @notice Batch update units within the distribution pools associated to the given programs
+     * @param user address to grants the units to
+     * @param programIds array of program identifiers associated to the distribution pool
+     * @param newUnits array of unit amounts to be granted
+     * @param nonces array nonces corresponding to the stack signatures
+     * @param stackSignatures array of stack signatures containing necessary info to update units
+     */
+    function batchUpdateUserUnits(
+        address user,
+        uint256[] memory programIds,
+        uint256[] memory newUnits,
+        uint256[] memory nonces,
+        bytes[] memory stackSignatures
     ) external;
 
     //   _    ___                 ______                 __  _

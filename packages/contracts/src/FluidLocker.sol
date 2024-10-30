@@ -54,20 +54,18 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Fontaine Beacon contract address
     UpgradeableBeacon public immutable FONTAINE_BEACON;
 
+    bool public immutable UNLOCK_AVAILABLE;
+
     /// @notice Staking cooldown period
-    /// FIXME Discuss arbitrary decision
     uint80 private constant _STAKING_COOLDOWN_PERIOD = 3 days;
 
     /// @notice Minimum unlock period allowed
-    /// FIXME Discuss arbitrary decision
     uint128 private constant _MIN_UNLOCK_PERIOD = 7 days;
 
     /// @notice Maximum unlock period allowed
-    /// FIXME Discuss arbitrary decision
     uint128 private constant _MAX_UNLOCK_PERIOD = 540 days;
 
     /// @notice Instant unlock penalty percentage (expressed in basis points)
-    /// FIXME Discuss arbitrary decision
     uint256 private constant _INSTANT_UNLOCK_PENALTY_BP = 8_000;
 
     /// @notice Basis points denominator (for percentage calculation)
@@ -125,6 +123,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         _disableInitializers();
 
         // Sets immutable states
+        UNLOCK_AVAILABLE = true;
         FLUID = fluid;
         TAX_DISTRIBUTION_POOL = taxDistributionPool;
         EP_PROGRAM_MANAGER = programManager;
@@ -165,7 +164,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             FLUID.connectPool(programPool);
         }
 
-        EP_PROGRAM_MANAGER.updateUnits(programId, totalProgramUnits, nonce, stackSignature);
+        EP_PROGRAM_MANAGER.updateUserUnits(lockerOwner, programId, totalProgramUnits, nonce, stackSignature);
     }
 
     /// @inheritdoc IFluidLocker
@@ -185,7 +184,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             }
         }
 
-        EP_PROGRAM_MANAGER.updateUnits(programIds, totalProgramUnits, nonces, stackSignatures);
+        EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonces, stackSignatures);
     }
 
     /// @inheritdoc IFluidLocker
