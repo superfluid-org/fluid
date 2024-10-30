@@ -75,6 +75,30 @@
   },
   {
     "type": "function",
+    "name": "getUserLocker",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "isCreated",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "lockerAddress",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "governor",
     "inputs": [],
     "outputs": [

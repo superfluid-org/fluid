@@ -10,14 +10,17 @@ import {
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
-import { IEPProgramManager } from "../src/interfaces/IEPProgramManager.sol";
+import { EPProgramManager, IEPProgramManager } from "../src/EPProgramManager.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using ECDSA for bytes32;
 
+/// @dev Unit tests for Base EPProgramManager (EPProgramManager.sol)
 contract EPProgramManagerTest is SFTest {
     function setUp() public override {
         super.setUp();
+
+        _programManager = new EPProgramManager();
     }
 
     function testCreateProgram(uint256 _pId, address _admin, address _signer) external {
@@ -142,7 +145,7 @@ contract EPProgramManagerTest is SFTest {
         _programManager.updateUnits(programId, _units, nonce, validSignature);
     }
 
-    function testUpdateUnitsBatch(uint8 _batchAmount, uint96 _signerPkey, address _user, uint256 _units) external {
+    function testBatchUpdateUnits(uint8 _batchAmount, uint96 _signerPkey, address _user, uint256 _units) external {
         vm.assume(_signerPkey != 0);
         vm.assume(_user != address(0));
         vm.assume(_user != address(_penaltyManager.TAX_DISTRIBUTION_POOL()));
@@ -165,14 +168,14 @@ contract EPProgramManagerTest is SFTest {
         }
 
         vm.prank(_user);
-        _programManager.updateUnits(programIds, newUnits, nonces, stackSignatures);
+        _programManager.batchUpdateUnits(programIds, newUnits, nonces, stackSignatures);
 
         for (uint8 i = 0; i < _batchAmount; ++i) {
             assertEq(newUnits[i], pools[i].getUnits(_user), "incorrect units amounts");
         }
     }
 
-    function testUpdateUnitsBatchInvalidArrayLength(uint96 _signerPkey, address _user, uint256 _units) external {
+    function testBatchUpdateUnitsInvalidArrayLength(uint96 _signerPkey, address _user, uint256 _units) external {
         vm.assume(_signerPkey != 0);
         vm.assume(_user != address(0));
         _units = bound(_units, 1, 1_000_000);
@@ -196,14 +199,14 @@ contract EPProgramManagerTest is SFTest {
 
         vm.prank(_user);
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.updateUnits(invalidProgramIds, newUnits, nonces, stackSignatures);
+        _programManager.batchUpdateUnits(invalidProgramIds, newUnits, nonces, stackSignatures);
 
         uint256[] memory invalidNewUnits = new uint256[](1);
         invalidNewUnits[0] = newUnits[0];
 
         vm.prank(_user);
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.updateUnits(programIds, invalidNewUnits, nonces, stackSignatures);
+        _programManager.batchUpdateUnits(programIds, invalidNewUnits, nonces, stackSignatures);
 
         uint256[] memory invalidNonces = new uint256[](1);
         invalidNonces[0] = nonces[0];
@@ -213,6 +216,6 @@ contract EPProgramManagerTest is SFTest {
 
         vm.prank(_user);
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.updateUnits(programIds, newUnits, nonces, invalidStackSignatures);
+        _programManager.batchUpdateUnits(programIds, newUnits, nonces, invalidStackSignatures);
     }
 }

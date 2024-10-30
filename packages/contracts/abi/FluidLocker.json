@@ -26,6 +26,11 @@
         "name": "fontaineImplementation",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "governor",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "nonpayable"
@@ -91,6 +96,19 @@
         "name": "",
         "type": "address",
         "internalType": "contract ISuperfluidPool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "UNLOCK_AVAILABLE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"

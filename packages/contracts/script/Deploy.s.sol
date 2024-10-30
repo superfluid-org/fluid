@@ -11,7 +11,8 @@ import {
     ISuperToken
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
-import { EPProgramManager, IEPProgramManager } from "../src/EPProgramManager.sol";
+import { IEPProgramManager } from "../src/interfaces/IEPProgramManager.sol";
+import { FluidEPProgramManager } from "../src/FluidEPProgramManager.sol";
 import { FluidLocker } from "../src/FluidLocker.sol";
 import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
@@ -27,43 +28,47 @@ function deployAll(ISuperToken fluid, address governor, address owner)
     )
 {
     // Deploy Ecosystem Partner Program Manager
-    EPProgramManager programManager = new EPProgramManager();
+    FluidEPProgramManager programManager = new FluidEPProgramManager(owner);
     programManagerAddress = address(programManager);
 
     // Deploy Penalty Manager
     PenaltyManager penaltyManager = new PenaltyManager(owner, fluid);
     penaltyManagerAddress = address(penaltyManager);
 
-    // Read the newly created GDA Tax Distribution Pool address
-    ISuperfluidPool taxDistributionPool = penaltyManager.TAX_DISTRIBUTION_POOL();
-
     // Deploy the Fontaine Implementation contract
-    Fontaine fontaineImpl = new Fontaine(fluid, taxDistributionPool);
+    Fontaine fontaineImpl = new Fontaine(fluid, penaltyManager.TAX_DISTRIBUTION_POOL());
     fontaineLogicAddress = address(fontaineImpl);
 
     // Deploy the Fluid Locker Implementation contract
-    FluidLocker fluidLockerImpl = new FluidLocker(
-        fluid,
-        taxDistributionPool,
-        IEPProgramManager(programManagerAddress),
-        IPenaltyManager(penaltyManagerAddress),
-        fontaineLogicAddress
+    lockerLogicAddress = address(
+        new FluidLocker(
+            fluid,
+            penaltyManager.TAX_DISTRIBUTION_POOL(),
+            IEPProgramManager(programManagerAddress),
+            IPenaltyManager(penaltyManagerAddress),
+            fontaineLogicAddress,
+            governor
+        )
     );
-    lockerLogicAddress = address(fluidLockerImpl);
 
     // Deploy the Fluid Locker Factory contract
     FluidLockerFactory lockerFactoryLogic =
-        new FluidLockerFactory(address(fluidLockerImpl), IPenaltyManager(address(penaltyManager)));
+        new FluidLockerFactory(lockerLogicAddress, IPenaltyManager(address(penaltyManager)));
 
-    bytes memory callData = abi.encodeWithSelector(FluidLockerFactory.initialize.selector, governor);
-
-    ERC1967Proxy lockerFactoryProxy = new ERC1967Proxy(address(lockerFactoryLogic), callData);
+    ERC1967Proxy lockerFactoryProxy = new ERC1967Proxy(
+        address(lockerFactoryLogic), abi.encodeWithSelector(FluidLockerFactory.initialize.selector, governor)
+    );
 
     FluidLockerFactory lockerFactory = FluidLockerFactory(address(lockerFactoryProxy));
+    lockerFactory.LOCKER_BEACON().transferOwnership(governor);
+
     lockerFactoryAddress = address(lockerFactory);
 
     // Sets the FluidLockerFactory address in the PenaltyManager
     penaltyManager.setLockerFactory(lockerFactoryAddress);
+
+    // Sets the FluidLockerFactory address in the ProgramManager
+    programManager.setLockerFactory(lockerFactoryAddress);
 }
 
 // forge script script/Deploy.s.sol:DeployScript --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify -vvvv
@@ -91,7 +96,7 @@ contract DeployScript is Script {
             address fontaineLogicAddress
         ) = deployAll(fluid, governor, vm.addr(deployerPrivateKey));
 
-        console2.log("EPProgramManager      : deployed at %s ", programManagerAddress);
+        console2.log("FluidEPProgramManager : deployed at %s ", programManagerAddress);
         console2.log("PenaltyManager        : deployed at %s ", penaltyManagerAddress);
         console2.log("FluidLocker (Logic)   : deployed at %s ", lockerLogicAddress);
         console2.log("Fontaine (Logic)      : deployed at %s ", fontaineLogicAddress);

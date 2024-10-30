@@ -19,8 +19,8 @@ using SuperTokenV1Library for ISuperToken;
 
 /**
  * @title Ecosystem Partner Program Manager Contract
- * @author Superfluid
- * @notice Contract responsible for administrating the GDA pool that distribute FLUID to lockers
+ * @author Superfluid x Stack
+ * @notice Contract responsible for administrating the GDA pool that distribute tokens to Stack Points holders
  *
  */
 contract EPProgramManager is IEPProgramManager {
@@ -99,32 +99,23 @@ contract EPProgramManager is IEPProgramManager {
 
     /// @inheritdoc IEPProgramManager
     function updateUnits(uint256 programId, uint256 newUnits, uint256 nonce, bytes memory stackSignature) external {
-        updateUserUnits(programId, msg.sender, newUnits, nonce, stackSignature);
+        updateUserUnits(msg.sender, programId, newUnits, nonce, stackSignature);
     }
 
     /// @inheritdoc IEPProgramManager
-    function updateUnits(
+    function batchUpdateUnits(
         uint256[] memory programIds,
         uint256[] memory newUnits,
         uint256[] memory nonces,
         bytes[] memory stackSignatures
     ) external {
-        uint256 length = programIds.length;
-
-        if (length == 0) revert INVALID_PARAMETER();
-        if (length != newUnits.length || length != nonces.length || length != stackSignatures.length) {
-            revert INVALID_PARAMETER();
-        }
-
-        for (uint256 i; i < length; ++i) {
-            updateUserUnits(programIds[i], msg.sender, newUnits[i], nonces[i], stackSignatures[i]);
-        }
+        batchUpdateUserUnits(msg.sender, programIds, newUnits, nonces, stackSignatures);
     }
 
     /// @inheritdoc IEPProgramManager
     function updateUserUnits(
-        uint256 programId,
         address user,
+        uint256 programId,
         uint256 newUnits,
         uint256 nonce,
         bytes memory stackSignature
@@ -148,9 +139,30 @@ contract EPProgramManager is IEPProgramManager {
             revert INVALID_SIGNATURE("signer");
         }
 
-        program.token.updateMemberUnits(program.distributionPool, user, uint128(newUnits));
+        // Update units in pool
+        _poolUpdate(program, newUnits, user);
 
         /// FIXME emit UserUnitsUpdated event
+    }
+
+    /// @inheritdoc IEPProgramManager
+    function batchUpdateUserUnits(
+        address user,
+        uint256[] memory programIds,
+        uint256[] memory newUnits,
+        uint256[] memory nonces,
+        bytes[] memory stackSignatures
+    ) public {
+        uint256 length = programIds.length;
+
+        if (length == 0) revert INVALID_PARAMETER();
+        if (length != newUnits.length || length != nonces.length || length != stackSignatures.length) {
+            revert INVALID_PARAMETER();
+        }
+
+        for (uint256 i; i < length; ++i) {
+            updateUserUnits(user, programIds[i], newUnits[i], nonces[i], stackSignatures[i]);
+        }
     }
 
     //   _    ___                 ______                 __  _
@@ -174,6 +186,17 @@ contract EPProgramManager is IEPProgramManager {
     //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
     //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /**
+     * @notice Update GDA Pool units
+     * @dev This function can be overriden if the is a need to convert the stackPoints into GDA pool units
+     * @param program The program associated with the update
+     * @param stackPoints Amount of stack points
+     * @param user The user address to receive the units
+     */
+    function _poolUpdate(EPProgram memory program, uint256 stackPoints, address user) internal virtual {
+        program.token.updateMemberUnits(program.distributionPool, user, uint128(stackPoints));
+    }
 
     /**
      * @notice Checks if a nonce is valid for a given program and user

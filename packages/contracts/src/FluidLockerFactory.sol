@@ -71,6 +71,10 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
         _disableInitializers();
     }
 
+    /**
+     * @notice FLUID Locker Factory contract initializer
+     * @param _governor the governor address
+     */
     function initialize(address _governor) external initializer {
         // Sets the governor address
         governor = _governor;
@@ -115,12 +119,18 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFluidLockerFactory
-    function isLockerCreated(address locker) external view returns (bool isCreated) {
+    function getUserLocker(address user) external view returns (bool isCreated, address lockerAddress) {
+        lockerAddress = getLockerAddress(user);
+        isCreated = isLockerCreated(lockerAddress);
+    }
+
+    /// @inheritdoc IFluidLockerFactory
+    function isLockerCreated(address locker) public view returns (bool isCreated) {
         return _lockers[locker];
     }
 
     /// @inheritdoc IFluidLockerFactory
-    function getLockerAddress(address user) external view returns (address lockerAddress) {
+    function getLockerAddress(address user) public view returns (address lockerAddress) {
         lockerAddress = address(
             uint160(
                 uint256(
