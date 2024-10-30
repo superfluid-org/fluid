@@ -96,7 +96,7 @@ contract DeployScript is Script {
             address fontaineLogicAddress
         ) = deployAll(fluid, governor, vm.addr(deployerPrivateKey));
 
-        console2.log("EPProgramManager      : deployed at %s ", programManagerAddress);
+        console2.log("FluidEPProgramManager : deployed at %s ", programManagerAddress);
         console2.log("PenaltyManager        : deployed at %s ", penaltyManagerAddress);
         console2.log("FluidLocker (Logic)   : deployed at %s ", lockerLogicAddress);
         console2.log("Fontaine (Logic)      : deployed at %s ", fontaineLogicAddress);
