@@ -110,6 +110,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      * @param taxDistributionPool Tax Distribution Pool GDA contract interface
      * @param programManager Ecosystem Partner Program Manager contract interface
      * @param fontaineImplementation Fontaine implementation contract address
+     * @param governor Governor address
+     * @param isUnlockAvailable True if the unlock is available, false otherwise
      */
     constructor(
         ISuperToken fluid,
@@ -117,13 +119,14 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         IEPProgramManager programManager,
         IPenaltyManager penaltyManager,
         address fontaineImplementation,
-        address governor
+        address governor,
+        bool isUnlockAvailable
     ) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
 
         // Sets immutable states
-        UNLOCK_AVAILABLE = true;
+        UNLOCK_AVAILABLE = isUnlockAvailable;
         FLUID = fluid;
         TAX_DISTRIBUTION_POOL = taxDistributionPool;
         EP_PROGRAM_MANAGER = programManager;
@@ -196,7 +199,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function unlock(uint128 unlockPeriod, address recipient) external nonReentrant onlyOwner {
+    function unlock(uint128 unlockPeriod, address recipient) external nonReentrant onlyOwner unlockAvailable {
         // Enforce unlock period validity
         if (unlockPeriod != 0 && (unlockPeriod < _MIN_UNLOCK_PERIOD || unlockPeriod > _MAX_UNLOCK_PERIOD)) {
             revert INVALID_UNLOCK_PERIOD();
@@ -222,7 +225,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function stake() external nonReentrant onlyOwner {
+    function stake() external nonReentrant onlyOwner unlockAvailable {
         uint256 amountToStake = getAvailableBalance();
 
         if (amountToStake == 0) revert NO_FLUID_TO_STAKE();
@@ -245,7 +248,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function unstake() external nonReentrant onlyOwner {
+    function unstake() external nonReentrant onlyOwner unlockAvailable {
         if (block.timestamp < stakingUnlocksAt) {
             revert STAKING_COOLDOWN_NOT_ELAPSED();
         }
@@ -393,6 +396,14 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      */
     modifier onlyOwner() {
         if (msg.sender != lockerOwner) revert NOT_LOCKER_OWNER();
+        _;
+    }
+
+    /**
+     * @dev Throws if called operation is not available
+     */
+    modifier unlockAvailable() {
+        if (!UNLOCK_AVAILABLE) revert TTE_NOT_ACTIVATED();
         _;
     }
 }

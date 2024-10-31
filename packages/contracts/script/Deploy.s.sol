@@ -47,7 +47,8 @@ function deployAll(ISuperToken fluid, address governor, address owner)
             IEPProgramManager(programManagerAddress),
             IPenaltyManager(penaltyManagerAddress),
             fontaineLogicAddress,
-            governor
+            governor,
+            true
         )
     );
 
