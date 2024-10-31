@@ -8,6 +8,24 @@ pragma solidity ^0.8.23;
  *
  */
 interface IFluidLocker {
+    /// @notice Event emitted when locker owner claims units
+    event FluidStreamClaimed(uint256 programId, uint256 totalProgramUnits);
+
+    /// @notice Event emitted when locker owner batch claims units
+    event FluidStreamClaimed(uint256[] programId, uint256[] totalProgramUnits);
+
+    /// @notice Event emitted when new $FLUID are locked into the locker
+    event FluidLocked(uint256 amount);
+
+    /// @notice Event emitted when $FLUID are unlocked from the locker
+    event FluidUnlocked(uint128 unlockPeriod, uint256 availableBalance, address recipient, address fontaine);
+
+    /// @notice Event emitted when $FLUID are staked
+    event FluidStaked(uint256 amountToStake);
+
+    /// @notice Event emitted when $FLUID are unstaked
+    event FluidUnstaked();
+
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
     //   / /   / / / / ___/ __/ __ \/ __ `__ \   / __/ / ___/ ___/ __ \/ ___/ ___/

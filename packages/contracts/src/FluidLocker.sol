@@ -168,6 +168,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
 
         EP_PROGRAM_MANAGER.updateUserUnits(lockerOwner, programId, totalProgramUnits, nonce, stackSignature);
+
+        emit IFluidLocker.FluidStreamClaimed(programId, totalProgramUnits);
     }
 
     /// @inheritdoc IFluidLocker
@@ -188,6 +190,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
 
         EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonces, stackSignatures);
+
+        emit IFluidLocker.FluidStreamClaimed(programIds, totalProgramUnits);
     }
 
     /// @inheritdoc IFluidLocker
@@ -195,7 +199,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Fetch the amount of FLUID Token to be locked from the caller
         FLUID.transferFrom(msg.sender, address(this), amount);
 
-        /// FIXME emit `FLUID locked` event
+        emit FluidLocked(amount);
     }
 
     /// @inheritdoc IFluidLocker
@@ -220,8 +224,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         } else {
             _vestUnlock(availableBalance, unlockPeriod, recipient);
         }
-
-        /// FIXME emit `unlocked locker` event
     }
 
     /// @inheritdoc IFluidLocker
@@ -244,7 +246,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Call Penalty Manager to update staker's units
         PENALTY_MANAGER.updateStakerUnits(_stakedBalance);
 
-        /// FIXME emit `staked` event
+        emit FluidStaked(amountToStake);
     }
 
     /// @inheritdoc IFluidLocker
@@ -265,7 +267,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Disconnect this locker from the Tax Distribution Pool
         FLUID.disconnectPool(TAX_DISTRIBUTION_POOL);
 
-        /// FIXME emit `unstaked` event
+        emit FluidUnstaked();
     }
 
     //   _    ___                 ______                 __  _
@@ -340,6 +342,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         // Transfer the leftover $FLUID to the locker owner
         FLUID.transfer(recipient, amountToUnlock - penaltyAmount);
+
+        emit FluidUnlocked(0, amountToUnlock, recipient, address(0));
     }
 
     function _vestUnlock(uint256 amountToUnlock, uint128 unlockPeriod, address recipient) internal {
@@ -361,6 +365,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         // Initialize the new Fontaine instance (this initiate the unlock process)
         IFontaine(newFontaine).initialize(recipient, unlockFlowRate, taxFlowRate);
+
+        emit FluidUnlocked(unlockPeriod, amountToUnlock, recipient, newFontaine);
     }
 
     function _calculateVestUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)
