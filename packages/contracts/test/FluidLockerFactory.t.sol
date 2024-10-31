@@ -8,6 +8,7 @@ import {
     ISuperfluidPool
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+import { IFluidLockerFactory } from "../src/FluidLockerFactory.sol";
 
 using SuperTokenV1Library for ISuperToken;
 
@@ -18,6 +19,16 @@ contract FluidLockerFactoryTest is SFTest {
 
     function testCreateLockerContract(address _user) external {
         vm.assume(_user != address(0));
+
+        vm.prank(_fluidLockerFactory.governor());
+        _fluidLockerFactory.pauseLockerCreation();
+
+        vm.prank(_user);
+        vm.expectRevert(IFluidLockerFactory.LOCKER_CREATION_PAUSED.selector);
+        _fluidLockerFactory.createLockerContract();
+
+        vm.prank(_fluidLockerFactory.governor());
+        _fluidLockerFactory.unpauseLockerCreation();
 
         address predictedAddress = _fluidLockerFactory.getLockerAddress(_user);
         assertEq(_fluidLockerFactory.isLockerCreated(predictedAddress), false, "locker should not exists");
@@ -31,6 +42,21 @@ contract FluidLockerFactoryTest is SFTest {
         vm.prank(_user);
         vm.expectRevert();
         _fluidLockerFactory.createLockerContract();
+    }
+
+    function testSetGovernor(address _newGovernor) external {
+        address currentGovernor = _fluidLockerFactory.governor();
+        vm.assume(_newGovernor != currentGovernor);
+        vm.assume(_newGovernor != address(0));
+
+        vm.prank(_newGovernor);
+        vm.expectRevert(IFluidLockerFactory.NOT_GOVERNOR.selector);
+        _fluidLockerFactory.setGovernor(_newGovernor);
+
+        vm.prank(currentGovernor);
+        _fluidLockerFactory.setGovernor(_newGovernor);
+
+        assertEq(_fluidLockerFactory.governor(), _newGovernor, "governor not updated");
     }
 
     function testGetLockerBeaconImplementation() external view {
