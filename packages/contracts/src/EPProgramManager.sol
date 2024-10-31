@@ -80,7 +80,9 @@ contract EPProgramManager is IEPProgramManager {
             distributionPool: distributionPool
         });
 
-        /// FIXME emit ProgramCreated event
+        emit IEPProgramManager.ProgramCreated(
+            programId, programAdmin, signer, address(token), address(distributionPool)
+        );
     }
 
     /// @inheritdoc IEPProgramManager
@@ -94,7 +96,7 @@ contract EPProgramManager is IEPProgramManager {
         // Update the program signer
         programs[programId].stackSigner = newSigner;
 
-        /// FIXME emit ProgramSignerUpdated event
+        emit IEPProgramManager.ProgramSignerUpdated(programId, newSigner);
     }
 
     /// @inheritdoc IEPProgramManager
@@ -142,7 +144,7 @@ contract EPProgramManager is IEPProgramManager {
         // Update units in pool
         _poolUpdate(program, newUnits, user);
 
-        /// FIXME emit UserUnitsUpdated event
+        emit UserUnitsUpdated(user, programId, newUnits);
     }
 
     /// @inheritdoc IEPProgramManager

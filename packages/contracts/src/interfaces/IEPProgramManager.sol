@@ -14,6 +14,23 @@ import {
  *
  */
 interface IEPProgramManager {
+    //      ______                 __
+    //     / ____/   _____  ____  / /______
+    //    / __/ | | / / _ \/ __ \/ __/ ___/
+    //   / /___ | |/ /  __/ / / / /_(__  )
+    //  /_____/ |___/\___/_/ /_/\__/____/
+
+    /// @notice Event emitted when a new reward program is created
+    event ProgramCreated(
+        uint256 programId, address programAdmin, address signer, address token, address distributionPool
+    );
+
+    /// @notice Event emitted when a reward program signer is updated
+    event ProgramSignerUpdated(uint256 programId, address newSigner);
+
+    /// @notice Event emitted when user's units are updated
+    event UserUnitsUpdated(address user, uint256 programId, uint256 newUnits);
+
     //      ____        __        __
     //     / __ \____ _/ /_____ _/ /___  ______  ___  _____
     //    / / / / __ `/ __/ __ `/ __/ / / / __ \/ _ \/ ___/
