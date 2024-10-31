@@ -8,6 +8,12 @@ pragma solidity ^0.8.23;
  *
  */
 interface IFluidLocker {
+    //      ______                 __
+    //     / ____/   _____  ____  / /______
+    //    / __/ | | / / _ \/ __ \/ __/ ___/
+    //   / /___ | |/ /  __/ / / / /_(__  )
+    //  /_____/ |___/\___/_/ /_/\__/____/
+
     /// @notice Event emitted when locker owner claims units
     event FluidStreamClaimed(uint256 programId, uint256 totalProgramUnits);
 
