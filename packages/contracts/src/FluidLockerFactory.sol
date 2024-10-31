@@ -100,16 +100,19 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     /// @inheritdoc IFluidLockerFactory
     function setGovernor(address newGovernor) external onlyGovernor {
         governor = newGovernor;
+        emit GovernorUpdated(newGovernor);
     }
 
     /// @inheritdoc IFluidLockerFactory
     function pauseLockerCreation() external onlyGovernor {
         isPaused = true;
+        emit FactoryPaused();
     }
 
     /// @inheritdoc IFluidLockerFactory
     function unpauseLockerCreation() external onlyGovernor {
         isPaused = false;
+        emit FactoryUnpaused();
     }
 
     //   _    ___                 ______                 __  _
@@ -174,6 +177,7 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
         _PENALTY_MANAGER.approveLocker(lockerInstance);
 
         /// FIXME emit Locker Created event
+        emit LockerCreated(lockerOwner, lockerInstance);
     }
 
     //      __  ___          ___ _____

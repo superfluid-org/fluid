@@ -8,6 +8,24 @@ pragma solidity ^0.8.23;
  *
  */
 interface IFluidLockerFactory {
+    //      ______                 __
+    //     / ____/   _____  ____  / /______
+    //    / __/ | | / / _ \/ __ \/ __/ ___/
+    //   / /___ | |/ /  __/ / / / /_(__  )
+    //  /_____/ |___/\___/_/ /_/\__/____/
+
+    /// @notice Event emitted upon creation of a new locker
+    event LockerCreated(address lockerOwner, address lockerAddress);
+
+    /// @notice Event emitted upon governor address update
+    event GovernorUpdated(address newGovernor);
+
+    /// @notice Event emitted upon pausing the factory
+    event FactoryPaused();
+
+    /// @notice Event emitted upon unpausing the factory
+    event FactoryUnpaused();
+
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
     //   / /   / / / / ___/ __/ __ \/ __ `__ \   / __/ / ___/ ___/ __ \/ ___/ ___/
