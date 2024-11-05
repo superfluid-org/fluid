@@ -80,6 +80,8 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
+    /// @inheritdoc IEPProgramManager
+    /// @dev Only the contract owner can perform this operation
     function createProgram(uint256 programId, address programAdmin, address signer, ISuperToken token)
         external
         override
@@ -115,6 +117,12 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         );
     }
 
+    /**
+     * @notice Programatically calculate and initiate distribution to the GDA pools and staking reserve
+     * @dev Only the contract owner can perform this operation
+     * @param programId program identifier to start funding
+     * @param totalAmount total amount to be distributed (including staking subsidy)
+     */
     function startFunding(uint256 programId, uint256 totalAmount) external onlyOwner {
         EPProgram memory program = programs[programId];
 
@@ -131,47 +139,75 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         // Distribute flow to Program GDA pool
         program.token.distributeFlow(address(this), program.distributionPool, fundingFlowRate);
 
-        // Create or update the subsidy flow to the Penalty Manager
-        int96 newSubsidyFlow = _createOrUpdateSubsidyFlow(program.token, subsidyFlowRate);
+        if (subsidyFlowRate > 0) {
+            // Create or update the subsidy flow to the Penalty Manager
+            int96 newSubsidyFlow = _createOrUpdateSubsidyFlow(program.token, subsidyFlowRate);
 
-        // Refresh the subsidy distribution flow
-        PENALTY_MANAGER.refreshSubsidyDistribution(newSubsidyFlow);
+            // Refresh the subsidy distribution flow
+            PENALTY_MANAGER.refreshSubsidyDistribution(newSubsidyFlow);
+        }
     }
 
+    /**
+     * @notice Stop flows from this contract to the distribution pool and to the staking reserve
+     * @dev Only the contract owner can perform this operation
+     * @param programId program identifier to stop funding
+     */
     function stopFunding(uint256 programId) external onlyOwner {
         EPProgram memory program = programs[programId];
 
         // Stop the distribution flow to Program GDA pool
         program.token.distributeFlow(address(this), program.distributionPool, 0);
 
-        // Delete or update the subsidy flow to the Penalty Manager
-        int96 newSubsidyFlow = _deleteOrUpdateSubsidyFlow(program.token, subsidyFlowRatePerProgram[programId]);
+        int96 programSubsidyFlowRate = subsidyFlowRatePerProgram[programId];
 
-        // Refresh the subsidy distribution flow
-        PENALTY_MANAGER.refreshSubsidyDistribution(newSubsidyFlow);
+        if (programSubsidyFlowRate > 0) {
+            // Delete or update the subsidy flow to the Penalty Manager
+            int96 newSubsidyFlow = _deleteOrUpdateSubsidyFlow(program.token, programSubsidyFlowRate);
+
+            // Refresh the subsidy distribution flow
+            PENALTY_MANAGER.refreshSubsidyDistribution(newSubsidyFlow);
+        }
     }
 
     /**
      * @notice Update the Locker Factory contract address
      * @dev Only the contract owner can perform this operation
-     * @param lockerFactoryAddress Locker Factory contract address
+     * @param lockerFactoryAddress Locker Factory contract address to be set
      */
     function setLockerFactory(address lockerFactoryAddress) external onlyOwner {
+        // Input validation
         if (lockerFactoryAddress == address(0)) revert INVALID_PARAMETER();
         fluidLockerFactory = IFluidLockerFactory(lockerFactoryAddress);
     }
 
+    /**
+     * @notice Update the Treasury address
+     * @dev Only the contract owner can perform this operation
+     * @param treasuryAddress Treasury address to be set
+     */
     function setTreasury(address treasuryAddress) external onlyOwner {
+        // Input validation
         if (treasuryAddress == address(0)) revert INVALID_PARAMETER();
         fluidTreasury = treasuryAddress;
     }
 
+    /**
+     * @notice Update the Staking Subsidy Rate
+     * @dev Only the contract owner can perform this operation
+     * @param subsidyRate Subsidy rate to be set
+     */
     function setSubsidyRate(uint256 subsidyRate) external onlyOwner {
         // Input validation
         if (subsidyFundingRate > _BP_DENOMINATOR) revert INVALID_PARAMETER();
         subsidyFundingRate = subsidyRate;
     }
 
+    /**
+     * @notice Withdraw all funds from this contract to the treasury
+     * @dev Only the contract owner can perform this operation
+     * @param token token contract address
+     */
     function emergencyWithdraw(ISuperToken token) external onlyOwner {
         token.transfer(fluidTreasury, token.balanceOf(address(this)));
     }
@@ -199,6 +235,12 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         program.token.updateMemberUnits(program.distributionPool, locker, uint128(stackPoints));
     }
 
+    /**
+     * @notice Create or update the subsidy flow from this contract to the staking subsidy reserve
+     * @param token token contract address
+     * @param subsidyFlowRateToIncrease flow rate to add to the current global subsidy flow rate
+     * @return newSubsidyFlow the new current global subsidy flow rate
+     */
     function _createOrUpdateSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToIncrease)
         internal
         returns (int96 newSubsidyFlow)
@@ -217,14 +259,18 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         }
     }
 
+    /**
+     * @notice Delete or update the subsidy flow from this contract to the staking subsidy reserve
+     * @param token token contract address
+     * @param subsidyFlowRateToDecrease flow rate to deduce from the current global subsidy flow rate
+     * @return newSubsidyFlow the new current global subsidy flow rate
+     */
     function _deleteOrUpdateSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToDecrease)
         internal
         returns (int96 newSubsidyFlow)
     {
         // Fetch current flow between this contract and the penalty manager
         int96 currentSubsidyFlow = token.getFlowRate(address(this), address(PENALTY_MANAGER));
-
-        // Calculate the new subsidy flow rate
 
         // Delete the flow if it is only composed of the current subsidy flow to remove, decrease it otherwise
         if (currentSubsidyFlow <= subsidyFlowRateToDecrease) {

@@ -36,14 +36,24 @@ interface IPenaltyManager {
      */
     function updateStakerUnits(uint256 lockerStakedBalance) external;
 
+    /**
+     * @notice Refreshes the subsidy distribution flow rate to the tax distribution pool
+     * @dev Only the program manager can perform this operation
+     * @param subsidyFlowRate the new subsidy flow rate to be distributed
+     */
     function refreshSubsidyDistribution(int96 subsidyFlowRate) external;
 
+    /**
+     * @notice Update the Program Manager contract address
+     * @dev Only the contract owner can perform this operation
+     * @param programManagerAddress Program Manager contract address to be set
+     */
     function setProgramManager(address programManagerAddress) external;
 
     /**
      * @notice Update the Locker Factory contract address
      * @dev Only the contract owner can perform this operation
-     * @param lockerFactoryAddress Locker Factory contract address
+     * @param lockerFactoryAddress Locker Factory contract address to be set
      */
     function setLockerFactory(address lockerFactoryAddress) external;
 
