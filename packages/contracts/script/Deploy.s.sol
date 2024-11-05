@@ -18,7 +18,7 @@ import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
 import { PenaltyManager, IPenaltyManager } from "../src/PenaltyManager.sol";
 
-function deployAll(ISuperToken fluid, address governor, address owner)
+function deployAll(ISuperToken fluid, address governor, address owner, address treasury)
     returns (
         address programManagerAddress,
         address penaltyManagerAddress,
@@ -27,13 +27,14 @@ function deployAll(ISuperToken fluid, address governor, address owner)
         address fontaineLogicAddress
     )
 {
-    // Deploy Ecosystem Partner Program Manager
-    FluidEPProgramManager programManager = new FluidEPProgramManager(owner);
-    programManagerAddress = address(programManager);
-
     // Deploy Penalty Manager
     PenaltyManager penaltyManager = new PenaltyManager(owner, fluid);
     penaltyManagerAddress = address(penaltyManager);
+
+    // Deploy Ecosystem Partner Program Manager
+    FluidEPProgramManager programManager =
+        new FluidEPProgramManager(owner, treasury, IPenaltyManager(penaltyManagerAddress));
+    programManagerAddress = address(programManager);
 
     // Deploy the Fontaine Implementation contract
     Fontaine fontaineImpl = new Fontaine(fluid, penaltyManager.TAX_DISTRIBUTION_POOL());
@@ -81,6 +82,7 @@ contract DeployScript is Script {
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address governor = vm.envAddress("GOVERNOR_ADDRESS");
+        address treasury = vm.envAddress("TREASURY_ADDRESS");
         ISuperToken fluid = ISuperToken(vm.envAddress("FLUID_ADDRESS"));
 
         // Purposedly not enforcing this at contract level in case governance decides to forfeit ownership of the contracts
@@ -95,7 +97,7 @@ contract DeployScript is Script {
             address lockerFactoryAddress,
             address lockerLogicAddress,
             address fontaineLogicAddress
-        ) = deployAll(fluid, governor, vm.addr(deployerPrivateKey));
+        ) = deployAll(fluid, governor, vm.addr(deployerPrivateKey), treasury);
 
         console2.log("FluidEPProgramManager : deployed at %s ", programManagerAddress);
         console2.log("PenaltyManager        : deployed at %s ", penaltyManagerAddress);

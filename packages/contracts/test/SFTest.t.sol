@@ -87,7 +87,7 @@ contract SFTest is Test {
             address lockerFactoryAddress,
             address lockerLogicAddress,
             address fontaineLogicAddress
-        ) = deployAll(_fluidSuperToken, ADMIN, ADMIN);
+        ) = deployAll(_fluidSuperToken, ADMIN, ADMIN, FLUID_TREASURY);
 
         _programManager = EPProgramManager(programManagerAddress);
         _penaltyManager = PenaltyManager(penaltyManagerAddress);
@@ -109,6 +109,7 @@ contract SFTest is Test {
     //              /_/
 
     function _helperCreateProgram(uint256 pId, address admin, address signer) internal returns (ISuperfluidPool pool) {
+        vm.prank(ADMIN);
         pool = _programManager.createProgram(pId, admin, signer, _fluidSuperToken);
     }
 
@@ -116,11 +117,14 @@ contract SFTest is Test {
         internal
         returns (ISuperfluidPool[] memory pools)
     {
+        vm.startPrank(ADMIN);
         pools = new ISuperfluidPool[](pIds.length);
 
         for (uint256 i; i < pIds.length; ++i) {
             pools[i] = _programManager.createProgram(pIds[i], admin, signer, _fluidSuperToken);
         }
+
+        vm.stopPrank();
     }
 
     function _helperGenerateSignature(
