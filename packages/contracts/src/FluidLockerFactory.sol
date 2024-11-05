@@ -30,7 +30,7 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     UpgradeableBeacon public immutable LOCKER_BEACON;
 
     /// @notice Penalty Manager interface
-    IPenaltyManager private immutable _PENALTY_MANAGER;
+    IPenaltyManager public immutable PENALTY_MANAGER;
 
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
@@ -45,7 +45,7 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     address public governor;
 
     /// @notice Stores wheather or not a locker has been created
-    mapping(address locker => bool isCreated) internal _lockers;
+    mapping(address locker => bool isCreated) private _lockers;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -60,7 +60,7 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
      */
     constructor(address lockerImplementation, IPenaltyManager penaltyManager) {
         // Sets the Penalty Manager interface
-        _PENALTY_MANAGER = penaltyManager;
+        PENALTY_MANAGER = penaltyManager;
 
         // Deploy the Locker beacon with the Locker implementation contract
         LOCKER_BEACON = new UpgradeableBeacon(lockerImplementation);
@@ -177,7 +177,7 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
         FluidLocker(lockerInstance).initialize(lockerOwner);
 
         // Approve the newly created locker to interact with the Penalty Manager
-        _PENALTY_MANAGER.approveLocker(lockerInstance);
+        PENALTY_MANAGER.approveLocker(lockerInstance);
 
         emit LockerCreated(lockerOwner, lockerInstance);
     }
