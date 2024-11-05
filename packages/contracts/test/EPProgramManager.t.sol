@@ -106,7 +106,7 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_invalidSignerPkey != 0);
         vm.assume(_signerPkey != _invalidSignerPkey);
         vm.assume(_user != address(0));
-        vm.assume(_user != address(_penaltyManager.TAX_DISTRIBUTION_POOL()));
+        vm.assume(_user != address(_stakingRewardController.TAX_DISTRIBUTION_POOL()));
         _units = bound(_units, 1, 1_000_000);
 
         uint256 programId = 1;
@@ -148,7 +148,7 @@ contract EPProgramManagerTest is SFTest {
     function testBatchUpdateUnits(uint8 _batchAmount, uint96 _signerPkey, address _user, uint256 _units) external {
         vm.assume(_signerPkey != 0);
         vm.assume(_user != address(0));
-        vm.assume(_user != address(_penaltyManager.TAX_DISTRIBUTION_POOL()));
+        vm.assume(_user != address(_stakingRewardController.TAX_DISTRIBUTION_POOL()));
         _units = bound(_units, 1, 1_000_000);
         _batchAmount = uint8(bound(_batchAmount, 2, 8));
 

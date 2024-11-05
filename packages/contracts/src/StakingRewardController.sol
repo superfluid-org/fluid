@@ -13,17 +13,17 @@ import {
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
 /* FLUID Interfaces */
-import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
+import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 
 using SuperTokenV1Library for ISuperToken;
 
 /**
- * @title Penalty Manager Contract
+ * @title Staking Reward Controller Contract
  * @author Superfluid
  * @notice Contract responsible for administrating the GDA pool that distribute the unlocking tax to stakers
  *
  */
-contract PenaltyManager is Ownable, IPenaltyManager {
+contract StakingRewardController is Ownable, IStakingRewardController {
     //      ____                          __        __    __        _____ __        __
     //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
     //     / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -61,8 +61,8 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     //  \____/\____/_/ /_/____/\__/_/   \__,_/\___/\__/\____/_/
 
     /**
-     * @notice Penalty Manager contract constructor
-     * @param owner Penalty Manager contract owner address
+     * @notice Staking Reward Controller contract constructor
+     * @param owner Staking Reward Controller contract owner address
      * @param fluid FLUID SuperToken contract interface
      */
     constructor(address owner, ISuperToken fluid) Ownable(owner) {
@@ -82,27 +82,27 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
-    /// @inheritdoc IPenaltyManager
+    /// @inheritdoc IStakingRewardController
     function updateStakerUnits(uint256 lockerStakedBalance) external onlyApprovedLocker {
         FLUID.updateMemberUnits(TAX_DISTRIBUTION_POOL, msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
     }
 
-    /// @inheritdoc IPenaltyManager
+    /// @inheritdoc IStakingRewardController
     function refreshSubsidyDistribution(int96 subsidyFlowRate) external onlyProgramManager {
         FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, subsidyFlowRate);
     }
 
-    /// @inheritdoc IPenaltyManager
+    /// @inheritdoc IStakingRewardController
     function setLockerFactory(address lockerFactoryAddress) external onlyOwner {
         lockerFactory = lockerFactoryAddress;
     }
 
-    /// @inheritdoc IPenaltyManager
+    /// @inheritdoc IStakingRewardController
     function setProgramManager(address programManagerAddress) external onlyOwner {
         programManager = programManagerAddress;
     }
 
-    /// @inheritdoc IPenaltyManager
+    /// @inheritdoc IStakingRewardController
     function approveLocker(address lockerAddress) external onlyLockerFactory {
         _approvedLockers[lockerAddress] = true;
     }

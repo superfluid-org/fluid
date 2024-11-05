@@ -16,37 +16,37 @@ import { FluidEPProgramManager } from "../src/FluidEPProgramManager.sol";
 import { FluidLocker } from "../src/FluidLocker.sol";
 import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
-import { PenaltyManager, IPenaltyManager } from "../src/PenaltyManager.sol";
+import { StakingRewardController, IStakingRewardController } from "../src/StakingRewardController.sol";
 
 function deployAll(ISuperToken fluid, address governor, address owner, address treasury)
     returns (
         address programManagerAddress,
-        address penaltyManagerAddress,
+        address stakingRewardControllerAddress,
         address lockerFactoryAddress,
         address lockerLogicAddress,
         address fontaineLogicAddress
     )
 {
     // Deploy Penalty Manager
-    PenaltyManager penaltyManager = new PenaltyManager(owner, fluid);
-    penaltyManagerAddress = address(penaltyManager);
+    StakingRewardController stakingRewardController = new StakingRewardController(owner, fluid);
+    stakingRewardControllerAddress = address(stakingRewardController);
 
     // Deploy Ecosystem Partner Program Manager
     FluidEPProgramManager programManager =
-        new FluidEPProgramManager(owner, treasury, IPenaltyManager(penaltyManagerAddress));
+        new FluidEPProgramManager(owner, treasury, IStakingRewardController(stakingRewardControllerAddress));
     programManagerAddress = address(programManager);
 
     // Deploy the Fontaine Implementation contract
-    Fontaine fontaineImpl = new Fontaine(fluid, penaltyManager.TAX_DISTRIBUTION_POOL());
+    Fontaine fontaineImpl = new Fontaine(fluid, stakingRewardController.TAX_DISTRIBUTION_POOL());
     fontaineLogicAddress = address(fontaineImpl);
 
     // Deploy the Fluid Locker Implementation contract
     lockerLogicAddress = address(
         new FluidLocker(
             fluid,
-            penaltyManager.TAX_DISTRIBUTION_POOL(),
+            stakingRewardController.TAX_DISTRIBUTION_POOL(),
             IEPProgramManager(programManagerAddress),
-            IPenaltyManager(penaltyManagerAddress),
+            IStakingRewardController(stakingRewardControllerAddress),
             fontaineLogicAddress,
             governor,
             true
@@ -55,7 +55,7 @@ function deployAll(ISuperToken fluid, address governor, address owner, address t
 
     // Deploy the Fluid Locker Factory contract
     FluidLockerFactory lockerFactoryLogic =
-        new FluidLockerFactory(lockerLogicAddress, IPenaltyManager(address(penaltyManager)));
+        new FluidLockerFactory(lockerLogicAddress, IStakingRewardController(address(stakingRewardController)));
 
     ERC1967Proxy lockerFactoryProxy = new ERC1967Proxy(
         address(lockerFactoryLogic), abi.encodeWithSelector(FluidLockerFactory.initialize.selector, governor)
@@ -66,8 +66,8 @@ function deployAll(ISuperToken fluid, address governor, address owner, address t
 
     lockerFactoryAddress = address(lockerFactory);
 
-    // Sets the FluidLockerFactory address in the PenaltyManager
-    penaltyManager.setLockerFactory(lockerFactoryAddress);
+    // Sets the FluidLockerFactory address in the StakingRewardController
+    stakingRewardController.setLockerFactory(lockerFactoryAddress);
 
     // Sets the FluidLockerFactory address in the ProgramManager
     programManager.setLockerFactory(lockerFactoryAddress);
@@ -93,16 +93,16 @@ contract DeployScript is Script {
         vm.startBroadcast(deployerPrivateKey);
         (
             address programManagerAddress,
-            address penaltyManagerAddress,
+            address stakingRewardControllerAddress,
             address lockerFactoryAddress,
             address lockerLogicAddress,
             address fontaineLogicAddress
         ) = deployAll(fluid, governor, vm.addr(deployerPrivateKey), treasury);
 
-        console2.log("FluidEPProgramManager : deployed at %s ", programManagerAddress);
-        console2.log("PenaltyManager        : deployed at %s ", penaltyManagerAddress);
-        console2.log("FluidLocker (Logic)   : deployed at %s ", lockerLogicAddress);
-        console2.log("Fontaine (Logic)      : deployed at %s ", fontaineLogicAddress);
-        console2.log("FluidLockerFactory    : deployed at %s ", lockerFactoryAddress);
+        console2.log("FluidEPProgramManager     : deployed at %s ", programManagerAddress);
+        console2.log("StakingRewardController   : deployed at %s ", stakingRewardControllerAddress);
+        console2.log("FluidLocker (Logic)       : deployed at %s ", lockerLogicAddress);
+        console2.log("Fontaine (Logic)          : deployed at %s ", fontaineLogicAddress);
+        console2.log("FluidLockerFactory        : deployed at %s ", lockerFactoryAddress);
     }
 }

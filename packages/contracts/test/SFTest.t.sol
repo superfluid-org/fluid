@@ -19,7 +19,7 @@ import { EPProgramManager } from "../src/EPProgramManager.sol";
 import { FluidLocker } from "../src/FluidLocker.sol";
 import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
-import { PenaltyManager } from "../src/PenaltyManager.sol";
+import { StakingRewardController } from "../src/StakingRewardController.sol";
 
 import { deployAll } from "../script/Deploy.s.sol";
 
@@ -50,7 +50,7 @@ contract SFTest is Test {
     FluidLocker internal _fluidLockerLogic;
     Fontaine internal _fontaineLogic;
     FluidLockerFactory internal _fluidLockerFactory;
-    PenaltyManager internal _penaltyManager;
+    StakingRewardController internal _stakingRewardController;
 
     function setUp() public virtual {
         // Superfluid Protocol Deployment Start
@@ -83,14 +83,14 @@ contract SFTest is Test {
 
         (
             address programManagerAddress,
-            address penaltyManagerAddress,
+            address stakingRewardControllerAddress,
             address lockerFactoryAddress,
             address lockerLogicAddress,
             address fontaineLogicAddress
         ) = deployAll(_fluidSuperToken, ADMIN, ADMIN, FLUID_TREASURY);
 
         _programManager = EPProgramManager(programManagerAddress);
-        _penaltyManager = PenaltyManager(penaltyManagerAddress);
+        _stakingRewardController = StakingRewardController(stakingRewardControllerAddress);
         _fluidLockerFactory = FluidLockerFactory(lockerFactoryAddress);
         _fluidLockerLogic = FluidLocker(lockerLogicAddress);
         _fontaineLogic = Fontaine(fontaineLogicAddress);

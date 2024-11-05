@@ -16,7 +16,7 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 import { FluidLocker, IFluidLocker } from "../src/FluidLocker.sol";
 import { IFontaine } from "../src/interfaces/IFontaine.sol";
 import { IEPProgramManager } from "../src/interfaces/IEPProgramManager.sol";
-import { IPenaltyManager } from "../src/interfaces/IPenaltyManager.sol";
+import { IStakingRewardController } from "../src/interfaces/IStakingRewardController.sol";
 import { Fontaine } from "../src/Fontaine.sol";
 
 using SuperTokenV1Library for ISuperToken;
@@ -214,7 +214,9 @@ contract FluidLockerTest is SFTest {
         assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available bal after op");
         assertEq(aliceLocker.getStakedBalance(), funding, "incorrect staked bal after op");
         assertEq(
-            _penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)), funding / 1e16, "incorrect units"
+            _stakingRewardController.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)),
+            funding / 1e16,
+            "incorrect units"
         );
 
         vm.prank(ALICE);
@@ -231,7 +233,7 @@ contract FluidLockerTest is SFTest {
         assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available bal before op");
         assertEq(aliceLocker.getStakedBalance(), funding, "incorrect staked bal before op");
         assertEq(
-            _penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)),
+            _stakingRewardController.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)),
             funding / 1e16,
             "incorrect units before op"
         );
@@ -244,7 +246,11 @@ contract FluidLockerTest is SFTest {
 
         assertEq(aliceLocker.getAvailableBalance(), funding, "incorrect available bal after op");
         assertEq(aliceLocker.getStakedBalance(), 0, "incorrect staked bal after op");
-        assertEq(_penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)), 0, "incorrect units after op");
+        assertEq(
+            _stakingRewardController.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)),
+            0,
+            "incorrect units after op"
+        );
 
         vm.expectRevert(IFluidLocker.NO_FLUID_TO_UNSTAKE.selector);
         aliceLocker.unstake();
@@ -307,9 +313,9 @@ contract FluidLockerTTETest is SFTest {
         _nonUnlockableLockerLogic = address(
             new FluidLocker(
                 _fluid,
-                _penaltyManager.TAX_DISTRIBUTION_POOL(),
+                _stakingRewardController.TAX_DISTRIBUTION_POOL(),
                 IEPProgramManager(address(_programManager)),
-                IPenaltyManager(address(_penaltyManager)),
+                IStakingRewardController(address(_stakingRewardController)),
                 address(_fontaineLogic),
                 ADMIN,
                 false
@@ -484,7 +490,9 @@ contract FluidLockerTTETest is SFTest {
         assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available bal after op");
         assertEq(aliceLocker.getStakedBalance(), funding, "incorrect staked bal after op");
         assertEq(
-            _penaltyManager.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)), funding / 1e16, "incorrect units"
+            _stakingRewardController.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)),
+            funding / 1e16,
+            "incorrect units"
         );
 
         vm.prank(ALICE);
@@ -532,7 +540,7 @@ contract FluidLockerLayoutTest is FluidLocker {
             ISuperToken(address(0)),
             ISuperfluidPool(address(0)),
             IEPProgramManager(address(0)),
-            IPenaltyManager(address(0)),
+            IStakingRewardController(address(0)),
             address(new Fontaine(ISuperToken(address(0)), ISuperfluidPool(address(0)))),
             msg.sender,
             true

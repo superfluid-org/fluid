@@ -18,7 +18,7 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 /* FLUID Interfaces */
 import { IEPProgramManager } from "./interfaces/IEPProgramManager.sol";
 import { IFluidLocker } from "./interfaces/IFluidLocker.sol";
-import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
+import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 import { IFontaine } from "./interfaces/IFontaine.sol";
 
 import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
@@ -48,8 +48,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Distribution Program Manager interface
     IEPProgramManager public immutable EP_PROGRAM_MANAGER;
 
-    /// @notice Penalty Manager interface
-    IPenaltyManager public immutable PENALTY_MANAGER;
+    /// @notice Staking Reward Controller interface
+    IStakingRewardController public immutable STAKING_REWARD_CONTROLLER;
 
     /// @notice Fontaine Beacon contract address
     UpgradeableBeacon public immutable FONTAINE_BEACON;
@@ -118,7 +118,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         ISuperToken fluid,
         ISuperfluidPool taxDistributionPool,
         IEPProgramManager programManager,
-        IPenaltyManager penaltyManager,
+        IStakingRewardController stakingRewardController,
         address fontaineImplementation,
         address governor,
         bool isUnlockAvailable
@@ -131,7 +131,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         FLUID = fluid;
         TAX_DISTRIBUTION_POOL = taxDistributionPool;
         EP_PROGRAM_MANAGER = programManager;
-        PENALTY_MANAGER = penaltyManager;
+        STAKING_REWARD_CONTROLLER = stakingRewardController;
 
         // Deploy the Fontaine beacon with the Fontaine implementation contract
         FONTAINE_BEACON = new UpgradeableBeacon(fontaineImplementation);
@@ -244,8 +244,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Update unlock timestamp
         stakingUnlocksAt = uint80(block.timestamp) + _STAKING_COOLDOWN_PERIOD;
 
-        // Call Penalty Manager to update staker's units
-        PENALTY_MANAGER.updateStakerUnits(_stakedBalance);
+        // Call Staking Reward Controller to update staker's units
+        STAKING_REWARD_CONTROLLER.updateStakerUnits(_stakedBalance);
 
         emit FluidStaked(amountToStake);
     }
@@ -262,8 +262,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Set staked balance to 0
         _stakedBalance = 0;
 
-        // Call Penalty Manager to update staker's units
-        PENALTY_MANAGER.updateStakerUnits(0);
+        // Call Staking Reward Controller to update staker's units
+        STAKING_REWARD_CONTROLLER.updateStakerUnits(0);
 
         // Disconnect this locker from the Tax Distribution Pool
         FLUID.disconnectPool(TAX_DISTRIBUTION_POOL);

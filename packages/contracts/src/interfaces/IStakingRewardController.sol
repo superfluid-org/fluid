@@ -2,12 +2,12 @@
 pragma solidity ^0.8.23;
 
 /**
- * @title Penalty Manager Contract Interface
+ * @title Staking Reward Controller Contract Interface
  * @author Superfluid
  * @notice Contract responsible for administrating the GDA pool that distribute the unlocking tax to stakers or liquidity providers
  *
  */
-interface IPenaltyManager {
+interface IStakingRewardController {
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
     //   / /   / / / / ___/ __/ __ \/ __ `__ \   / __/ / ___/ ___/ __ \/ ___/ ___/
@@ -58,7 +58,7 @@ interface IPenaltyManager {
     function setLockerFactory(address lockerFactoryAddress) external;
 
     /**
-     * @notice Approve a Locker to interact with the Penalty Manager contract
+     * @notice Approve a Locker to interact with the Staking Reward Controller contract
      * @dev Only the Locker Factory contract can perform this operation
      * @param lockerAddress Locker contract address to be approved
      */

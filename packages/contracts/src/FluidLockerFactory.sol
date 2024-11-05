@@ -11,7 +11,7 @@ import { Initializable } from "@openzeppelin-v5/contracts/proxy/utils/Initializa
 import { FluidLocker } from "./FluidLocker.sol";
 import { Fontaine } from "./Fontaine.sol";
 import { IFluidLockerFactory } from "./interfaces/IFluidLockerFactory.sol";
-import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
+import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 
 /**
  * @title Fluid Locker Factory Contract
@@ -29,8 +29,8 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     /// @notice Locker Beacon contract address
     UpgradeableBeacon public immutable LOCKER_BEACON;
 
-    /// @notice Penalty Manager interface
-    IPenaltyManager public immutable PENALTY_MANAGER;
+    /// @notice Staking Reward Controller interface
+    IStakingRewardController public immutable STAKING_REWARD_CONTROLLER;
 
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
@@ -56,11 +56,11 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     /**
      * @notice FLUID Locker Factory contract constructor
      * @param lockerImplementation Locker implementation contract address
-     * @param penaltyManager Penalty Manager interface contract address
+     * @param stakingRewardController Staking Reward Controller interface contract address
      */
-    constructor(address lockerImplementation, IPenaltyManager penaltyManager) {
-        // Sets the Penalty Manager interface
-        PENALTY_MANAGER = penaltyManager;
+    constructor(address lockerImplementation, IStakingRewardController stakingRewardController) {
+        // Sets the Staking Reward Controller interface
+        STAKING_REWARD_CONTROLLER = stakingRewardController;
 
         // Deploy the Locker beacon with the Locker implementation contract
         LOCKER_BEACON = new UpgradeableBeacon(lockerImplementation);
@@ -176,8 +176,8 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
         // Initialize the new Locker instance
         FluidLocker(lockerInstance).initialize(lockerOwner);
 
-        // Approve the newly created locker to interact with the Penalty Manager
-        PENALTY_MANAGER.approveLocker(lockerInstance);
+        // Approve the newly created locker to interact with the Staking Reward Controller
+        STAKING_REWARD_CONTROLLER.approveLocker(lockerInstance);
 
         emit LockerCreated(lockerOwner, lockerInstance);
     }

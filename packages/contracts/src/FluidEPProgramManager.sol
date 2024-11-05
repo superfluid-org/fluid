@@ -16,7 +16,7 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 /* FLUID Contracts & Interfaces */
 import { EPProgramManager, IEPProgramManager } from "./EPProgramManager.sol";
 import { IFluidLockerFactory } from "./interfaces/IFluidLockerFactory.sol";
-import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
+import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -44,8 +44,8 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     //   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
     //  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
 
-    /// @notice Penalty Manager contract interface
-    IPenaltyManager public immutable PENALTY_MANAGER;
+    /// @notice Staking Reward Controller contract interface
+    IStakingRewardController public immutable STAKING_REWARD_CONTROLLER;
 
     /// @notice Program Duration used to calculate flow rates
     uint256 public constant PROGRAM_DURATION = 90 days;
@@ -81,9 +81,9 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
      * @notice Superfluid Ecosystem Partner Program Manager constructor
      * @param owner contract owner address
      */
-    constructor(address owner, address treasury, IPenaltyManager penaltyManager) Ownable(owner) {
+    constructor(address owner, address treasury, IStakingRewardController stakingRewardController) Ownable(owner) {
         fluidTreasury = treasury;
-        PENALTY_MANAGER = penaltyManager;
+        STAKING_REWARD_CONTROLLER = stakingRewardController;
     }
 
     //      ______     __                        __   ______                 __  _
@@ -151,11 +151,11 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         program.token.distributeFlow(address(this), program.distributionPool, fundingFlowRate);
 
         if (subsidyFlowRate > 0) {
-            // Create or update the subsidy flow to the Penalty Manager
+            // Create or update the subsidy flow to the Staking Reward Controller
             int96 newSubsidyFlow = _createOrUpdateSubsidyFlow(program.token, subsidyFlowRate);
 
             // Refresh the subsidy distribution flow
-            PENALTY_MANAGER.refreshSubsidyDistribution(newSubsidyFlow);
+            STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlow);
         }
     }
 
@@ -173,11 +173,11 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         int96 programSubsidyFlowRate = _subsidyFlowRatePerProgram[programId];
 
         if (programSubsidyFlowRate > 0) {
-            // Delete or update the subsidy flow to the Penalty Manager
+            // Delete or update the subsidy flow to the Staking Reward Controller
             int96 newSubsidyFlow = _deleteOrUpdateSubsidyFlow(program.token, programSubsidyFlowRate);
 
             // Refresh the subsidy distribution flow
-            PENALTY_MANAGER.refreshSubsidyDistribution(newSubsidyFlow);
+            STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlow);
         }
     }
 
@@ -256,17 +256,17 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         internal
         returns (int96 newSubsidyFlow)
     {
-        // Fetch current flow between this contract and the penalty manager
-        int96 currentSubsidyFlow = token.getFlowRate(address(this), address(PENALTY_MANAGER));
+        // Fetch current flow between this contract and the Staking Reward Controller
+        int96 currentSubsidyFlow = token.getFlowRate(address(this), address(STAKING_REWARD_CONTROLLER));
 
         // Calculate the new subsidy flow rate
         newSubsidyFlow = currentSubsidyFlow + subsidyFlowRateToIncrease;
 
         // Create the flow if it does not exists, increase it otherwise
         if (currentSubsidyFlow == 0) {
-            token.createFlow(address(PENALTY_MANAGER), newSubsidyFlow);
+            token.createFlow(address(STAKING_REWARD_CONTROLLER), newSubsidyFlow);
         } else {
-            token.updateFlow(address(PENALTY_MANAGER), newSubsidyFlow);
+            token.updateFlow(address(STAKING_REWARD_CONTROLLER), newSubsidyFlow);
         }
     }
 
@@ -280,16 +280,16 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         internal
         returns (int96 newSubsidyFlow)
     {
-        // Fetch current flow between this contract and the penalty manager
-        int96 currentSubsidyFlow = token.getFlowRate(address(this), address(PENALTY_MANAGER));
+        // Fetch current flow between this contract and the Staking Reward Controller
+        int96 currentSubsidyFlow = token.getFlowRate(address(this), address(STAKING_REWARD_CONTROLLER));
 
         // Delete the flow if it is only composed of the current subsidy flow to remove, decrease it otherwise
         if (currentSubsidyFlow <= subsidyFlowRateToDecrease) {
             newSubsidyFlow = 0;
-            token.deleteFlow(address(this), address(PENALTY_MANAGER));
+            token.deleteFlow(address(this), address(STAKING_REWARD_CONTROLLER));
         } else {
             newSubsidyFlow = currentSubsidyFlow - subsidyFlowRateToDecrease;
-            token.updateFlow(address(PENALTY_MANAGER), newSubsidyFlow);
+            token.updateFlow(address(STAKING_REWARD_CONTROLLER), newSubsidyFlow);
         }
     }
 }
