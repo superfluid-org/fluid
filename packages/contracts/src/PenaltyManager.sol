@@ -54,8 +54,6 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     /// @notice Stores the approval status of a given locker contract address
     mapping(address locker => bool isApproved) private _approvedLockers;
 
-    uint256 public subsidyRate;
-
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
     //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
@@ -86,7 +84,6 @@ contract PenaltyManager is Ownable, IPenaltyManager {
 
     /// @inheritdoc IPenaltyManager
     function updateStakerUnits(uint256 lockerStakedBalance) external onlyApprovedLocker {
-        /// FIXME Define proper stakedBalance to GDA pool units calculation
         FLUID.updateMemberUnits(TAX_DISTRIBUTION_POOL, msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
     }
 
@@ -110,12 +107,6 @@ contract PenaltyManager is Ownable, IPenaltyManager {
         _approvedLockers[lockerAddress] = true;
     }
 
-    //      ____      __                        __   ______                 __  _
-    //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
-    //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
-    //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
-    //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
-
     //      __  ___          ___ _____
     //     /  |/  /___  ____/ (_) __(_)__  __________
     //    / /|_/ / __ \/ __  / / /_/ / _ \/ ___/ ___/
@@ -130,11 +121,17 @@ contract PenaltyManager is Ownable, IPenaltyManager {
         _;
     }
 
+    /**
+     * @dev Throws if called by any account other than the Program Manager contract
+     */
     modifier onlyProgramManager() {
         if (msg.sender != programManager) revert NOT_PROGRAM_MANAGER();
         _;
     }
 
+    /**
+     * @dev Throws if called by any account other than an approved locker contract
+     */
     modifier onlyApprovedLocker() {
         if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
         _;
