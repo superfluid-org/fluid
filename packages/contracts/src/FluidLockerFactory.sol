@@ -163,8 +163,11 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
+    /**
+     * @notice Deploy a Locker Beacon Proxy with the hashed encoded LockerOwner as the salt
+     * @param lockerOwner the owner of the Locker to be deployed
+     */
     function _createLockerContract(address lockerOwner) internal returns (address lockerInstance) {
-        // Use create2 to deploy a Locker Beacon Proxy with the hashed encoded LockerOwner as the salt
         lockerInstance =
             address(new BeaconProxy{ salt: keccak256(abi.encode(lockerOwner)) }(address(LOCKER_BEACON), ""));
 
@@ -176,7 +179,6 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
         // Approve the newly created locker to interact with the Penalty Manager
         _PENALTY_MANAGER.approveLocker(lockerInstance);
 
-        /// FIXME emit Locker Created event
         emit LockerCreated(lockerOwner, lockerInstance);
     }
 
@@ -187,7 +189,7 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     //  /_/  /_/\____/\__,_/_/_/ /_/\___/_/  /____/
 
     /**
-     * @dev Throws if called by any account other than the Locker Factory contract
+     * @dev Throws if called by any account other than the Governor account
      */
     modifier onlyGovernor() {
         if (msg.sender != governor) revert NOT_GOVERNOR();

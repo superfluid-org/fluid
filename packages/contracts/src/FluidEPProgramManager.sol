@@ -38,27 +38,37 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     /// @dev Error Selector :
     error LOCKER_NOT_FOUND();
 
+    //      ____                          __        __    __        _____ __        __
+    //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
+    //     / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
+
+    IPenaltyManager public immutable PENALTY_MANAGER;
+
+    uint256 public constant PROGRAM_DURATION = 90 days;
+
+    /// @notice Basis points denominator (for percentage calculation)
+    uint96 private constant _BP_DENOMINATOR = 10_000;
+
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
     //   ___/ / /_/ /_/ / /_/  __(__  )
     //  /____/\__/\__,_/\__/\___/____/
 
-    IPenaltyManager public immutable PENALTY_MANAGER;
-
-    uint256 public constant PROGRAM_DURATION = 120 days;
-
-    /// @notice Basis points denominator (for percentage calculation)
-    uint256 private constant _BP_DENOMINATOR = 10_000;
+    /// @notice Staking subsidy funding rate
+    uint96 public subsidyFundingRate;
 
     /// @notice Fluid Locker Factory interface
     IFluidLockerFactory public fluidLockerFactory;
 
+    /// @notice Fluid treasury account address
     address public fluidTreasury;
 
-    uint256 public subsidyFundingRate;
+    /// @notice Stores the subsidyFlowRate for a given program
+    mapping(uint256 programId => int96 subsidyFlowRate) private _subsidyFlowRatePerProgram;
 
-    mapping(uint256 programId => int96 subsidyFlowRate) public subsidyFlowRatePerProgram;
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
     //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
@@ -130,11 +140,10 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         program.token.transferFrom(fluidTreasury, address(this), totalAmount);
 
         int96 totalFlowRate = int256(totalAmount / PROGRAM_DURATION).toInt96();
-        int96 subsidyFlowRate =
-            (totalFlowRate * int256(subsidyFundingRate).toInt96()) / int256(_BP_DENOMINATOR).toInt96();
+        int96 subsidyFlowRate = (totalFlowRate * int96(subsidyFundingRate)) / int96(_BP_DENOMINATOR);
         int96 fundingFlowRate = totalFlowRate - subsidyFlowRate;
 
-        subsidyFlowRatePerProgram[programId] = subsidyFlowRate;
+        _subsidyFlowRatePerProgram[programId] = subsidyFlowRate;
 
         // Distribute flow to Program GDA pool
         program.token.distributeFlow(address(this), program.distributionPool, fundingFlowRate);
@@ -159,7 +168,7 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         // Stop the distribution flow to Program GDA pool
         program.token.distributeFlow(address(this), program.distributionPool, 0);
 
-        int96 programSubsidyFlowRate = subsidyFlowRatePerProgram[programId];
+        int96 programSubsidyFlowRate = _subsidyFlowRatePerProgram[programId];
 
         if (programSubsidyFlowRate > 0) {
             // Delete or update the subsidy flow to the Penalty Manager
@@ -197,7 +206,7 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
      * @dev Only the contract owner can perform this operation
      * @param subsidyRate Subsidy rate to be set
      */
-    function setSubsidyRate(uint256 subsidyRate) external onlyOwner {
+    function setSubsidyRate(uint96 subsidyRate) external onlyOwner {
         // Input validation
         if (subsidyFundingRate > _BP_DENOMINATOR) revert INVALID_PARAMETER();
         subsidyFundingRate = subsidyRate;

@@ -20,7 +20,7 @@ using SuperTokenV1Library for ISuperToken;
 /**
  * @title Penalty Manager Contract
  * @author Superfluid
- * @notice Contract responsible for administrating the GDA pool that distribute the unlocking tax to stakers or liquidity providers
+ * @notice Contract responsible for administrating the GDA pool that distribute the unlocking tax to stakers
  *
  */
 contract PenaltyManager is Ownable, IPenaltyManager {

@@ -192,7 +192,7 @@ contract EPProgramManager is IEPProgramManager {
 
     /**
      * @notice Update GDA Pool units
-     * @dev This function can be overriden if the is a need to convert the stackPoints into GDA pool units
+     * @dev This function can be overriden if there is a need to convert the stackPoints into GDA pool units
      * @param program The program associated with the update
      * @param stackPoints Amount of stack points
      * @param user The user address to receive the units
