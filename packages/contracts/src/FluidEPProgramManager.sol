@@ -3,16 +3,23 @@ pragma solidity ^0.8.23;
 
 /* Openzeppelin Contracts & Interfaces */
 import { Ownable } from "@openzeppelin-v5/contracts/access/Ownable.sol";
+import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
-import { ISuperToken } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import {
+    ISuperToken,
+    ISuperfluidPool,
+    PoolConfig
+} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
 /* FLUID Contracts & Interfaces */
-import { EPProgramManager } from "./EPProgramManager.sol";
+import { EPProgramManager, IEPProgramManager } from "./EPProgramManager.sol";
 import { IFluidLockerFactory } from "./interfaces/IFluidLockerFactory.sol";
+import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
 
 using SuperTokenV1Library for ISuperToken;
+using SafeCast for int256;
 
 /**
  * @title Superfluid Ecosystem Partner Program Manager Contract
@@ -37,9 +44,21 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     //   ___/ / /_/ /_/ / /_/  __(__  )
     //  /____/\__/\__,_/\__/\___/____/
 
+    IPenaltyManager public immutable PENALTY_MANAGER;
+
+    uint256 public constant PROGRAM_DURATION = 120 days;
+
+    /// @notice Basis points denominator (for percentage calculation)
+    uint256 private constant _BP_DENOMINATOR = 10_000;
+
     /// @notice Fluid Locker Factory interface
     IFluidLockerFactory public fluidLockerFactory;
 
+    address public fluidTreasury;
+
+    uint256 public subsidyFundingRate;
+
+    mapping(uint256 programId => int96 subsidyFlowRate) public subsidyFlowRatePerProgram;
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
     //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
@@ -50,13 +69,87 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
      * @notice Superfluid Ecosystem Partner Program Manager constructor
      * @param owner contract owner address
      */
-    constructor(address owner) Ownable(owner) { }
+    constructor(address owner, address treasury, IPenaltyManager penaltyManager) Ownable(owner) {
+        fluidTreasury = treasury;
+        PENALTY_MANAGER = penaltyManager;
+    }
 
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
     //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    function createProgram(uint256 programId, address programAdmin, address signer, ISuperToken token)
+        external
+        override
+        onlyOwner
+        returns (ISuperfluidPool distributionPool)
+    {
+        // Input validation
+        if (programId == 0) revert INVALID_PARAMETER();
+        if (programAdmin == address(0)) revert INVALID_PARAMETER();
+        if (signer == address(0)) revert INVALID_PARAMETER();
+        if (address(token) == address(0)) revert INVALID_PARAMETER();
+        if (address(programs[programId].distributionPool) != address(0)) {
+            revert PROGRAM_ALREADY_CREATED();
+        }
+
+        // Configure Superfluid GDA Pool
+        PoolConfig memory poolConfig =
+            PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
+
+        // Create Superfluid GDA Pool
+        distributionPool = token.createPool(address(this), poolConfig);
+
+        // Persist program details
+        programs[programId] = EPProgram({
+            programAdmin: programAdmin,
+            stackSigner: signer,
+            token: token,
+            distributionPool: distributionPool
+        });
+
+        emit IEPProgramManager.ProgramCreated(
+            programId, programAdmin, signer, address(token), address(distributionPool)
+        );
+    }
+
+    function startFunding(uint256 programId, uint256 totalAmount) external onlyOwner {
+        EPProgram memory program = programs[programId];
+
+        // Fetch funds from FLUID Treasury (requires prior approval from the Treasury)
+        program.token.transferFrom(fluidTreasury, address(this), totalAmount);
+
+        int96 totalFlowRate = int256(totalAmount / PROGRAM_DURATION).toInt96();
+        int96 subsidyFlowRate =
+            (totalFlowRate * int256(subsidyFundingRate).toInt96()) / int256(_BP_DENOMINATOR).toInt96();
+        int96 fundingFlowRate = totalFlowRate - subsidyFlowRate;
+
+        subsidyFlowRatePerProgram[programId] = subsidyFlowRate;
+
+        // Distribute flow to Program GDA pool
+        program.token.distributeFlow(address(this), program.distributionPool, fundingFlowRate);
+
+        // Create or update the subsidy flow to the Penalty Manager
+        int96 newSubsidyFlow = _createOrUpdateSubsidyFlow(program.token, subsidyFlowRate);
+
+        // Refresh the subsidy distribution flow
+        PENALTY_MANAGER.refreshSubsidyDistribution(newSubsidyFlow);
+    }
+
+    function stopFunding(uint256 programId) external onlyOwner {
+        EPProgram memory program = programs[programId];
+
+        // Stop the distribution flow to Program GDA pool
+        program.token.distributeFlow(address(this), program.distributionPool, 0);
+
+        // Delete or update the subsidy flow to the Penalty Manager
+        int96 newSubsidyFlow = _deleteOrUpdateSubsidyFlow(program.token, subsidyFlowRatePerProgram[programId]);
+
+        // Refresh the subsidy distribution flow
+        PENALTY_MANAGER.refreshSubsidyDistribution(newSubsidyFlow);
+    }
 
     /**
      * @notice Update the Locker Factory contract address
@@ -67,6 +160,22 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         if (lockerFactoryAddress == address(0)) revert INVALID_PARAMETER();
         fluidLockerFactory = IFluidLockerFactory(lockerFactoryAddress);
     }
+
+    function setTreasury(address treasuryAddress) external onlyOwner {
+        if (treasuryAddress == address(0)) revert INVALID_PARAMETER();
+        fluidTreasury = treasuryAddress;
+    }
+
+    function setSubsidyRate(uint256 subsidyRate) external onlyOwner {
+        // Input validation
+        if (subsidyFundingRate > _BP_DENOMINATOR) revert INVALID_PARAMETER();
+        subsidyFundingRate = subsidyRate;
+    }
+
+    function emergencyWithdraw(ISuperToken token) external onlyOwner {
+        token.transfer(fluidTreasury, token.balanceOf(address(this)));
+    }
+
     //      ____      __                        __   ______                 __  _
     //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -88,5 +197,42 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
 
         // Update the locker's units in the program GDA pool
         program.token.updateMemberUnits(program.distributionPool, locker, uint128(stackPoints));
+    }
+
+    function _createOrUpdateSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToIncrease)
+        internal
+        returns (int96 newSubsidyFlow)
+    {
+        // Fetch current flow between this contract and the penalty manager
+        int96 currentSubsidyFlow = token.getFlowRate(address(this), address(PENALTY_MANAGER));
+
+        // Calculate the new subsidy flow rate
+        newSubsidyFlow = currentSubsidyFlow + subsidyFlowRateToIncrease;
+
+        // Create the flow if it does not exists, increase it otherwise
+        if (currentSubsidyFlow == 0) {
+            token.createFlow(address(PENALTY_MANAGER), newSubsidyFlow);
+        } else {
+            token.updateFlow(address(PENALTY_MANAGER), newSubsidyFlow);
+        }
+    }
+
+    function _deleteOrUpdateSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToDecrease)
+        internal
+        returns (int96 newSubsidyFlow)
+    {
+        // Fetch current flow between this contract and the penalty manager
+        int96 currentSubsidyFlow = token.getFlowRate(address(this), address(PENALTY_MANAGER));
+
+        // Calculate the new subsidy flow rate
+
+        // Delete the flow if it is only composed of the current subsidy flow to remove, decrease it otherwise
+        if (currentSubsidyFlow <= subsidyFlowRateToDecrease) {
+            newSubsidyFlow = 0;
+            token.deleteFlow(address(this), address(PENALTY_MANAGER));
+        } else {
+            newSubsidyFlow = currentSubsidyFlow - subsidyFlowRateToDecrease;
+            token.updateFlow(address(PENALTY_MANAGER), newSubsidyFlow);
+        }
     }
 }

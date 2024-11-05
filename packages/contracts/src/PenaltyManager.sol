@@ -48,8 +48,13 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     /// @notice Locker Factory contract address
     address public lockerFactory;
 
+    /// @notice Fluid Program Manager contract address
+    address public programManager;
+
     /// @notice Stores the approval status of a given locker contract address
     mapping(address locker => bool isApproved) private _approvedLockers;
+
+    uint256 public subsidyRate;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -80,11 +85,14 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IPenaltyManager
-    function updateStakerUnits(uint256 lockerStakedBalance) external {
-        if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
-
+    function updateStakerUnits(uint256 lockerStakedBalance) external onlyApprovedLocker {
         /// FIXME Define proper stakedBalance to GDA pool units calculation
         FLUID.updateMemberUnits(TAX_DISTRIBUTION_POOL, msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
+    }
+
+    /// @inheritdoc IPenaltyManager
+    function refreshSubsidyDistribution(int96 subsidyFlowRate) external onlyProgramManager {
+        FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, subsidyFlowRate);
     }
 
     /// @inheritdoc IPenaltyManager
@@ -93,9 +101,20 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     }
 
     /// @inheritdoc IPenaltyManager
+    function setProgramManager(address programManagerAddress) external onlyOwner {
+        programManager = programManagerAddress;
+    }
+
+    /// @inheritdoc IPenaltyManager
     function approveLocker(address lockerAddress) external onlyLockerFactory {
         _approvedLockers[lockerAddress] = true;
     }
+
+    //      ____      __                        __   ______                 __  _
+    //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
+    //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     //      __  ___          ___ _____
     //     /  |/  /___  ____/ (_) __(_)__  __________
@@ -108,6 +127,16 @@ contract PenaltyManager is Ownable, IPenaltyManager {
      */
     modifier onlyLockerFactory() {
         if (msg.sender != lockerFactory) revert NOT_LOCKER_FACTORY();
+        _;
+    }
+
+    modifier onlyProgramManager() {
+        if (msg.sender != programManager) revert NOT_PROGRAM_MANAGER();
+        _;
+    }
+
+    modifier onlyApprovedLocker() {
+        if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
         _;
     }
 }

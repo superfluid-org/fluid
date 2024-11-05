@@ -20,6 +20,9 @@ interface IPenaltyManager {
     /// @notice Error thrown when the caller is not the Locker Factory contract
     error NOT_LOCKER_FACTORY();
 
+    /// @notice Error thrown when the caller is not the Program Manager contract
+    error NOT_PROGRAM_MANAGER();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -32,6 +35,10 @@ interface IPenaltyManager {
      * @param lockerStakedBalance locker's new staked balance amount
      */
     function updateStakerUnits(uint256 lockerStakedBalance) external;
+
+    function refreshSubsidyDistribution(int96 subsidyFlowRate) external;
+
+    function setProgramManager(address programManagerAddress) external;
 
     /**
      * @notice Update the Locker Factory contract address

@@ -54,6 +54,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Fontaine Beacon contract address
     UpgradeableBeacon public immutable FONTAINE_BEACON;
 
+    /// @notice Boolean sets to True if unlock is available
     bool public immutable UNLOCK_AVAILABLE;
 
     /// @notice Staking cooldown period

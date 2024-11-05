@@ -54,6 +54,7 @@ contract EPProgramManager is IEPProgramManager {
     /// @inheritdoc IEPProgramManager
     function createProgram(uint256 programId, address programAdmin, address signer, ISuperToken token)
         external
+        virtual
         returns (ISuperfluidPool distributionPool)
     {
         // Input validation
