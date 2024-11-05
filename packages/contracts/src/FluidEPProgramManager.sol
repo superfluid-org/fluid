@@ -44,8 +44,10 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     //   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
     //  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
 
+    /// @notice Penalty Manager contract interface
     IPenaltyManager public immutable PENALTY_MANAGER;
 
+    /// @notice Program Duration used to calculate flow rates
     uint256 public constant PROGRAM_DURATION = 90 days;
 
     /// @notice Basis points denominator (for percentage calculation)
@@ -204,7 +206,7 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     /**
      * @notice Update the Staking Subsidy Rate
      * @dev Only the contract owner can perform this operation
-     * @param subsidyRate Subsidy rate to be set
+     * @param subsidyRate Subsidy rate to be set (expressed in basis points)
      */
     function setSubsidyRate(uint96 subsidyRate) external onlyOwner {
         // Input validation
