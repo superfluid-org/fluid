@@ -245,7 +245,7 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         if (locker == address(0)) revert LOCKER_NOT_FOUND();
 
         // Update the locker's units in the program GDA pool
-        program.token.updateMemberUnits(program.distributionPool, locker, uint128(stackPoints));
+        program.distributionPool.updateMemberUnits(locker, uint128(stackPoints));
     }
 
     /**

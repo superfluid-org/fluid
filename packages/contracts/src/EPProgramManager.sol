@@ -198,7 +198,7 @@ contract EPProgramManager is IEPProgramManager {
      * @param user The user address to receive the units
      */
     function _poolUpdate(EPProgram memory program, uint256 stackPoints, address user) internal virtual {
-        program.token.updateMemberUnits(program.distributionPool, user, uint128(stackPoints));
+        program.distributionPool.updateMemberUnits(user, uint128(stackPoints));
     }
 
     /**
