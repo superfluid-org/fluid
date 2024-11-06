@@ -110,7 +110,7 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         }
 
         // Configure Superfluid GDA Pool
-        /// FIXME : We could change the `distributeFromAnyAddress` to false here 
+        /// FIXME : We could change the `distributeFromAnyAddress` to false here
         ///        (if we agree that only this contract will distribute to the program pool)
         PoolConfig memory poolConfig =
             PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
@@ -252,23 +252,23 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
      * @notice Create or update the subsidy flow from this contract to the staking subsidy reserve
      * @param token token contract address
      * @param subsidyFlowRateToIncrease flow rate to add to the current global subsidy flow rate
-     * @return newSubsidyFlow the new current global subsidy flow rate
+     * @return newSubsidyFlowRate the new current global subsidy flow rate
      */
     function _createOrUpdateSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToIncrease)
         internal
-        returns (int96 newSubsidyFlow)
+        returns (int96 newSubsidyFlowRate)
     {
         // Fetch current flow between this contract and the Staking Reward Controller
-        int96 currentSubsidyFlow = token.getFlowRate(address(this), address(STAKING_REWARD_CONTROLLER));
+        int96 currentSubsidyFlowRate = token.getFlowRate(address(this), address(STAKING_REWARD_CONTROLLER));
 
         // Calculate the new subsidy flow rate
-        newSubsidyFlow = currentSubsidyFlow + subsidyFlowRateToIncrease;
+        newSubsidyFlowRate = currentSubsidyFlowRate + subsidyFlowRateToIncrease;
 
         // Create the flow if it does not exists, increase it otherwise
-        if (currentSubsidyFlow == 0) {
-            token.createFlow(address(STAKING_REWARD_CONTROLLER), newSubsidyFlow);
+        if (currentSubsidyFlowRate == 0) {
+            token.createFlow(address(STAKING_REWARD_CONTROLLER), newSubsidyFlowRate);
         } else {
-            token.updateFlow(address(STAKING_REWARD_CONTROLLER), newSubsidyFlow);
+            token.updateFlow(address(STAKING_REWARD_CONTROLLER), newSubsidyFlowRate);
         }
     }
 
@@ -276,22 +276,22 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
      * @notice Delete or update the subsidy flow from this contract to the staking subsidy reserve
      * @param token token contract address
      * @param subsidyFlowRateToDecrease flow rate to deduce from the current global subsidy flow rate
-     * @return newSubsidyFlow the new current global subsidy flow rate
+     * @return newSubsidyFlowRate the new current global subsidy flow rate
      */
     function _deleteOrUpdateSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToDecrease)
         internal
-        returns (int96 newSubsidyFlow)
+        returns (int96 newSubsidyFlowRate)
     {
         // Fetch current flow between this contract and the Staking Reward Controller
-        int96 currentSubsidyFlow = token.getFlowRate(address(this), address(STAKING_REWARD_CONTROLLER));
+        int96 currentSubsidyFlowRate = token.getFlowRate(address(this), address(STAKING_REWARD_CONTROLLER));
 
         // Delete the flow if it is only composed of the current subsidy flow to remove, decrease it otherwise
-        if (currentSubsidyFlow <= subsidyFlowRateToDecrease) {
-            newSubsidyFlow = 0;
+        if (currentSubsidyFlowRate <= subsidyFlowRateToDecrease) {
+            newSubsidyFlowRate = 0;
             token.deleteFlow(address(this), address(STAKING_REWARD_CONTROLLER));
         } else {
-            newSubsidyFlow = currentSubsidyFlow - subsidyFlowRateToDecrease;
-            token.updateFlow(address(STAKING_REWARD_CONTROLLER), newSubsidyFlow);
+            newSubsidyFlowRate = currentSubsidyFlowRate - subsidyFlowRateToDecrease;
+            token.updateFlow(address(STAKING_REWARD_CONTROLLER), newSubsidyFlowRate);
         }
     }
 }
