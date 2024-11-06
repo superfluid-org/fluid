@@ -35,6 +35,8 @@ contract SFTest is Test {
     SuperfluidFrameworkDeployer.Framework internal _sf;
     SuperfluidFrameworkDeployer internal _deployer;
 
+    bool public constant FACTORY_PAUSE_STATUS = false;
+
     address public constant ADMIN = address(0x420);
     address public constant ALICE = address(0x1);
     address public constant BOB = address(0x2);
@@ -87,7 +89,7 @@ contract SFTest is Test {
             address lockerFactoryAddress,
             address lockerLogicAddress,
             address fontaineLogicAddress
-        ) = deployAll(_fluidSuperToken, ADMIN, ADMIN, FLUID_TREASURY);
+        ) = deployAll(_fluidSuperToken, ADMIN, ADMIN, FLUID_TREASURY, FACTORY_PAUSE_STATUS);
 
         _programManager = EPProgramManager(programManagerAddress);
         _stakingRewardController = StakingRewardController(stakingRewardControllerAddress);

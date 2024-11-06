@@ -18,7 +18,7 @@ import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
 import { StakingRewardController, IStakingRewardController } from "../src/StakingRewardController.sol";
 
-function deployAll(ISuperToken fluid, address governor, address owner, address treasury)
+function deployAll(ISuperToken fluid, address governor, address owner, address treasury, bool factoryPauseStatus)
     returns (
         address programManagerAddress,
         address stakingRewardControllerAddress,
@@ -37,8 +37,7 @@ function deployAll(ISuperToken fluid, address governor, address owner, address t
     programManagerAddress = address(programManager);
 
     // Deploy the Fontaine Implementation contract
-    Fontaine fontaineImpl = new Fontaine(fluid, stakingRewardController.TAX_DISTRIBUTION_POOL());
-    fontaineLogicAddress = address(fontaineImpl);
+    fontaineLogicAddress = address(new Fontaine(fluid, stakingRewardController.TAX_DISTRIBUTION_POOL()));
 
     // Deploy the Fluid Locker Implementation contract
     lockerLogicAddress = address(
@@ -54,8 +53,9 @@ function deployAll(ISuperToken fluid, address governor, address owner, address t
     );
 
     // Deploy the Fluid Locker Factory contract
-    FluidLockerFactory lockerFactoryLogic =
-        new FluidLockerFactory(lockerLogicAddress, IStakingRewardController(address(stakingRewardController)));
+    FluidLockerFactory lockerFactoryLogic = new FluidLockerFactory(
+        lockerLogicAddress, IStakingRewardController(address(stakingRewardController)), factoryPauseStatus
+    );
 
     ERC1967Proxy lockerFactoryProxy = new ERC1967Proxy(
         address(lockerFactoryLogic), abi.encodeWithSelector(FluidLockerFactory.initialize.selector, governor)
@@ -80,10 +80,13 @@ contract DeployScript is Script {
     function setUp() public { }
 
     function run() public {
+        /// FIXME Add logging for all parameters + git revision status
+
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address governor = vm.envAddress("GOVERNOR_ADDRESS");
         address treasury = vm.envAddress("TREASURY_ADDRESS");
         ISuperToken fluid = ISuperToken(vm.envAddress("FLUID_ADDRESS"));
+        bool factoryPausedStatus = vm.envBool("PAUSE_FACTORY_LOCKER_CREATION");
 
         // Purposedly not enforcing this at contract level in case governance decides to forfeit ownership of the contracts
         if (governor == address(0)) {
@@ -97,7 +100,7 @@ contract DeployScript is Script {
             address lockerFactoryAddress,
             address lockerLogicAddress,
             address fontaineLogicAddress
-        ) = deployAll(fluid, governor, vm.addr(deployerPrivateKey), treasury);
+        ) = deployAll(fluid, governor, vm.addr(deployerPrivateKey), treasury, factoryPausedStatus);
 
         console2.log("FluidEPProgramManager     : deployed at %s ", programManagerAddress);
         console2.log("StakingRewardController   : deployed at %s ", stakingRewardControllerAddress);

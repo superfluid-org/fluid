@@ -32,14 +32,14 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     /// @notice Staking Reward Controller interface
     IStakingRewardController public immutable STAKING_REWARD_CONTROLLER;
 
+    /// @notice Pause Status of this contract
+    bool public immutable IS_PAUSED;
+
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
     //   ___/ / /_/ /_/ / /_/  __(__  )
     //  /____/\__/\__,_/\__/\___/____/
-
-    /// @notice Pause Status of this contract
-    bool public isPaused;
 
     /// @notice Governance Multisig address
     address public governor;
@@ -58,10 +58,15 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
      * @param lockerImplementation Locker implementation contract address
      * @param stakingRewardController Staking Reward Controller interface contract address
      */
-    constructor(address lockerImplementation, IStakingRewardController stakingRewardController) {
+    constructor(address lockerImplementation, IStakingRewardController stakingRewardController, bool pauseStatus) {
         // Sets the Staking Reward Controller interface
         STAKING_REWARD_CONTROLLER = stakingRewardController;
 
+        // Sets the pause status
+        IS_PAUSED = pauseStatus;
+
+        /// FIXME : review the logic here (need to make sure the beacon doesnt change on locker upgrade)
+        /// FIXME : deploy the beacon independantly in deploy script then pass its address to the constructor (offload the beacon deployment from the constructor to the deploy script (with checks))
         // Deploy the Locker beacon with the Locker implementation contract
         LOCKER_BEACON = new UpgradeableBeacon(lockerImplementation);
 
@@ -87,8 +92,7 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFluidLockerFactory
-    function createLockerContract() external returns (address lockerInstance) {
-        if (isPaused) revert LOCKER_CREATION_PAUSED();
+    function createLockerContract() external notPaused returns (address lockerInstance) {
         lockerInstance = _createLockerContract(msg.sender);
     }
 
@@ -101,18 +105,6 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     function setGovernor(address newGovernor) external onlyGovernor {
         governor = newGovernor;
         emit GovernorUpdated(newGovernor);
-    }
-
-    /// @inheritdoc IFluidLockerFactory
-    function pauseLockerCreation() external onlyGovernor {
-        isPaused = true;
-        emit FactoryPaused();
-    }
-
-    /// @inheritdoc IFluidLockerFactory
-    function unpauseLockerCreation() external onlyGovernor {
-        isPaused = false;
-        emit FactoryUnpaused();
     }
 
     //   _    ___                 ______                 __  _
@@ -132,6 +124,7 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
         return _lockers[locker];
     }
 
+    /// FIXME : check with Kaspar if this external call is used at UI level
     /// @inheritdoc IFluidLockerFactory
     function getLockerAddress(address user) public view returns (address lockerAddress) {
         lockerAddress = address(
@@ -193,6 +186,14 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
      */
     modifier onlyGovernor() {
         if (msg.sender != governor) revert NOT_GOVERNOR();
+        _;
+    }
+
+    /**
+     * @dev Throws if attempting to create a locker while this contract is paused
+     */
+    modifier notPaused() {
+        if (IS_PAUSED) revert LOCKER_CREATION_PAUSED();
         _;
     }
 }

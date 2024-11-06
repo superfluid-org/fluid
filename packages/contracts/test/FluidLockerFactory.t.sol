@@ -20,16 +20,6 @@ contract FluidLockerFactoryTest is SFTest {
     function testCreateLockerContract(address _user) external {
         vm.assume(_user != address(0));
 
-        vm.prank(_fluidLockerFactory.governor());
-        _fluidLockerFactory.pauseLockerCreation();
-
-        vm.prank(_user);
-        vm.expectRevert(IFluidLockerFactory.LOCKER_CREATION_PAUSED.selector);
-        _fluidLockerFactory.createLockerContract();
-
-        vm.prank(_fluidLockerFactory.governor());
-        _fluidLockerFactory.unpauseLockerCreation();
-
         address predictedAddress = _fluidLockerFactory.getLockerAddress(_user);
         assertEq(_fluidLockerFactory.isLockerCreated(predictedAddress), false, "locker should not exists");
 

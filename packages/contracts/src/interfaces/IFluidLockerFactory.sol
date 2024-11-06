@@ -20,12 +20,6 @@ interface IFluidLockerFactory {
     /// @notice Event emitted upon governor address update
     event GovernorUpdated(address newGovernor);
 
-    /// @notice Event emitted upon pausing the factory
-    event FactoryPaused();
-
-    /// @notice Event emitted upon unpausing the factory
-    event FactoryUnpaused();
-
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
     //   / /   / / / / ___/ __/ __ \/ __ `__ \   / __/ / ___/ ___/ __ \/ ___/ ___/
@@ -63,18 +57,6 @@ interface IFluidLockerFactory {
      * @param newGovernor new governor address
      */
     function setGovernor(address newGovernor) external;
-
-    /**
-     * @notice Pause the locker creation operations
-     * @dev Only the governor address can perform this operation
-     */
-    function pauseLockerCreation() external;
-
-    /**
-     * @notice Unpause the locker creation operations
-     * @dev Only the governor address can perform this operation
-     */
-    function unpauseLockerCreation() external;
 
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
