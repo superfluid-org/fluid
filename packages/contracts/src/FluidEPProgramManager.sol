@@ -110,6 +110,8 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         }
 
         // Configure Superfluid GDA Pool
+        /// FIXME : We could change the `distributeFromAnyAddress` to false here 
+        ///        (if we agree that only this contract will distribute to the program pool)
         PoolConfig memory poolConfig =
             PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
 
