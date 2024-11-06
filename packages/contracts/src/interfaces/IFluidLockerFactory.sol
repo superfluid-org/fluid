@@ -65,6 +65,14 @@ interface IFluidLockerFactory {
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /**
+     * @notice Returns the users' locker address
+     * @param user User address to be queried
+     * @return isCreated True if the locker is created, false otherwise
+     * @return lockerAddress The user's locker contract address
+     */
+    function getUserLocker(address user) external view returns (bool isCreated, address lockerAddress);
+
+    /**
      * @notice Returns the locker contract address of the given user
      * @param user User address to be queried
      * @return lockerAddress The user's locker contract address

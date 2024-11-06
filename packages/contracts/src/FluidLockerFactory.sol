@@ -114,6 +114,12 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFluidLockerFactory
+    function getUserLocker(address user) external view returns (bool isCreated, address lockerAddress) {
+        lockerAddress = getLockerAddress(user);
+        isCreated = lockerAddress != address(0);
+    }
+
+    /// @inheritdoc IFluidLockerFactory
     function getLockerAddress(address user) public view returns (address lockerAddress) {
         lockerAddress = _lockers[user];
     }
