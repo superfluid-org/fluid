@@ -44,8 +44,8 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     /// @notice Governance Multisig address
     address public governor;
 
-    /// @notice Stores wheather or not a locker has been created
-    mapping(address locker => bool isCreated) private _lockers;
+    /// @notice Stores the locker address of a given user address
+    mapping(address user => address locker) private _lockers;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -114,35 +114,8 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFluidLockerFactory
-    function getUserLocker(address user) external view returns (bool isCreated, address lockerAddress) {
-        lockerAddress = getLockerAddress(user);
-        isCreated = isLockerCreated(lockerAddress);
-    }
-
-    /// @inheritdoc IFluidLockerFactory
-    function isLockerCreated(address locker) public view returns (bool isCreated) {
-        return _lockers[locker];
-    }
-
-    /// FIXME : check with Kaspar if this external call is used at UI level
-    /// @inheritdoc IFluidLockerFactory
     function getLockerAddress(address user) public view returns (address lockerAddress) {
-        lockerAddress = address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            bytes1(0xff),
-                            address(this),
-                            keccak256(abi.encode(user)),
-                            keccak256(
-                                abi.encodePacked(type(BeaconProxy).creationCode, abi.encode(address(LOCKER_BEACON), ""))
-                            )
-                        )
-                    )
-                )
-            )
-        );
+        lockerAddress = _lockers[user];
     }
 
     /// @inheritdoc IFluidLockerFactory
@@ -164,7 +137,7 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
         lockerInstance =
             address(new BeaconProxy{ salt: keccak256(abi.encode(lockerOwner)) }(address(LOCKER_BEACON), ""));
 
-        _lockers[lockerInstance] = true;
+        _lockers[lockerOwner] = lockerInstance;
 
         // Initialize the new Locker instance
         FluidLocker(lockerInstance).initialize(lockerOwner);
