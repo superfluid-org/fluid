@@ -239,10 +239,10 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
      */
     function _poolUpdate(EPProgram memory program, uint256 stackPoints, address user) internal override {
         // Get the locker address belonging to the given user
-        (bool isCreated, address locker) = fluidLockerFactory.getUserLocker(user);
+        address locker = fluidLockerFactory.getLockerAddress(user);
 
         // Ensure the locker exists
-        if (!isCreated) revert LOCKER_NOT_FOUND();
+        if (locker == address(0)) revert LOCKER_NOT_FOUND();
 
         // Update the locker's units in the program GDA pool
         program.token.updateMemberUnits(program.distributionPool, locker, uint128(stackPoints));
