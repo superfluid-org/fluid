@@ -116,6 +116,9 @@ function deployAll(DeploySettings memory settings)
     // Sets the FluidLockerFactory address in the StakingRewardController
     stakingRewardController.setLockerFactory(lockerFactoryAddress);
 
+    // Sets the FluidProgramManager address in the StakingRewardController
+    stakingRewardController.setProgramManager(programManagerAddress);
+
     // Sets the FluidLockerFactory address in the ProgramManager
     programManager.setLockerFactory(lockerFactoryAddress);
 }
