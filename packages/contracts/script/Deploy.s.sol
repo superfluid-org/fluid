@@ -55,7 +55,6 @@ function deployLockerBeacon(
             IEPProgramManager(programManagerAddress),
             IStakingRewardController(stakingRewardControllerAddress),
             fontaineBeaconAddress,
-            settings.governor,
             settings.unlockStatus
         )
     );
@@ -121,13 +120,14 @@ function deployAll(DeploySettings memory settings)
     programManager.setLockerFactory(lockerFactoryAddress);
 }
 
-// forge script script/Deploy.s.sol:DeployScript --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify -vvvv
+// forge script script/Deploy.s.sol:DeployScript --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify -vvvv
 contract DeployScript is Script {
     error GOVERNOR_IS_ZERO_ADDRESS();
 
     function setUp() public { }
 
     function run() public {
+        _showGitRevision();
         /// FIXME Add logging for all parameters + git revision status
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -163,12 +163,47 @@ contract DeployScript is Script {
             address fontaineBeaconAddress
         ) = deployAll(settings);
 
-        console2.log("FluidEPProgramManager     : deployed at %s ", programManagerAddress);
-        console2.log("StakingRewardController   : deployed at %s ", stakingRewardControllerAddress);
-        console2.log("FluidLocker (Logic)       : deployed at %s ", lockerLogicAddress);
-        console2.log("FluidLocker (Beacon)      : deployed at %s ", lockerBeaconAddress);
-        console2.log("Fontaine (Logic)          : deployed at %s ", fontaineLogicAddress);
-        console2.log("Fontaine (Beacon)         : deployed at %s ", fontaineBeaconAddress);
-        console2.log("FluidLockerFactory        : deployed at %s ", lockerFactoryAddress);
+        _logDeploymentSummary(
+            programManagerAddress,
+            stakingRewardControllerAddress,
+            lockerFactoryAddress,
+            lockerLogicAddress,
+            lockerBeaconAddress,
+            fontaineLogicAddress,
+            fontaineBeaconAddress
+        );
+    }
+
+    function _logDeploymentSummary(
+        address programManagerAddress,
+        address stakingRewardControllerAddress,
+        address lockerFactoryAddress,
+        address lockerLogicAddress,
+        address lockerBeaconAddress,
+        address fontaineLogicAddress,
+        address fontaineBeaconAddress
+    ) internal pure {
+        console2.log("");
+        console2.log("*-------------------------------* DEPLOYMENT SUMMARY *-------------------------------*");
+        console2.log("|                                                                                    |");
+        console2.log("| FluidEPProgramManager     : deployed at %s |", programManagerAddress);
+        console2.log("| StakingRewardController   : deployed at %s |", stakingRewardControllerAddress);
+        console2.log("| FluidLocker (Logic)       : deployed at %s |", lockerLogicAddress);
+        console2.log("| FluidLocker (Beacon)      : deployed at %s |", lockerBeaconAddress);
+        console2.log("| Fontaine (Logic)          : deployed at %s |", fontaineLogicAddress);
+        console2.log("| Fontaine (Beacon)         : deployed at %s |", fontaineBeaconAddress);
+        console2.log("| FluidLockerFactory        : deployed at %s |", lockerFactoryAddress);
+        console2.log("*------------------------------------------------------------------------------------*");
+    }
+
+    function _showGitRevision() internal {
+        string[] memory inputs = new string[](2);
+        inputs[0] = "../tasks/show-git-rev.sh";
+        inputs[1] = "forge_ffi_mode";
+        try vm.ffi(inputs) returns (bytes memory res) {
+            console2.log("Git revision: %s", string(res));
+        } catch {
+            console2.log("!! _showGitRevision: FFI not enabled");
+        }
     }
 }
