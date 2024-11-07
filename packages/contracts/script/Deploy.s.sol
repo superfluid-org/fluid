@@ -128,10 +128,12 @@ contract DeployScript is Script {
 
     function run() public {
         _showGitRevision();
-        /// FIXME Add logging for all parameters + git revision status
 
+        // Deployer settings
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
+
+        // Deployment parameters
         address governor = vm.envAddress("GOVERNOR_ADDRESS");
         address treasury = vm.envAddress("TREASURY_ADDRESS");
         ISuperToken fluid = ISuperToken(vm.envAddress("FLUID_ADDRESS"));
@@ -151,6 +153,8 @@ contract DeployScript is Script {
             factoryPauseStatus: factoryPauseStatus,
             unlockStatus: unlockStatus
         });
+
+        _logDeploymentSettings(deployer, address(fluid), governor, treasury, factoryPauseStatus, unlockStatus);
 
         vm.startBroadcast(deployerPrivateKey);
         (
@@ -172,6 +176,26 @@ contract DeployScript is Script {
             fontaineLogicAddress,
             fontaineBeaconAddress
         );
+    }
+
+    function _logDeploymentSettings(
+        address deployer,
+        address fluid,
+        address governor,
+        address treasury,
+        bool factoryPauseStatus,
+        bool unlockStatus
+    ) internal pure {
+        console2.log("");
+        console2.log("*-------------------------------* DEPLOYMENT SETTINGS *------------------------------*");
+        console2.log("|                                                                                    ");
+        console2.log("| Deployer Address          : %s", deployer);
+        console2.log("| FLUID Token Address       : %s", fluid);
+        console2.log("| Governor Address          : %s", governor);
+        console2.log("| Treasury Address          : %s", treasury);
+        console2.log("| Factory Pause Status      : %s", factoryPauseStatus);
+        console2.log("| Locker Unlock Status      : %s", unlockStatus);
+        console2.log("*------------------------------------------------------------------------------------*");
     }
 
     function _logDeploymentSummary(
@@ -201,7 +225,8 @@ contract DeployScript is Script {
         inputs[0] = "../tasks/show-git-rev.sh";
         inputs[1] = "forge_ffi_mode";
         try vm.ffi(inputs) returns (bytes memory res) {
-            console2.log("Git revision: %s", string(res));
+            console2.log("GIT REVISION :");
+            console2.log(string(res));
         } catch {
             console2.log("!! _showGitRevision: FFI not enabled");
         }
