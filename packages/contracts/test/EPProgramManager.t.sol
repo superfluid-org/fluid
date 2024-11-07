@@ -18,10 +18,12 @@ using ECDSA for bytes32;
 
 /// @dev Unit tests for Base EPProgramManager (EPProgramManager.sol)
 contract EPProgramManagerTest is SFTest {
+    EPProgramManager _programManagerBase;
+
     function setUp() public override {
         super.setUp();
 
-        _programManager = new EPProgramManager();
+        _programManagerBase = new EPProgramManager();
     }
 
     function testCreateProgram(uint256 _pId, address _admin, address _signer) external {
@@ -29,21 +31,21 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_admin != address(0));
         vm.assume(_signer != address(0));
 
-        ISuperfluidPool pool = _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        ISuperfluidPool pool = _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken);
 
         (address programAdmin, address stackSigner, ISuperToken token, ISuperfluidPool distributionPool) =
-            _programManager.programs(_pId);
+            _programManagerBase.programs(_pId);
 
         assertEq(programAdmin, _admin, "incorrect admin");
         assertEq(stackSigner, _signer, "incorrect signer");
         assertEq(address(token), address(_fluidSuperToken), "incorrect token");
         assertEq(address(distributionPool), address(pool), "incorrect pool");
         assertEq(
-            address(_programManager.getProgramPool(_pId)), address(pool), "getProgramPool returns an incorrect pool"
+            address(_programManagerBase.getProgramPool(_pId)), address(pool), "getProgramPool returns an incorrect pool"
         );
 
         vm.expectRevert(IEPProgramManager.PROGRAM_ALREADY_CREATED.selector);
-        _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken);
     }
 
     function testCreateProgramReverts(uint256 _pId, address _admin, address _signer) external {
@@ -52,16 +54,16 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_signer != address(0));
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.createProgram(0, _admin, _signer, _fluidSuperToken);
+        _programManagerBase.createProgram(0, _admin, _signer, _fluidSuperToken);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.createProgram(_pId, address(0), _signer, _fluidSuperToken);
+        _programManagerBase.createProgram(_pId, address(0), _signer, _fluidSuperToken);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.createProgram(_pId, _admin, address(0), _fluidSuperToken);
+        _programManagerBase.createProgram(_pId, _admin, address(0), _fluidSuperToken);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.createProgram(_pId, _admin, _signer, ISuperToken(address(0)));
+        _programManagerBase.createProgram(_pId, _admin, _signer, ISuperToken(address(0)));
     }
 
     function testUpdateProgramSigner(
@@ -78,28 +80,28 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_signer != _newSigner);
         vm.assume(_admin != _nonAdmin);
 
-        _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
-        (, address signerBefore,,) = _programManager.programs(_pId);
+        _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        (, address signerBefore,,) = _programManagerBase.programs(_pId);
 
         assertEq(signerBefore, _signer, "incorrect signer before update");
 
         vm.prank(_admin);
-        _programManager.updateProgramSigner(_pId, _newSigner);
+        _programManagerBase.updateProgramSigner(_pId, _newSigner);
 
-        (, address signerAfter,,) = _programManager.programs(_pId);
+        (, address signerAfter,,) = _programManagerBase.programs(_pId);
         assertEq(signerAfter, _newSigner, "incorrect signer after update");
 
         vm.prank(_nonAdmin);
         vm.expectRevert(IEPProgramManager.NOT_PROGRAM_ADMIN.selector);
-        _programManager.updateProgramSigner(_pId, _signer);
+        _programManagerBase.updateProgramSigner(_pId, _signer);
 
         vm.prank(_admin);
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.updateProgramSigner(_pId, address(0));
+        _programManagerBase.updateProgramSigner(_pId, address(0));
 
         vm.prank(_admin);
         vm.expectRevert(IEPProgramManager.PROGRAM_NOT_FOUND.selector);
-        _programManager.updateProgramSigner(1, _newSigner);
+        _programManagerBase.updateProgramSigner(1, _newSigner);
     }
 
     function testUpdateUnits(uint96 _signerPkey, uint96 _invalidSignerPkey, address _user, uint256 _units) external {
@@ -114,36 +116,36 @@ contract EPProgramManagerTest is SFTest {
 
         ISuperfluidPool pool = _helperCreateProgram(programId, ADMIN, vm.addr(_signerPkey));
 
-        uint256 nonce = _programManager.getNextValidNonce(programId, _user);
+        uint256 nonce = _programManagerBase.getNextValidNonce(programId, _user);
         bytes memory validSignature = _helperGenerateSignature(_signerPkey, _user, _units, programId, nonce);
 
         vm.prank(_user);
-        _programManager.updateUnits(programId, _units, nonce, validSignature);
+        _programManagerBase.updateUnits(programId, _units, nonce, validSignature);
 
         assertEq(pool.getUnits(_user), _units, "units not updated");
 
         // Test updateUnits with an invalid nonce
         vm.expectRevert(abi.encodeWithSelector(IEPProgramManager.INVALID_SIGNATURE.selector, "nonce"));
         vm.prank(_user);
-        _programManager.updateUnits(programId, _units, nonce, validSignature);
+        _programManagerBase.updateUnits(programId, _units, nonce, validSignature);
 
         // Test updateUnits with an invalid signer
-        nonce = _programManager.getNextValidNonce(programId, _user);
+        nonce = _programManagerBase.getNextValidNonce(programId, _user);
         bytes memory invalidSignature = _helperGenerateSignature(_invalidSignerPkey, _user, _units, programId, nonce);
 
         vm.expectRevert(abi.encodeWithSelector(IEPProgramManager.INVALID_SIGNATURE.selector, "signer"));
         vm.prank(_user);
-        _programManager.updateUnits(programId, _units, nonce, invalidSignature);
+        _programManagerBase.updateUnits(programId, _units, nonce, invalidSignature);
 
         // Test updateUnits with an invalid signature length
         vm.expectRevert(abi.encodeWithSelector(IEPProgramManager.INVALID_SIGNATURE.selector, "signature length"));
         vm.prank(_user);
-        _programManager.updateUnits(programId, _units, nonce, "0x");
+        _programManagerBase.updateUnits(programId, _units, nonce, "0x");
 
         // Test updateUnits with an invalid user address
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
         vm.prank(address(0));
-        _programManager.updateUnits(programId, _units, nonce, validSignature);
+        _programManagerBase.updateUnits(programId, _units, nonce, validSignature);
     }
 
     function testBatchUpdateUnits(uint8 _batchAmount, uint96 _signerPkey, address _user, uint256 _units) external {
@@ -164,12 +166,12 @@ contract EPProgramManagerTest is SFTest {
             pools[i] = _helperCreateProgram(programIds[i], ADMIN, vm.addr(_signerPkey));
 
             newUnits[i] = _units;
-            nonces[i] = _programManager.getNextValidNonce(programIds[i], _user);
+            nonces[i] = _programManagerBase.getNextValidNonce(programIds[i], _user);
             stackSignatures[i] = _helperGenerateSignature(_signerPkey, _user, newUnits[i], programIds[i], nonces[i]);
         }
 
         vm.prank(_user);
-        _programManager.batchUpdateUnits(programIds, newUnits, nonces, stackSignatures);
+        _programManagerBase.batchUpdateUnits(programIds, newUnits, nonces, stackSignatures);
 
         for (uint8 i = 0; i < _batchAmount; ++i) {
             assertEq(newUnits[i], pools[i].getUnits(_user), "incorrect units amounts");
@@ -192,7 +194,7 @@ contract EPProgramManagerTest is SFTest {
             pools[i] = _helperCreateProgram(programIds[i], ADMIN, vm.addr(_signerPkey));
 
             newUnits[i] = _units;
-            nonces[i] = _programManager.getNextValidNonce(programIds[i], _user);
+            nonces[i] = _programManagerBase.getNextValidNonce(programIds[i], _user);
             stackSignatures[i] = _helperGenerateSignature(_signerPkey, _user, newUnits[i], programIds[i], nonces[i]);
         }
 
@@ -200,14 +202,14 @@ contract EPProgramManagerTest is SFTest {
 
         vm.prank(_user);
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.batchUpdateUnits(invalidProgramIds, newUnits, nonces, stackSignatures);
+        _programManagerBase.batchUpdateUnits(invalidProgramIds, newUnits, nonces, stackSignatures);
 
         uint256[] memory invalidNewUnits = new uint256[](1);
         invalidNewUnits[0] = newUnits[0];
 
         vm.prank(_user);
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.batchUpdateUnits(programIds, invalidNewUnits, nonces, stackSignatures);
+        _programManagerBase.batchUpdateUnits(programIds, invalidNewUnits, nonces, stackSignatures);
 
         uint256[] memory invalidNonces = new uint256[](1);
         invalidNonces[0] = nonces[0];
@@ -217,18 +219,31 @@ contract EPProgramManagerTest is SFTest {
 
         vm.prank(_user);
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.batchUpdateUnits(programIds, newUnits, nonces, invalidStackSignatures);
+        _programManagerBase.batchUpdateUnits(programIds, newUnits, nonces, invalidStackSignatures);
+    }
+
+    function _helperCreateProgram(uint256 pId, address admin, address signer)
+        internal
+        override
+        returns (ISuperfluidPool pool)
+    {
+        vm.prank(ADMIN);
+        pool = _programManagerBase.createProgram(pId, admin, signer, _fluidSuperToken);
     }
 }
 
 contract FluidEPProgramManagerTest is SFTest {
     IFluidLocker public aliceLocker;
+    IFluidLocker public bobLocker;
 
     function setUp() public override {
         super.setUp();
 
         vm.prank(ALICE);
         aliceLocker = IFluidLocker(_fluidLockerFactory.createLockerContract());
+
+        vm.prank(BOB);
+        bobLocker = IFluidLocker(_fluidLockerFactory.createLockerContract());
     }
 
     function testCreateProgram(uint256 _pId, address _admin, address _signer) external {
@@ -383,5 +398,61 @@ contract FluidEPProgramManagerTest is SFTest {
         for (uint8 i = 0; i < _batchAmount; ++i) {
             assertEq(newUnits[i], pools[i].getUnits(address(aliceLocker)), "incorrect units amounts");
         }
+    }
+
+    // Pre-requisite :
+    // - some Lockers have units
+    // - if subsidy rate > 0
+    //      - some Lockers have staked
+    function testStartFundingWithoutSubsidy(uint256 _programId, uint256 _fundingAmount) external {
+        vm.assume(_programId > 0);
+        _fundingAmount = bound(_fundingAmount, 100_000e18, 100_000_000e18);
+        uint96 signerPkey = 69_420;
+
+        ISuperfluidPool pool = _helperCreateProgram(_programId, ADMIN, vm.addr(signerPkey));
+        _helperGrantUnitsToAlice(_programId, 1, signerPkey);
+        _helperBobStaking();
+
+        vm.prank(FLUID_TREASURY);
+        _fluid.approve(address(_programManager), _fundingAmount);
+
+        vm.prank(ADMIN);
+        _programManager.startFunding(_programId, _fundingAmount);
+
+        // TODO add assertions
+    }
+
+    function testStartFundingWithSubsidy(uint256 _programId, uint256 _fundingAmount) external {
+        vm.assume(_programId > 0);
+        _fundingAmount = bound(_fundingAmount, 100_000e18, 100_000_000e18);
+        uint96 signerPkey = 69_420;
+
+        // Set Subsidy Rate to 5%
+        vm.prank(ADMIN);
+        _programManager.setSubsidyRate(500);
+
+        ISuperfluidPool pool = _helperCreateProgram(_programId, ADMIN, vm.addr(signerPkey));
+        _helperGrantUnitsToAlice(_programId, 1, signerPkey);
+        _helperBobStaking();
+
+        vm.prank(FLUID_TREASURY);
+        _fluid.approve(address(_programManager), _fundingAmount);
+
+        vm.prank(ADMIN);
+        _programManager.startFunding(_programId, _fundingAmount);
+    }
+
+    function _helperGrantUnitsToAlice(uint256 programId, uint256 units, uint96 signerPkey) internal {
+        uint256 nonce = _programManager.getNextValidNonce(programId, ALICE);
+        bytes memory validSignature = _helperGenerateSignature(signerPkey, ALICE, units, programId, nonce);
+
+        vm.prank(ALICE);
+        _programManager.updateUnits(programId, units, nonce, validSignature);
+    }
+
+    function _helperBobStaking() internal {
+        _helperFundLocker(address(bobLocker), 10_000e18);
+        vm.prank(BOB);
+        bobLocker.stake();
     }
 }
