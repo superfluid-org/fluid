@@ -318,7 +318,7 @@ contract FluidLockerTTETest is SFTest {
                 IStakingRewardController(address(_stakingRewardController)),
                 address(_fontaineLogic),
                 ADMIN,
-                false
+                !LOCKER_CAN_UNLOCK
             )
         );
 
