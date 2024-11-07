@@ -188,7 +188,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonces, stackSignatures);
 
-        emit IFluidLocker.FluidStreamClaimed(programIds, totalProgramUnits);
+        emit IFluidLocker.FluidStreamsClaimed(programIds, totalProgramUnits);
     }
 
     /// @inheritdoc IFluidLocker

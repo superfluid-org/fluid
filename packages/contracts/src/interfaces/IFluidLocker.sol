@@ -15,19 +15,21 @@ interface IFluidLocker {
     //  /_____/ |___/\___/_/ /_/\__/____/
 
     /// @notice Event emitted when locker owner claims units
-    event FluidStreamClaimed(uint256 programId, uint256 totalProgramUnits);
+    event FluidStreamClaimed(uint256 indexed programId, uint256 indexed totalProgramUnits);
 
     /// @notice Event emitted when locker owner batch claims units
-    event FluidStreamClaimed(uint256[] programId, uint256[] totalProgramUnits);
+    event FluidStreamsClaimed(uint256[] indexed programId, uint256[] indexed totalProgramUnits);
 
     /// @notice Event emitted when new $FLUID are locked into the locker
-    event FluidLocked(uint256 amount);
+    event FluidLocked(uint256 indexed amount);
 
     /// @notice Event emitted when $FLUID are unlocked from the locker
-    event FluidUnlocked(uint128 unlockPeriod, uint256 availableBalance, address recipient, address fontaine);
+    event FluidUnlocked(
+        uint128 indexed unlockPeriod, uint256 indexed availableBalance, address recipient, address indexed fontaine
+    );
 
     /// @notice Event emitted when $FLUID are staked
-    event FluidStaked(uint256 amountToStake);
+    event FluidStaked(uint256 indexed newTotalStakedBalance, uint256 indexed addedAmount);
 
     /// @notice Event emitted when $FLUID are unstaked
     event FluidUnstaked();
