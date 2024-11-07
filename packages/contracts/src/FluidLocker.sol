@@ -110,8 +110,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      * @param fluid FLUID SuperToken contract interface
      * @param taxDistributionPool Tax Distribution Pool GDA contract interface
      * @param programManager Ecosystem Partner Program Manager contract interface
+     * @param stakingRewardController Staking Reward Controller contract interface
      * @param fontaineBeacon Fontaine Beacon contract address
-     * @param governor Governor address
      * @param isUnlockAvailable True if the unlock is available, false otherwise
      */
     constructor(
@@ -120,7 +120,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         IEPProgramManager programManager,
         IStakingRewardController stakingRewardController,
         address fontaineBeacon,
-        address governor,
         bool isUnlockAvailable
     ) {
         // Disable initializers to prevent implementation contract initalization

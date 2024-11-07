@@ -317,7 +317,6 @@ contract FluidLockerTTETest is SFTest {
                 IEPProgramManager(address(_programManager)),
                 IStakingRewardController(address(_stakingRewardController)),
                 address(_fontaineLogic),
-                ADMIN,
                 !LOCKER_CAN_UNLOCK
             )
         );
@@ -541,8 +540,7 @@ contract FluidLockerLayoutTest is FluidLocker {
             ISuperfluidPool(address(0)),
             IEPProgramManager(address(0)),
             IStakingRewardController(address(0)),
-            address(new Fontaine(ISuperToken(address(0)), ISuperfluidPool(address(0)))),
-            msg.sender,
+            address(0),
             true
         )
     { }
