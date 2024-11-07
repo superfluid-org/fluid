@@ -16,7 +16,7 @@ import { TestToken } from "@superfluid-finance/ethereum-contracts/contracts/util
 import { SuperToken, ISuperToken } from "@superfluid-finance/ethereum-contracts/contracts/superfluid/SuperToken.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
-import { EPProgramManager } from "../src/EPProgramManager.sol";
+import { FluidEPProgramManager } from "../src/FluidEPProgramManager.sol";
 import { FluidLocker } from "../src/FluidLocker.sol";
 import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
@@ -50,7 +50,7 @@ contract SFTest is Test {
     SuperToken internal _fluidSuperToken;
     ISuperToken internal _fluid;
 
-    EPProgramManager internal _programManager;
+    FluidEPProgramManager internal _programManager;
     FluidLocker internal _fluidLockerLogic;
     Fontaine internal _fontaineLogic;
     FluidLockerFactory internal _fluidLockerFactory;
@@ -106,7 +106,7 @@ contract SFTest is Test {
             address fontaineBeaconAddress
         ) = deployAll(settings);
 
-        _programManager = EPProgramManager(programManagerAddress);
+        _programManager = FluidEPProgramManager(programManagerAddress);
         _stakingRewardController = StakingRewardController(stakingRewardControllerAddress);
         _fluidLockerFactory = FluidLockerFactory(lockerFactoryAddress);
         _fluidLockerLogic = FluidLocker(lockerLogicAddress);
@@ -126,7 +126,11 @@ contract SFTest is Test {
     //  /_/ /_/\___/_/ .___/\___/_/     /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
     //              /_/
 
-    function _helperCreateProgram(uint256 pId, address admin, address signer) internal returns (ISuperfluidPool pool) {
+    function _helperCreateProgram(uint256 pId, address admin, address signer)
+        internal
+        virtual
+        returns (ISuperfluidPool pool)
+    {
         vm.prank(ADMIN);
         pool = _programManager.createProgram(pId, admin, signer, _fluidSuperToken);
     }
@@ -195,5 +199,10 @@ contract SFTest is Test {
             _fluid.distributeFlow(FLUID_TREASURY, pool, distributionFlowRate);
             vm.stopPrank();
         }
+    }
+
+    function _helperFundLocker(address locker, uint256 amount) internal {
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.transfer(locker, amount);
     }
 }

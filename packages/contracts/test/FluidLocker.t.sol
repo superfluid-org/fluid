@@ -262,11 +262,6 @@ contract FluidLockerTest is SFTest {
         assertEq(_fluidLockerLogic.getFontaineBeaconImplementation(), address(_fontaineLogic));
     }
 
-    function _helperFundLocker(address locker, uint256 amount) internal {
-        vm.prank(FLUID_TREASURY);
-        _fluidSuperToken.transfer(locker, amount);
-    }
-
     function _helperBobStaking() internal {
         _helperFundLocker(address(bobLocker), 10_000e18);
         vm.prank(BOB);
@@ -504,11 +499,6 @@ contract FluidLockerTTETest is SFTest {
 
         vm.prank(ADMIN);
         beacon.upgradeTo(_unlockableLockerLogic);
-    }
-
-    function _helperFundLocker(address locker, uint256 amount) internal {
-        vm.prank(FLUID_TREASURY);
-        _fluidSuperToken.transfer(locker, amount);
     }
 
     function _helperBobStaking() internal {
