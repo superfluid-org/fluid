@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
+import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 import { SuperfluidFrameworkDeployer } from
     "@superfluid-finance/ethereum-contracts/contracts/utils/SuperfluidFrameworkDeployer.sol";
@@ -21,7 +22,7 @@ import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
 import { StakingRewardController } from "../src/StakingRewardController.sol";
 
-import { deployAll } from "../script/Deploy.s.sol";
+import { deployAll, DeploySettings } from "../script/Deploy.s.sol";
 
 using SuperTokenV1Library for SuperToken;
 using SuperTokenV1Library for ISuperToken;
@@ -35,7 +36,8 @@ contract SFTest is Test {
     SuperfluidFrameworkDeployer.Framework internal _sf;
     SuperfluidFrameworkDeployer internal _deployer;
 
-    bool public constant FACTORY_PAUSE_STATUS = false;
+    bool public constant FACTORY_IS_PAUSED = false;
+    bool public constant LOCKER_CAN_UNLOCK = true;
 
     address public constant ADMIN = address(0x420);
     address public constant ALICE = address(0x1);
@@ -53,6 +55,8 @@ contract SFTest is Test {
     Fontaine internal _fontaineLogic;
     FluidLockerFactory internal _fluidLockerFactory;
     StakingRewardController internal _stakingRewardController;
+    UpgradeableBeacon internal _lockerBeacon;
+    UpgradeableBeacon internal _fontaineBeacon;
 
     function setUp() public virtual {
         // Superfluid Protocol Deployment Start
@@ -80,6 +84,15 @@ contract SFTest is Test {
         _fluidSuperToken.upgrade(FLUID_SUPPLY);
         vm.stopPrank();
 
+        DeploySettings memory settings = DeploySettings({
+            fluid: _fluidSuperToken,
+            governor: ADMIN,
+            owner: ADMIN,
+            treasury: FLUID_TREASURY,
+            factoryPauseStatus: FACTORY_IS_PAUSED,
+            unlockStatus: LOCKER_CAN_UNLOCK
+        });
+
         // FLUID Contracts Deployment Start
         vm.startPrank(ADMIN);
 
@@ -88,8 +101,10 @@ contract SFTest is Test {
             address stakingRewardControllerAddress,
             address lockerFactoryAddress,
             address lockerLogicAddress,
-            address fontaineLogicAddress
-        ) = deployAll(_fluidSuperToken, ADMIN, ADMIN, FLUID_TREASURY, FACTORY_PAUSE_STATUS);
+            address lockerBeaconAddress,
+            address fontaineLogicAddress,
+            address fontaineBeaconAddress
+        ) = deployAll(settings);
 
         _programManager = EPProgramManager(programManagerAddress);
         _stakingRewardController = StakingRewardController(stakingRewardControllerAddress);
@@ -97,7 +112,8 @@ contract SFTest is Test {
         _fluidLockerLogic = FluidLocker(lockerLogicAddress);
         _fontaineLogic = Fontaine(fontaineLogicAddress);
         _fluid = ISuperToken(address(_fluidSuperToken));
-
+        _lockerBeacon = UpgradeableBeacon(lockerBeaconAddress);
+        _fontaineBeacon = UpgradeableBeacon(fontaineBeaconAddress);
         vm.stopPrank();
 
         // FLUID Contracts Deployment End
