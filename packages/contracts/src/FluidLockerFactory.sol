@@ -55,25 +55,21 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
 
     /**
      * @notice FLUID Locker Factory contract constructor
-     * @param lockerImplementation Locker implementation contract address
+     * @param lockerBeacon Locker Beacon contract address
      * @param stakingRewardController Staking Reward Controller interface contract address
      */
-    constructor(address lockerImplementation, IStakingRewardController stakingRewardController, bool pauseStatus) {
+    constructor(address lockerBeacon, IStakingRewardController stakingRewardController, bool pauseStatus) {
+        // Disable initializers to prevent implementation contract initalization
+        _disableInitializers();
+
         // Sets the Staking Reward Controller interface
         STAKING_REWARD_CONTROLLER = stakingRewardController;
 
         // Sets the pause status
         IS_PAUSED = pauseStatus;
 
-        /// FIXME : review the logic here (need to make sure the beacon doesnt change on locker upgrade)
-        /// FIXME : deploy the beacon independantly in deploy script then pass its address to the constructor (offload the beacon deployment from the constructor to the deploy script (with checks))
-        // Deploy the Locker beacon with the Locker implementation contract
-        LOCKER_BEACON = new UpgradeableBeacon(lockerImplementation);
-
-        // Transfer ownership of the Locker beacon to the deployer
-        LOCKER_BEACON.transferOwnership(msg.sender);
-
-        _disableInitializers();
+        // Sets the Locker Beacon address
+        LOCKER_BEACON = UpgradeableBeacon(lockerBeacon);
     }
 
     /**
