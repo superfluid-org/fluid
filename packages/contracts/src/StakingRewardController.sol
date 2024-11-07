@@ -85,26 +85,37 @@ contract StakingRewardController is Ownable, IStakingRewardController {
     /// @inheritdoc IStakingRewardController
     function updateStakerUnits(uint256 lockerStakedBalance) external onlyApprovedLocker {
         FLUID.updateMemberUnits(TAX_DISTRIBUTION_POOL, msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
+
+        emit UpdatedStakersUnits(msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER)
     }
 
     /// @inheritdoc IStakingRewardController
     function refreshSubsidyDistribution(int96 subsidyFlowRate) external onlyProgramManager {
         FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, subsidyFlowRate);
+
+        emit SubsidyFlowRateUpdated(subsidyFlowRate);
     }
 
     /// @inheritdoc IStakingRewardController
     function setLockerFactory(address lockerFactoryAddress) external onlyOwner {
         lockerFactory = lockerFactoryAddress;
+
+        emit LockerFactoryAddressUpdated(lockerFactoryAddress);
     }
 
     /// @inheritdoc IStakingRewardController
     function setProgramManager(address programManagerAddress) external onlyOwner {
         programManager = programManagerAddress;
+        
+        emit ProgramManagerAddressUpdated(programManagerAddress);
     }
 
     /// @inheritdoc IStakingRewardController
     function approveLocker(address lockerAddress) external onlyLockerFactory {
         _approvedLockers[lockerAddress] = true;
+
+        emit LockerApproved(lockerAddress);
+
     }
 
     //      __  ___          ___ _____
