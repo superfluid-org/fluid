@@ -154,10 +154,10 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
 
         if (subsidyFlowRate > 0) {
             // Create or update the subsidy flow to the Staking Reward Controller
-            int96 newSubsidyFlow = _createOrUpdateSubsidyFlow(program.token, subsidyFlowRate);
+            int96 newSubsidyFlowRate = _createOrUpdateSubsidyFlow(program.token, subsidyFlowRate);
 
             // Refresh the subsidy distribution flow
-            STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlow);
+            STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlowRate);
         }
     }
 
@@ -176,10 +176,10 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
 
         if (programSubsidyFlowRate > 0) {
             // Delete or update the subsidy flow to the Staking Reward Controller
-            int96 newSubsidyFlow = _deleteOrUpdateSubsidyFlow(program.token, programSubsidyFlowRate);
+            int96 newSubsidyFlowRate = _deleteOrUpdateSubsidyFlow(program.token, programSubsidyFlowRate);
 
             // Refresh the subsidy distribution flow
-            STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlow);
+            STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlowRate);
         }
     }
 
