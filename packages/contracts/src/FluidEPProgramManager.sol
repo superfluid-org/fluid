@@ -217,7 +217,7 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
      */
     function setSubsidyRate(uint96 subsidyRate) external onlyOwner {
         // Input validation
-        if (subsidyFundingRate > _BP_DENOMINATOR) revert INVALID_PARAMETER();
+        if (subsidyRate > _BP_DENOMINATOR) revert INVALID_PARAMETER();
         subsidyFundingRate = subsidyRate;
     }
 
