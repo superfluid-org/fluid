@@ -156,6 +156,11 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
             // Create or update the subsidy flow to the Staking Reward Controller
             int96 newSubsidyFlowRate = _createOrUpdateSubsidyFlow(program.token, subsidyFlowRate);
 
+            // Transfer the stream buffer to Staking Reward Controller before starting the
+            program.token.transfer(
+                address(STAKING_REWARD_CONTROLLER), program.token.getBufferAmountByFlowRate(subsidyFlowRate)
+            );
+
             // Refresh the subsidy distribution flow
             STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlowRate);
         }
