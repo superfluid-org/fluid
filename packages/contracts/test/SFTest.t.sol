@@ -32,6 +32,7 @@ using SafeCast for int256;
 contract SFTest is Test {
     uint256 public constant INITIAL_BALANCE = 10000 ether;
     uint256 public constant FLUID_SUPPLY = 1_000_000_000 ether;
+    uint256 public constant PROGRAM_DURATION = 90 days;
 
     SuperfluidFrameworkDeployer.Framework internal _sf;
     SuperfluidFrameworkDeployer internal _deployer;

@@ -3,6 +3,7 @@ pragma solidity ^0.8.23;
 
 import { SFTest } from "./SFTest.t.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 
 import {
     ISuperToken,
@@ -15,6 +16,7 @@ import { IFluidLocker } from "../src/interfaces/IFluidLocker.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using ECDSA for bytes32;
+using SafeCast for int256;
 
 /// @dev Unit tests for Base EPProgramManager (EPProgramManager.sol)
 contract EPProgramManagerTest is SFTest {
@@ -246,6 +248,68 @@ contract FluidEPProgramManagerTest is SFTest {
         bobLocker = IFluidLocker(_fluidLockerFactory.createLockerContract());
     }
 
+    function testSetTreasury(address _newTreasuryAddress) external {
+        vm.assume(_newTreasuryAddress != address(0));
+        vm.assume(_newTreasuryAddress != _programManager.fluidTreasury());
+
+        vm.prank(ADMIN);
+        _programManager.setTreasury(_newTreasuryAddress);
+
+        assertEq(_programManager.fluidTreasury(), _newTreasuryAddress, "Treasury Address should be updated");
+
+        vm.prank(ADMIN);
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        _programManager.setTreasury(address(0));
+    }
+
+    function testSetLockerFactory(address _newLockerFactory) external {
+        vm.assume(_newLockerFactory != address(0));
+        vm.assume(_newLockerFactory != address(_programManager.fluidLockerFactory()));
+
+        vm.prank(ADMIN);
+        _programManager.setLockerFactory(_newLockerFactory);
+
+        assertEq(address(_programManager.fluidLockerFactory()), _newLockerFactory, "LockerFactory should be updated");
+
+        vm.prank(ADMIN);
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        _programManager.setLockerFactory(address(0));
+    }
+
+    function testSetSubsidyRate(uint96 _validSubsidyRate, uint96 _invalidSubsidyRate) external {
+        _validSubsidyRate = uint96(bound(_validSubsidyRate, 0, 10_000));
+        _invalidSubsidyRate = uint96(bound(_invalidSubsidyRate, 10_001, 100_000));
+
+        vm.startPrank(ADMIN);
+        _programManager.setSubsidyRate(_validSubsidyRate);
+
+        assertEq(_programManager.subsidyFundingRate(), _validSubsidyRate, "Subsidy Rate should be updated");
+
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        _programManager.setSubsidyRate(_invalidSubsidyRate);
+
+        vm.stopPrank();
+    }
+
+    function testEmergencyWithdraw(uint256 _fundingAmount) external {
+        _fundingAmount = bound(_fundingAmount, 1, 1_000_000e18);
+
+        vm.prank(FLUID_TREASURY);
+        _fluid.transfer(address(_programManager), _fundingAmount);
+
+        uint256 balanceBeforeOp = _fluid.balanceOf(address(_programManager));
+        uint256 treasuryBalanceBeforeOp = _fluid.balanceOf(FLUID_TREASURY);
+
+        vm.prank(ADMIN);
+        _programManager.emergencyWithdraw(_fluid);
+
+        uint256 balanceAfterOp = _fluid.balanceOf(address(_programManager));
+        uint256 treasuryBalanceAfterOp = _fluid.balanceOf(FLUID_TREASURY);
+
+        assertEq(treasuryBalanceAfterOp, treasuryBalanceBeforeOp + balanceBeforeOp, "incorrect recipient");
+        assertEq(balanceAfterOp, 0, "no funds should be left in the contract");
+    }
+
     function testCreateProgram(uint256 _pId, address _admin, address _signer) external {
         vm.assume(_pId != 0);
         vm.assume(_admin != address(0));
@@ -400,10 +464,6 @@ contract FluidEPProgramManagerTest is SFTest {
         }
     }
 
-    // Pre-requisite :
-    // - some Lockers have units
-    // - if subsidy rate > 0
-    //      - some Lockers have staked
     function testStartFundingWithoutSubsidy(uint256 _programId, uint256 _fundingAmount) external {
         vm.assume(_programId > 0);
         _fundingAmount = bound(_fundingAmount, 100_000e18, 100_000_000e18);
@@ -419,17 +479,35 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.prank(ADMIN);
         _programManager.startFunding(_programId, _fundingAmount);
 
-        // TODO add assertions
+        int96 requestedFlowRate = int256(_fundingAmount / PROGRAM_DURATION).toInt96();
+
+        (, int96 totalDistributionFlowRate) =
+            _fluid.estimateFlowDistributionActualFlowRate(address(_programManager), pool, requestedFlowRate);
+
+        assertEq(
+            pool.getMemberFlowRate(address(aliceLocker)),
+            totalDistributionFlowRate,
+            "program distribution flow rate is incorrect"
+        );
+
+        assertEq(
+            _stakingRewardController.TAX_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
+            0,
+            "subsidy distribution flow to staker should be 0"
+        );
     }
 
-    function testStartFundingWithSubsidy(uint256 _programId, uint256 _fundingAmount) external {
+    function testStartFundingWithSubsidy(uint256 _programId, uint256 _fundingAmount, uint96 _subsidyRate) external {
         vm.assume(_programId > 0);
         _fundingAmount = bound(_fundingAmount, 100_000e18, 100_000_000e18);
+
+        // Subsidy rate fuzzed between 1% and 99%
+        _subsidyRate = uint96(bound(_subsidyRate, 100, 9_900));
+
         uint96 signerPkey = 69_420;
 
-        // Set Subsidy Rate to 5%
         vm.prank(ADMIN);
-        _programManager.setSubsidyRate(500);
+        _programManager.setSubsidyRate(_subsidyRate);
 
         ISuperfluidPool pool = _helperCreateProgram(_programId, ADMIN, vm.addr(signerPkey));
         _helperGrantUnitsToAlice(_programId, 1, signerPkey);
@@ -440,6 +518,31 @@ contract FluidEPProgramManagerTest is SFTest {
 
         vm.prank(ADMIN);
         _programManager.startFunding(_programId, _fundingAmount);
+
+        int96 requestedTotalFlowRate = int256(_fundingAmount / PROGRAM_DURATION).toInt96();
+        int96 requestedSubsidyFlowRate = requestedTotalFlowRate * int96(_subsidyRate) / 10_000;
+        int96 requestedProgramFlowRate = requestedTotalFlowRate - requestedSubsidyFlowRate;
+
+        (, int96 totalProgramDistributionFlowRate) =
+            _fluid.estimateFlowDistributionActualFlowRate(address(_programManager), pool, requestedProgramFlowRate);
+
+        (, int96 totalSubsidyDistributionFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
+            address(_stakingRewardController),
+            _stakingRewardController.TAX_DISTRIBUTION_POOL(),
+            requestedSubsidyFlowRate
+        );
+
+        assertEq(
+            pool.getMemberFlowRate(address(aliceLocker)),
+            totalProgramDistributionFlowRate,
+            "program distribution flow rate is incorrect"
+        );
+
+        assertEq(
+            _stakingRewardController.TAX_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
+            totalSubsidyDistributionFlowRate,
+            "subsidy distribution flow to staker is incorrect"
+        );
     }
 
     function _helperGrantUnitsToAlice(uint256 programId, uint256 units, uint96 signerPkey) internal {
@@ -454,5 +557,20 @@ contract FluidEPProgramManagerTest is SFTest {
         _helperFundLocker(address(bobLocker), 10_000e18);
         vm.prank(BOB);
         bobLocker.stake();
+    }
+
+    function _helperStartFunding(uint256 _programId, uint256 _fundingAmount) internal {
+        uint96 signerPkey = 69_420;
+
+        vm.prank(FLUID_TREASURY);
+        _fluid.approve(address(_programManager), _fundingAmount);
+
+        vm.startPrank(ADMIN);
+        // Set subsidy to 5%
+        _programManager.setSubsidyRate(500);
+
+        // Start Funding
+        _programManager.startFunding(_programId, _fundingAmount);
+        vm.stopPrank();
     }
 }
