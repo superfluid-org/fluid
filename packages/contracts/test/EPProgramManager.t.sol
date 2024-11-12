@@ -12,6 +12,7 @@ import {
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
 import { EPProgramManager, IEPProgramManager } from "../src/EPProgramManager.sol";
+import { FluidEPProgramManager } from "../src/FluidEPProgramManager.sol";
 import { IFluidLocker } from "../src/interfaces/IFluidLocker.sol";
 
 using SuperTokenV1Library for ISuperToken;
@@ -434,6 +435,14 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
         vm.prank(address(0));
         _programManager.updateUnits(programId, _units, nonce, validSignature);
+
+        // Test updateUnits with an user address that does not have a locker
+        nonce = _programManager.getNextValidNonce(programId, CAROL);
+        validSignature = _helperGenerateSignature(_signerPkey, CAROL, _units, programId, nonce);
+
+        vm.expectRevert(FluidEPProgramManager.LOCKER_NOT_FOUND.selector);
+        vm.prank(CAROL);
+        _programManager.updateUnits(programId, _units, nonce, validSignature);
     }
 
     function testBatchUpdateUnits(uint8 _batchAmount, uint96 _signerPkey, uint256 _units) external {
@@ -545,6 +554,45 @@ contract FluidEPProgramManagerTest is SFTest {
         );
     }
 
+    function testStartFundingMultipleProgram() external {
+        uint256 fundingAmount = 100_000e18;
+        uint96 subsidyRate = 500;
+        uint96 signerPkey = 69_420;
+
+        vm.prank(ADMIN);
+        _programManager.setSubsidyRate(subsidyRate);
+
+        ISuperfluidPool pool1 = _helperCreateProgram(1, ADMIN, vm.addr(signerPkey));
+        ISuperfluidPool pool2 = _helperCreateProgram(2, ADMIN, vm.addr(signerPkey));
+
+        _helperGrantUnitsToAlice(1, 1, signerPkey);
+        _helperGrantUnitsToAlice(2, 1, signerPkey);
+        _helperBobStaking();
+        _helperStartFunding(1, fundingAmount);
+
+        int96 requestedTotalFlowRate = int256(fundingAmount / PROGRAM_DURATION).toInt96();
+        int96 requestedSubsidyFlowRate = requestedTotalFlowRate * int96(subsidyRate) / 10_000;
+        int96 requestedProgramFlowRate = requestedTotalFlowRate - requestedSubsidyFlowRate;
+
+        int96 subsidyFlowBeforeNewFunding =
+            _fluid.getFlowRate(address(_programManager), address(_stakingRewardController));
+
+        assertEq(requestedSubsidyFlowRate, subsidyFlowBeforeNewFunding, "incorrect subsidy flow before new funding");
+
+        _helperStartFunding(2, fundingAmount);
+
+        int96 subsidyFlowAfterNewFunding =
+            _fluid.getFlowRate(address(_programManager), address(_stakingRewardController));
+
+        assertEq(
+            subsidyFlowAfterNewFunding,
+            requestedSubsidyFlowRate + subsidyFlowBeforeNewFunding,
+            "incorrect subsidy flow after new funding"
+        );
+    }
+
+    function testStopFunding() external {}
+
     function _helperGrantUnitsToAlice(uint256 programId, uint256 units, uint96 signerPkey) internal {
         uint256 nonce = _programManager.getNextValidNonce(programId, ALICE);
         bytes memory validSignature = _helperGenerateSignature(signerPkey, ALICE, units, programId, nonce);
@@ -565,12 +613,7 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.prank(FLUID_TREASURY);
         _fluid.approve(address(_programManager), _fundingAmount);
 
-        vm.startPrank(ADMIN);
-        // Set subsidy to 5%
-        _programManager.setSubsidyRate(500);
-
-        // Start Funding
+        vm.prank(ADMIN);
         _programManager.startFunding(_programId, _fundingAmount);
-        vm.stopPrank();
     }
 }
