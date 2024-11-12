@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
+import { ISuperfluidPool } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+
 /**
  * @title Staking Reward Controller Contract Interface
  * @author Superfluid
@@ -84,4 +86,10 @@ interface IStakingRewardController {
      * @param lockerAddress Locker contract address to be approved
      */
     function approveLocker(address lockerAddress) external;
+
+    /**
+     * @notice Returns the StakingRewardController Tax Distribution Pool
+     * @param taxDistributionPool tax distribution Superfluid Pool
+     */
+    function TAX_DISTRIBUTION_POOL() external view returns (ISuperfluidPool taxDistributionPool);
 }

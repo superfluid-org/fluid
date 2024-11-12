@@ -28,6 +28,25 @@ using SafeCast for int256;
  *
  */
 contract FluidEPProgramManager is Ownable, EPProgramManager {
+    //      ____        __        __
+    //     / __ \____ _/ /_____ _/ /___  ______  ___  _____
+    //    / / / / __ `/ __/ __ `/ __/ / / / __ \/ _ \/ ___/
+    //   / /_/ / /_/ / /_/ /_/ / /_/ /_/ / /_/ /  __(__  )
+    //  /_____/\__,_/\__/\__,_/\__/\__, / .___/\___/____/
+    //                            /____/_/
+
+    /**
+     * @notice Fluid Program related details Data Type
+     * @param fundingFlowRate flow rate between this contract and the program pool
+     * @param subsidyFlowRate flow rate between the Staking Reward Controller contract and the tax distribution pool
+     * @param fundingStartDate timestamp at which the program is funded
+     */
+    struct FluidProgramDetails {
+        int96 fundingFlowRate;
+        int96 subsidyFlowRate;
+        uint64 fundingStartDate;
+    }
+
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
     //   / /   / / / / ___/ __/ __ \/ __ `__ \   / __/ / ___/ ___/ __ \/ ___/ ___/
@@ -37,6 +56,8 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     /// @notice Error thrown when attempting to add units to a non-existant locker
     /// @dev Error Selector :
     error LOCKER_NOT_FOUND();
+
+    error TOO_EARLY_TO_END_PROGRAM();
 
     //      ____                          __        __    __        _____ __        __
     //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
@@ -49,6 +70,9 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
 
     /// @notice Program Duration used to calculate flow rates
     uint256 public constant PROGRAM_DURATION = 90 days;
+
+    /// @notice Constant used to calculate the earliest date a program can be stopped
+    uint256 public constant EARLY_PROGRAM_END = 7 days;
 
     /// @notice Basis points denominator (for percentage calculation)
     uint96 private constant _BP_DENOMINATOR = 10_000;
@@ -69,7 +93,7 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     address public fluidTreasury;
 
     /// @notice Stores the subsidyFlowRate for a given program
-    mapping(uint256 programId => int96 subsidyFlowRate) private _subsidyFlowRatePerProgram;
+    mapping(uint256 programId => FluidProgramDetails programDetails) private _fluidProgramDetails;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -110,8 +134,6 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         }
 
         // Configure Superfluid GDA Pool
-        /// FIXME : We could change the `distributeFromAnyAddress` to false here
-        ///        (if we agree that only this contract will distribute to the program pool)
         PoolConfig memory poolConfig =
             PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
 
@@ -132,6 +154,46 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     }
 
     /**
+     * @notice Stop flows from this contract to the distribution pool and to the staking reserve
+     * @param programId program identifier to cancel
+     */
+    function cancelProgram(uint256 programId) external onlyOwner {
+        EPProgram memory program = programs[programId];
+        FluidProgramDetails memory programDetails = _fluidProgramDetails[programId];
+
+        // Ensure program exists or has not already been terminated
+        if (programDetails.fundingStartDate == 0) revert IEPProgramManager.INVALID_PARAMETER();
+
+        uint256 endDate = programDetails.fundingStartDate + PROGRAM_DURATION;
+
+        uint256 undistributedFundingAmount;
+        uint256 undistributedSubsidyAmount;
+
+        if (endDate > block.timestamp) {
+            undistributedFundingAmount = (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate);
+            undistributedSubsidyAmount = (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate);
+        }
+
+        program.token.distributeFlow(address(this), program.distributionPool, 0);
+
+        if (programDetails.subsidyFlowRate > 0) {
+            // Delete or update the subsidy flow to the Staking Reward Controller
+            int96 newSubsidyFlowRate = _deleteOrUpdateSubsidyFlow(program.token, programDetails.subsidyFlowRate);
+
+            // Refresh the subsidy distribution flow
+            STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlowRate);
+        }
+
+        if (undistributedFundingAmount + undistributedSubsidyAmount > 0) {
+            // Distribute the remainder to the program pool
+            program.token.transfer(fluidTreasury, undistributedFundingAmount + undistributedSubsidyAmount);
+        }
+
+        // Delete the program details
+        delete _fluidProgramDetails[programId];
+    }
+
+    /**
      * @notice Programatically calculate and initiate distribution to the GDA pools and staking reserve
      * @dev Only the contract owner can perform this operation
      * @param programId program identifier to start funding
@@ -147,7 +209,7 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         int96 subsidyFlowRate = (totalFlowRate * int96(subsidyFundingRate)) / int96(_BP_DENOMINATOR);
         int96 fundingFlowRate = totalFlowRate - subsidyFlowRate;
 
-        _subsidyFlowRatePerProgram[programId] = subsidyFlowRate;
+        _fluidProgramDetails[programId] = FluidProgramDetails(fundingFlowRate, subsidyFlowRate, uint64(block.timestamp));
 
         // Distribute flow to Program GDA pool
         program.token.distributeFlow(address(this), program.distributionPool, fundingFlowRate);
@@ -168,24 +230,54 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
 
     /**
      * @notice Stop flows from this contract to the distribution pool and to the staking reserve
-     * @dev Only the contract owner can perform this operation
      * @param programId program identifier to stop funding
      */
-    function stopFunding(uint256 programId) external onlyOwner {
+    function stopFunding(uint256 programId) external {
         EPProgram memory program = programs[programId];
+        FluidProgramDetails memory programDetails = _fluidProgramDetails[programId];
 
-        // Stop the distribution flow to Program GDA pool
+        // Ensure program exists or has not already been terminated
+        if (programDetails.fundingStartDate == 0) revert IEPProgramManager.INVALID_PARAMETER();
+
+        uint256 endDate = programDetails.fundingStartDate + PROGRAM_DURATION;
+        // Ensure time window is valid to stop the funding
+
+        if (block.timestamp < endDate - EARLY_PROGRAM_END) {
+            revert TOO_EARLY_TO_END_PROGRAM();
+        }
+
+        uint256 earlyEndCompensation;
+        uint256 subsidyEarlyEndCompensation;
+
+        if (endDate > block.timestamp) {
+            earlyEndCompensation = (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate);
+            subsidyEarlyEndCompensation = (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate);
+        }
+
         program.token.distributeFlow(address(this), program.distributionPool, 0);
 
-        int96 programSubsidyFlowRate = _subsidyFlowRatePerProgram[programId];
+        if (earlyEndCompensation > 0) {
+            // Distribute the remainder to the program pool
+            program.token.distributeToPool(address(this), program.distributionPool, earlyEndCompensation);
+        }
 
-        if (programSubsidyFlowRate > 0) {
+        if (programDetails.subsidyFlowRate > 0) {
             // Delete or update the subsidy flow to the Staking Reward Controller
-            int96 newSubsidyFlowRate = _deleteOrUpdateSubsidyFlow(program.token, programSubsidyFlowRate);
+            int96 newSubsidyFlowRate = _deleteOrUpdateSubsidyFlow(program.token, programDetails.subsidyFlowRate);
 
             // Refresh the subsidy distribution flow
             STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlowRate);
+
+            if (subsidyEarlyEndCompensation > 0) {
+                // Distribute the remainder to the stakers pool
+                program.token.distributeToPool(
+                    address(this), STAKING_REWARD_CONTROLLER.TAX_DISTRIBUTION_POOL(), subsidyEarlyEndCompensation
+                );
+            }
         }
+
+        // Delete the program details
+        delete _fluidProgramDetails[programId];
     }
 
     /**
