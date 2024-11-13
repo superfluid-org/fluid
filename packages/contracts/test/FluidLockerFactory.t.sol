@@ -47,6 +47,22 @@ contract FluidLockerFactoryTest is SFTest {
         assertEq(_fluidLockerFactory.governor(), _newGovernor, "governor not updated");
     }
 
+    function testGetUserLocker(address user, address nonUser) external {
+        vm.assume(user != nonUser);
+
+        vm.prank(user);
+        address userLockerAddress = _fluidLockerFactory.createLockerContract();
+
+        (bool isCreated, address lockerAddressResult) = _fluidLockerFactory.getUserLocker(user);
+
+        assertEq(lockerAddressResult, userLockerAddress, "incorrect address");
+        assertEq(isCreated, true, "locker should be created");
+
+        (isCreated, lockerAddressResult) = _fluidLockerFactory.getUserLocker(nonUser);
+        assertEq(lockerAddressResult, address(0), "should be the zero-address");
+        assertEq(isCreated, false, "locker should not be created");
+    }
+
     function testGetLockerBeaconImplementation() external view {
         assertEq(_fluidLockerFactory.getLockerBeaconImplementation(), address(_fluidLockerLogic));
     }
