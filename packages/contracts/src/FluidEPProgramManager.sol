@@ -40,11 +40,15 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
      * @param fundingFlowRate flow rate between this contract and the program pool
      * @param subsidyFlowRate flow rate between the Staking Reward Controller contract and the tax distribution pool
      * @param fundingStartDate timestamp at which the program is funded
+     * @param fundingRemainder program residual amount
+     * @param subsidyRemainder subsidy residual amount
      */
     struct FluidProgramDetails {
         int96 fundingFlowRate;
         int96 subsidyFlowRate;
         uint64 fundingStartDate;
+        uint256 fundingRemainder;
+        uint256 subsidyRemainder;
     }
 
     //     ______           __                     ______
@@ -202,25 +206,46 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     function startFunding(uint256 programId, uint256 totalAmount) external onlyOwner {
         EPProgram memory program = programs[programId];
 
+        // Calculate the funding and subsidy amount
+        uint256 subsidyAmount = (totalAmount * subsidyFundingRate) / _BP_DENOMINATOR;
+        uint256 fundingAmount = totalAmount - subsidyAmount;
+
+        // Calculate the funding and subsidy flow rates
+        int96 subsidyFlowRate = int256(subsidyAmount / PROGRAM_DURATION).toInt96();
+        int96 fundingFlowRate = int256(fundingAmount / PROGRAM_DURATION).toInt96();
+
+        uint256 fundingRemainder =
+            fundingAmount > 0 ? fundingAmount - (SafeCast.toUint256(fundingFlowRate) * PROGRAM_DURATION) : 0;
+
+        uint256 subsidyRemainder =
+            subsidyAmount > 0 ? subsidyAmount - (SafeCast.toUint256(subsidyFlowRate) * PROGRAM_DURATION) : 0;
+
+        // Persist program details
+        _fluidProgramDetails[programId] = FluidProgramDetails({
+            fundingFlowRate: fundingFlowRate,
+            subsidyFlowRate: subsidyFlowRate,
+            fundingStartDate: uint64(block.timestamp),
+            fundingRemainder: fundingRemainder,
+            subsidyRemainder: subsidyRemainder
+        });
+
         // Fetch funds from FLUID Treasury (requires prior approval from the Treasury)
         program.token.transferFrom(fluidTreasury, address(this), totalAmount);
-
-        int96 totalFlowRate = int256(totalAmount / PROGRAM_DURATION).toInt96();
-        int96 subsidyFlowRate = (totalFlowRate * int96(subsidyFundingRate)) / int96(_BP_DENOMINATOR);
-        int96 fundingFlowRate = totalFlowRate - subsidyFlowRate;
-
-        _fluidProgramDetails[programId] = FluidProgramDetails(fundingFlowRate, subsidyFlowRate, uint64(block.timestamp));
 
         // Distribute flow to Program GDA pool
         program.token.distributeFlow(address(this), program.distributionPool, fundingFlowRate);
 
         if (subsidyFlowRate > 0) {
+            (, int96 actualSubsidyFlowRate) = program.token.estimateFlowDistributionActualFlowRate(
+                address(STAKING_REWARD_CONTROLLER), STAKING_REWARD_CONTROLLER.TAX_DISTRIBUTION_POOL(), subsidyFlowRate
+            );
+
             // Create or update the subsidy flow to the Staking Reward Controller
-            int96 newSubsidyFlowRate = _createOrUpdateSubsidyFlow(program.token, subsidyFlowRate);
+            int96 newSubsidyFlowRate = _createOrUpdateSubsidyFlow(program.token, actualSubsidyFlowRate);
 
             // Transfer the stream buffer to Staking Reward Controller before starting the
             program.token.transfer(
-                address(STAKING_REWARD_CONTROLLER), program.token.getBufferAmountByFlowRate(subsidyFlowRate)
+                address(STAKING_REWARD_CONTROLLER), program.token.getBufferAmountByFlowRate(actualSubsidyFlowRate)
             );
 
             // Refresh the subsidy distribution flow
@@ -249,17 +274,16 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         uint256 earlyEndCompensation;
         uint256 subsidyEarlyEndCompensation;
 
+        // if the program is stopped during its early end period, calculate the flow compensations
         if (endDate > block.timestamp) {
-            earlyEndCompensation = (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate);
-            subsidyEarlyEndCompensation = (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate);
+            earlyEndCompensation =
+                (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate) + (programDetails.fundingRemainder);
+            subsidyEarlyEndCompensation =
+                (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate) + (programDetails.subsidyRemainder);
         }
 
+        // Stops the distribution flow to the program pool
         program.token.distributeFlow(address(this), program.distributionPool, 0);
-
-        if (earlyEndCompensation > 0) {
-            // Distribute the remainder to the program pool
-            program.token.distributeToPool(address(this), program.distributionPool, earlyEndCompensation);
-        }
 
         if (programDetails.subsidyFlowRate > 0) {
             // Delete or update the subsidy flow to the Staking Reward Controller
@@ -267,13 +291,18 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
 
             // Refresh the subsidy distribution flow
             STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlowRate);
+        }
 
-            if (subsidyEarlyEndCompensation > 0) {
-                // Distribute the remainder to the stakers pool
-                program.token.distributeToPool(
-                    address(this), STAKING_REWARD_CONTROLLER.TAX_DISTRIBUTION_POOL(), subsidyEarlyEndCompensation
-                );
-            }
+        if (earlyEndCompensation > 0) {
+            // Distribute the remainder to the program pool
+            program.token.distributeToPool(address(this), program.distributionPool, earlyEndCompensation);
+        }
+
+        if (subsidyEarlyEndCompensation > 0) {
+            // Distribute the remainder to the stakers pool
+            program.token.distributeToPool(
+                address(this), STAKING_REWARD_CONTROLLER.TAX_DISTRIBUTION_POOL(), subsidyEarlyEndCompensation
+            );
         }
 
         // Delete the program details

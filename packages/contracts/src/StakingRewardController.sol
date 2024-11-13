@@ -91,7 +91,19 @@ contract StakingRewardController is Ownable, IStakingRewardController {
 
     /// @inheritdoc IStakingRewardController
     function refreshSubsidyDistribution(int96 subsidyFlowRate) external onlyProgramManager {
+        // Fetch the current buffer
+        (,, uint256 currentBuffer) = FLUID.getGDAFlowInfo(address(this), TAX_DISTRIBUTION_POOL);
+
+        // Estimate the future buffer
+        uint256 futureBuffer = FLUID.getBufferAmountByFlowRate(subsidyFlowRate);
+
+        // Update the distribution flow
         FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, subsidyFlowRate);
+
+        if (currentBuffer > futureBuffer) {
+            // Send back to the program manager the buffer difference
+            FLUID.transfer(msg.sender, currentBuffer - futureBuffer);
+        }
 
         emit SubsidyFlowRateUpdated(subsidyFlowRate);
     }
