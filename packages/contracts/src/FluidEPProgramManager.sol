@@ -61,6 +61,8 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     /// @dev Error Selector :
     error LOCKER_NOT_FOUND();
 
+    /// @notice Error thrown when attempting to stop a program's funding earlier than expected
+    /// @dev Error Selector :
     error TOO_EARLY_TO_END_PROGRAM();
 
     //      ____                          __        __    __        _____ __        __
@@ -80,6 +82,9 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
 
     /// @notice Basis points denominator (for percentage calculation)
     uint96 private constant _BP_DENOMINATOR = 10_000;
+
+    /// @notice Superfluid Buffer basis calculation
+    uint256 private constant _BUFFER_DURATION = 4 hours;
 
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
@@ -174,8 +179,10 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         uint256 undistributedSubsidyAmount;
 
         if (endDate > block.timestamp) {
-            undistributedFundingAmount = (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate);
-            undistributedSubsidyAmount = (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate);
+            undistributedFundingAmount =
+                (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate) + programDetails.fundingRemainder;
+            undistributedSubsidyAmount =
+                (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate) + programDetails.subsidyRemainder;
         }
 
         program.token.distributeFlow(address(this), program.distributionPool, 0);
@@ -243,10 +250,8 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
             // Create or update the subsidy flow to the Staking Reward Controller
             int96 newSubsidyFlowRate = _createOrUpdateSubsidyFlow(program.token, actualSubsidyFlowRate);
 
-            // Transfer the stream buffer to Staking Reward Controller before starting the
-            program.token.transfer(
-                address(STAKING_REWARD_CONTROLLER), program.token.getBufferAmountByFlowRate(actualSubsidyFlowRate)
-            );
+            // Transfer the stream buffer to Staking Reward Controller before starting the flow
+            program.token.transfer(address(STAKING_REWARD_CONTROLLER), _calculateBuffer(actualSubsidyFlowRate));
 
             // Refresh the subsidy distribution flow
             STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlowRate);
@@ -265,8 +270,8 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         if (programDetails.fundingStartDate == 0) revert IEPProgramManager.INVALID_PARAMETER();
 
         uint256 endDate = programDetails.fundingStartDate + PROGRAM_DURATION;
-        // Ensure time window is valid to stop the funding
 
+        // Ensure time window is valid to stop the funding
         if (block.timestamp < endDate - EARLY_PROGRAM_END) {
             revert TOO_EARLY_TO_END_PROGRAM();
         }
@@ -419,5 +424,9 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
             newSubsidyFlowRate = currentSubsidyFlowRate - subsidyFlowRateToDecrease;
             token.updateFlow(address(STAKING_REWARD_CONTROLLER), newSubsidyFlowRate);
         }
+    }
+
+    function _calculateBuffer(int96 flowRate) internal pure returns (uint256 requiredBuffer) {
+        requiredBuffer = int256(flowRate).toUint256() * _BUFFER_DURATION;
     }
 }

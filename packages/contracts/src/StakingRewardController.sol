@@ -94,15 +94,15 @@ contract StakingRewardController is Ownable, IStakingRewardController {
         // Fetch the current buffer
         (,, uint256 currentBuffer) = FLUID.getGDAFlowInfo(address(this), TAX_DISTRIBUTION_POOL);
 
-        // Estimate the future buffer
-        uint256 futureBuffer = FLUID.getBufferAmountByFlowRate(subsidyFlowRate);
-
         // Update the distribution flow
         FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, subsidyFlowRate);
 
-        if (currentBuffer > futureBuffer) {
+        // Fetch the current buffer
+        (,, uint256 newBuffer) = FLUID.getGDAFlowInfo(address(this), TAX_DISTRIBUTION_POOL);
+
+        if (currentBuffer > newBuffer) {
             // Send back to the program manager the buffer difference
-            FLUID.transfer(msg.sender, currentBuffer - futureBuffer);
+            FLUID.transfer(msg.sender, currentBuffer - newBuffer);
         }
 
         emit SubsidyFlowRateUpdated(subsidyFlowRate);
