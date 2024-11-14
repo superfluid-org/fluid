@@ -16,7 +16,6 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 /* FLUID Contracts & Interfaces */
 import { EPProgramManager, IEPProgramManager } from "./EPProgramManager.sol";
 import { IFluidLockerFactory } from "./interfaces/IFluidLockerFactory.sol";
-import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
