@@ -93,6 +93,7 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     }
 
     /// @inheritdoc IFluidLockerFactory
+    /// FIXME updated natspec in interface
     function upgradeTo(address newImplementation, bytes calldata data) external onlyGovernor {
         ERC1967Utils.upgradeToAndCall(newImplementation, data);
     }
