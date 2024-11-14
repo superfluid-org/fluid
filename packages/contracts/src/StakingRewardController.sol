@@ -48,9 +48,6 @@ contract StakingRewardController is Ownable, IStakingRewardController {
     /// @notice Locker Factory contract address
     address public lockerFactory;
 
-    /// @notice Fluid Program Manager contract address
-    address public programManager;
-
     /// @notice Stores the approval status of a given locker contract address
     mapping(address locker => bool isApproved) private _approvedLockers;
 
@@ -90,36 +87,10 @@ contract StakingRewardController is Ownable, IStakingRewardController {
     }
 
     /// @inheritdoc IStakingRewardController
-    function refreshSubsidyDistribution(int96 subsidyFlowRate) external onlyProgramManager {
-        // Fetch the current buffer
-        (,, uint256 currentBuffer) = FLUID.getGDAFlowInfo(address(this), TAX_DISTRIBUTION_POOL);
-
-        // Update the distribution flow
-        FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, subsidyFlowRate);
-
-        // Fetch the current buffer
-        (,, uint256 newBuffer) = FLUID.getGDAFlowInfo(address(this), TAX_DISTRIBUTION_POOL);
-
-        if (currentBuffer > newBuffer) {
-            // Send back to the program manager the buffer difference
-            FLUID.transfer(msg.sender, currentBuffer - newBuffer);
-        }
-
-        emit SubsidyFlowRateUpdated(subsidyFlowRate);
-    }
-
-    /// @inheritdoc IStakingRewardController
     function setLockerFactory(address lockerFactoryAddress) external onlyOwner {
         lockerFactory = lockerFactoryAddress;
 
         emit LockerFactoryAddressUpdated(lockerFactoryAddress);
-    }
-
-    /// @inheritdoc IStakingRewardController
-    function setProgramManager(address programManagerAddress) external onlyOwner {
-        programManager = programManagerAddress;
-
-        emit ProgramManagerAddressUpdated(programManagerAddress);
     }
 
     /// @inheritdoc IStakingRewardController
@@ -140,14 +111,6 @@ contract StakingRewardController is Ownable, IStakingRewardController {
      */
     modifier onlyLockerFactory() {
         if (msg.sender != lockerFactory) revert NOT_LOCKER_FACTORY();
-        _;
-    }
-
-    /**
-     * @dev Throws if called by any account other than the Program Manager contract
-     */
-    modifier onlyProgramManager() {
-        if (msg.sender != programManager) revert NOT_PROGRAM_MANAGER();
         _;
     }
 
