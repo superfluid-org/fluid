@@ -93,8 +93,8 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     }
 
     /// @inheritdoc IFluidLockerFactory
-    function upgradeTo(address newImplementation) external onlyGovernor {
-        ERC1967Utils.upgradeToAndCall(newImplementation, new bytes(0));
+    function upgradeTo(address newImplementation, bytes calldata data) external onlyGovernor {
+        ERC1967Utils.upgradeToAndCall(newImplementation, data);
     }
 
     /// @inheritdoc IFluidLockerFactory
