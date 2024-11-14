@@ -65,10 +65,23 @@ function deployLockerBeacon(
     lockerBeacon.transferOwnership(settings.governor);
 }
 
+function deployStakingRewardController(ISuperToken fluid, address owner)
+    returns (address stakingRewardControllerProxyAddress)
+{
+    // Deploy the Staking Reward Controller contract
+    StakingRewardController stakingRewardControllerLogic = new StakingRewardController(fluid);
+
+    ERC1967Proxy stakingRewardControllerProxy = new ERC1967Proxy(
+        address(stakingRewardControllerLogic),
+        abi.encodeWithSelector(StakingRewardController.initialize.selector, owner)
+    );
+    stakingRewardControllerProxyAddress = address(stakingRewardControllerProxy);
+}
+
 function deployAll(DeploySettings memory settings)
     returns (
         address programManagerAddress,
-        address stakingRewardControllerAddress,
+        address stakingRewardControllerProxyAddress,
         address lockerFactoryAddress,
         address lockerLogicAddress,
         address lockerBeaconAddress,
@@ -76,31 +89,28 @@ function deployAll(DeploySettings memory settings)
         address fontaineBeaconAddress
     )
 {
-    // Deploy Penalty Manager
-    StakingRewardController stakingRewardController = new StakingRewardController(settings.owner, settings.fluid);
-    stakingRewardControllerAddress = address(stakingRewardController);
+    stakingRewardControllerProxyAddress = deployStakingRewardController(settings.fluid, settings.owner);
+
+    ISuperfluidPool taxDistributionPool =
+        StakingRewardController(stakingRewardControllerProxyAddress).TAX_DISTRIBUTION_POOL();
 
     // Deploy Ecosystem Partner Program Manager
     FluidEPProgramManager programManager =
-        new FluidEPProgramManager(settings.owner, settings.treasury, stakingRewardController.TAX_DISTRIBUTION_POOL());
+        new FluidEPProgramManager(settings.owner, settings.treasury, taxDistributionPool);
     programManagerAddress = address(programManager);
 
     // Deploy the Fontaine Implementation and associated Beacon contract
     (fontaineLogicAddress, fontaineBeaconAddress) =
-        deployFontaineBeacon(settings.fluid, stakingRewardController.TAX_DISTRIBUTION_POOL(), settings.governor);
+        deployFontaineBeacon(settings.fluid, taxDistributionPool, settings.governor);
 
     // Deploy the Fluid Locker Implementation and associated Beacon contract
     (lockerLogicAddress, lockerBeaconAddress) = deployLockerBeacon(
-        settings,
-        stakingRewardController.TAX_DISTRIBUTION_POOL(),
-        programManagerAddress,
-        stakingRewardControllerAddress,
-        fontaineBeaconAddress
+        settings, taxDistributionPool, programManagerAddress, stakingRewardControllerProxyAddress, fontaineBeaconAddress
     );
 
     // Deploy the Fluid Locker Factory contract
     FluidLockerFactory lockerFactoryLogic = new FluidLockerFactory(
-        lockerBeaconAddress, IStakingRewardController(address(stakingRewardController)), settings.factoryPauseStatus
+        lockerBeaconAddress, IStakingRewardController(stakingRewardControllerProxyAddress), settings.factoryPauseStatus
     );
 
     ERC1967Proxy lockerFactoryProxy = new ERC1967Proxy(
@@ -113,7 +123,7 @@ function deployAll(DeploySettings memory settings)
     lockerFactoryAddress = address(lockerFactory);
 
     // Sets the FluidLockerFactory address in the StakingRewardController
-    stakingRewardController.setLockerFactory(lockerFactoryAddress);
+    StakingRewardController(stakingRewardControllerProxyAddress).setLockerFactory(lockerFactoryAddress);
 
     // Sets the FluidLockerFactory address in the ProgramManager
     programManager.setLockerFactory(lockerFactoryAddress);
