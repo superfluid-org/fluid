@@ -528,9 +528,12 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.prank(ADMIN);
         _programManager.startFunding(_programId, _fundingAmount);
 
-        int96 requestedTotalFlowRate = int256(_fundingAmount / PROGRAM_DURATION).toInt96();
-        int96 requestedSubsidyFlowRate = requestedTotalFlowRate * int96(_subsidyRate) / 10_000;
-        int96 requestedProgramFlowRate = requestedTotalFlowRate - requestedSubsidyFlowRate;
+        uint256 subsidyAmount = (_fundingAmount * _subsidyRate) / 10_000;
+        uint256 fundingAmount = _fundingAmount - subsidyAmount;
+
+        // Calculate the funding and subsidy flow rates
+        int96 requestedSubsidyFlowRate = int256(subsidyAmount / PROGRAM_DURATION).toInt96();
+        int96 requestedProgramFlowRate = int256(fundingAmount / PROGRAM_DURATION).toInt96();
 
         (, int96 totalProgramDistributionFlowRate) =
             _fluid.estimateFlowDistributionActualFlowRate(address(_programManager), pool, requestedProgramFlowRate);
@@ -554,9 +557,9 @@ contract FluidEPProgramManagerTest is SFTest {
         );
     }
 
-    function testStartFundingMultipleProgram() external {
-        uint256 fundingAmount = 100_000e18;
-        uint96 subsidyRate = 500;
+    function testStartFundingMultipleProgram(uint256 fundingAmount, uint96 subsidyRate) external {
+        fundingAmount = bound(fundingAmount, 10_000e18, 10_000_000e18);
+        subsidyRate = uint96(bound(subsidyRate, 100, 9_900));
         uint96 signerPkey = 69_420;
 
         vm.prank(ADMIN);
@@ -570,14 +573,24 @@ contract FluidEPProgramManagerTest is SFTest {
         _helperBobStaking();
         _helperStartFunding(1, fundingAmount);
 
-        int96 requestedTotalFlowRate = int256(fundingAmount / PROGRAM_DURATION).toInt96();
-        int96 requestedSubsidyFlowRate = requestedTotalFlowRate * int96(subsidyRate) / 10_000;
-        int96 requestedProgramFlowRate = requestedTotalFlowRate - requestedSubsidyFlowRate;
+        // Calculate the funding and subsidy amount
+        uint256 subsidyAmount = (fundingAmount * subsidyRate) / 10_000;
+        uint256 programAmount = fundingAmount - subsidyAmount;
+
+        // Calculate the funding and subsidy flow rates
+        int96 requestedSubsidyFlowRate = int256(subsidyAmount / PROGRAM_DURATION).toInt96();
+        int96 requestedProgramFlowRate = int256(programAmount / PROGRAM_DURATION).toInt96();
+
+        (, int96 actualSubsidyFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
+            address(_stakingRewardController),
+            _stakingRewardController.TAX_DISTRIBUTION_POOL(),
+            requestedSubsidyFlowRate
+        );
 
         int96 subsidyFlowBeforeNewFunding =
             _fluid.getFlowRate(address(_programManager), address(_stakingRewardController));
 
-        assertEq(requestedSubsidyFlowRate, subsidyFlowBeforeNewFunding, "incorrect subsidy flow before new funding");
+        assertEq(actualSubsidyFlowRate, subsidyFlowBeforeNewFunding, "incorrect subsidy flow before new funding");
 
         _helperStartFunding(2, fundingAmount);
 
@@ -586,12 +599,112 @@ contract FluidEPProgramManagerTest is SFTest {
 
         assertEq(
             subsidyFlowAfterNewFunding,
-            requestedSubsidyFlowRate + subsidyFlowBeforeNewFunding,
+            actualSubsidyFlowRate + subsidyFlowBeforeNewFunding,
             "incorrect subsidy flow after new funding"
         );
     }
 
-    function testStopFunding() external {}
+    function testStopFundingWithoutSubsidy(uint256 invalidDuration, uint256 earlyEndDuration) external {
+        // invalidDuration correspond to the time where stopping funding should not be possible (i.e. 83 days)
+        invalidDuration = bound(invalidDuration, 1, 82 days);
+        earlyEndDuration = bound(earlyEndDuration, 83 days, 89 days);
+
+        uint256 fundingAmount = 100_000e18;
+        uint96 subsidyRate = 0;
+        uint256 programId = 1;
+        uint96 signerPkey = 69_420;
+
+        vm.prank(ADMIN);
+        _programManager.setSubsidyRate(subsidyRate);
+
+        ISuperfluidPool pool1 = _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
+        uint256 beforeEarlyEnd = block.timestamp + invalidDuration;
+        uint256 earlyEnd = block.timestamp + earlyEndDuration;
+
+        _helperGrantUnitsToAlice(programId, 1, signerPkey);
+        _helperBobStaking();
+        _helperStartFunding(programId, fundingAmount);
+
+        vm.warp(beforeEarlyEnd);
+        vm.expectRevert(FluidEPProgramManager.TOO_EARLY_TO_END_PROGRAM.selector);
+        _programManager.stopFunding(programId);
+
+        vm.warp(earlyEnd);
+
+        _programManager.stopFunding(programId);
+
+        /// TODO : add asserts
+    }
+
+    function testStopFunding(uint256 invalidDuration, uint256 earlyEndDuration) external {
+        // invalidDuration correspond to the time where stopping funding should not be possible (i.e. 83 days)
+        invalidDuration = bound(invalidDuration, 1, 82 days);
+        earlyEndDuration = bound(earlyEndDuration, 83 days, 89 days);
+
+        uint256 fundingAmount = 100_000e18;
+        uint96 subsidyRate = 500;
+        uint256 programId = 1;
+        uint96 signerPkey = 69_420;
+
+        vm.prank(ADMIN);
+        _programManager.setSubsidyRate(subsidyRate);
+
+        ISuperfluidPool pool1 = _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
+        uint256 beforeEarlyEnd = block.timestamp + invalidDuration;
+        uint256 earlyEnd = block.timestamp + earlyEndDuration;
+
+        _helperGrantUnitsToAlice(programId, 1, signerPkey);
+        _helperBobStaking();
+        _helperStartFunding(programId, fundingAmount);
+
+        vm.warp(beforeEarlyEnd);
+        vm.expectRevert(FluidEPProgramManager.TOO_EARLY_TO_END_PROGRAM.selector);
+        _programManager.stopFunding(programId);
+
+        vm.warp(earlyEnd);
+        _programManager.stopFunding(programId);
+
+        assertEq(
+            _fluid.balanceOf(address(_stakingRewardController)), 0, "Staking Reward Controller balance should be 0"
+        );
+        /// TODO : add asserts
+    }
+
+    // function testStopFundingMultipleProgram() external { }
+    function testCancelProgram(uint256 cancelAfter, address nonAdmin) external {
+        vm.assume(nonAdmin != ADMIN);
+        cancelAfter = bound(cancelAfter, 1, 89 days);
+
+        uint256 fundingAmount = 100_000e18;
+        uint96 subsidyRate = 500;
+        uint256 programId = 1;
+        uint96 signerPkey = 69_420;
+
+        vm.prank(ADMIN);
+        _programManager.setSubsidyRate(subsidyRate);
+
+        _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
+        uint256 cancelDate = block.timestamp + cancelAfter;
+
+        _helperGrantUnitsToAlice(programId, 1, signerPkey);
+        _helperBobStaking();
+        _helperStartFunding(programId, fundingAmount);
+
+        vm.warp(cancelDate);
+
+        vm.prank(nonAdmin);
+        vm.expectRevert();
+        _programManager.cancelProgram(programId);
+
+        vm.prank(ADMIN);
+        _programManager.cancelProgram(programId);
+
+        assertEq(
+            _fluid.balanceOf(address(_stakingRewardController)), 0, "Staking Reward Controller balance should be 0"
+        );
+        /// TODO : add asserts
+    }
+    // function testCancelProgramMultipleProgram() external { }
 
     function _helperGrantUnitsToAlice(uint256 programId, uint256 units, uint96 signerPkey) internal {
         uint256 nonce = _programManager.getNextValidNonce(programId, ALICE);
@@ -608,8 +721,6 @@ contract FluidEPProgramManagerTest is SFTest {
     }
 
     function _helperStartFunding(uint256 _programId, uint256 _fundingAmount) internal {
-        uint96 signerPkey = 69_420;
-
         vm.prank(FLUID_TREASURY);
         _fluid.approve(address(_programManager), _fundingAmount);
 
