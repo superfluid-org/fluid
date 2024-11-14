@@ -16,7 +16,6 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 /* FLUID Contracts & Interfaces */
 import { EPProgramManager, IEPProgramManager } from "./EPProgramManager.sol";
 import { IFluidLockerFactory } from "./interfaces/IFluidLockerFactory.sol";
-import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -40,15 +39,11 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
      * @param fundingFlowRate flow rate between this contract and the program pool
      * @param subsidyFlowRate flow rate between the Staking Reward Controller contract and the tax distribution pool
      * @param fundingStartDate timestamp at which the program is funded
-     * @param fundingRemainder program residual amount
-     * @param subsidyRemainder subsidy residual amount
      */
     struct FluidProgramDetails {
         int96 fundingFlowRate;
         int96 subsidyFlowRate;
         uint64 fundingStartDate;
-        uint256 fundingRemainder;
-        uint256 subsidyRemainder;
     }
 
     //     ______           __                     ______
@@ -72,7 +67,7 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     //  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
 
     /// @notice Staking Reward Controller contract interface
-    IStakingRewardController public immutable STAKING_REWARD_CONTROLLER;
+    ISuperfluidPool public immutable TAX_DISTRIBUTION_POOL;
 
     /// @notice Program Duration used to calculate flow rates
     uint256 public constant PROGRAM_DURATION = 90 days;
@@ -114,9 +109,9 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
      * @notice Superfluid Ecosystem Partner Program Manager constructor
      * @param owner contract owner address
      */
-    constructor(address owner, address treasury, IStakingRewardController stakingRewardController) Ownable(owner) {
+    constructor(address owner, address treasury, ISuperfluidPool taxDistributionPool) Ownable(owner) {
         fluidTreasury = treasury;
-        STAKING_REWARD_CONTROLLER = stakingRewardController;
+        TAX_DISTRIBUTION_POOL = taxDistributionPool;
     }
 
     //      ______     __                        __   ______                 __  _
@@ -179,24 +174,19 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         uint256 undistributedSubsidyAmount;
 
         if (endDate > block.timestamp) {
-            undistributedFundingAmount =
-                (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate) + programDetails.fundingRemainder;
-            undistributedSubsidyAmount =
-                (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate) + programDetails.subsidyRemainder;
+            undistributedFundingAmount = (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate);
+            undistributedSubsidyAmount = (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate);
         }
 
         program.token.distributeFlow(address(this), program.distributionPool, 0);
 
         if (programDetails.subsidyFlowRate > 0) {
-            // Delete or update the subsidy flow to the Staking Reward Controller
-            int96 newSubsidyFlowRate = _deleteOrUpdateSubsidyFlow(program.token, programDetails.subsidyFlowRate);
-
-            // Refresh the subsidy distribution flow
-            STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlowRate);
+            // Decrease the subsidy flow to the tax distribution pool
+            _decreaseSubsidyFlow(program.token, programDetails.subsidyFlowRate);
         }
 
         if (undistributedFundingAmount + undistributedSubsidyAmount > 0) {
-            // Distribute the remainder to the program pool
+            // Transfer back the undistributed amounts to the treasury
             program.token.transfer(fluidTreasury, undistributedFundingAmount + undistributedSubsidyAmount);
         }
 
@@ -221,19 +211,11 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         int96 subsidyFlowRate = int256(subsidyAmount / PROGRAM_DURATION).toInt96();
         int96 fundingFlowRate = int256(fundingAmount / PROGRAM_DURATION).toInt96();
 
-        uint256 fundingRemainder =
-            fundingAmount > 0 ? fundingAmount - (SafeCast.toUint256(fundingFlowRate) * PROGRAM_DURATION) : 0;
-
-        uint256 subsidyRemainder =
-            subsidyAmount > 0 ? subsidyAmount - (SafeCast.toUint256(subsidyFlowRate) * PROGRAM_DURATION) : 0;
-
         // Persist program details
         _fluidProgramDetails[programId] = FluidProgramDetails({
             fundingFlowRate: fundingFlowRate,
             subsidyFlowRate: subsidyFlowRate,
-            fundingStartDate: uint64(block.timestamp),
-            fundingRemainder: fundingRemainder,
-            subsidyRemainder: subsidyRemainder
+            fundingStartDate: uint64(block.timestamp)
         });
 
         // Fetch funds from FLUID Treasury (requires prior approval from the Treasury)
@@ -243,18 +225,8 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         program.token.distributeFlow(address(this), program.distributionPool, fundingFlowRate);
 
         if (subsidyFlowRate > 0) {
-            (, int96 actualSubsidyFlowRate) = program.token.estimateFlowDistributionActualFlowRate(
-                address(STAKING_REWARD_CONTROLLER), STAKING_REWARD_CONTROLLER.TAX_DISTRIBUTION_POOL(), subsidyFlowRate
-            );
-
             // Create or update the subsidy flow to the Staking Reward Controller
-            int96 newSubsidyFlowRate = _createOrUpdateSubsidyFlow(program.token, actualSubsidyFlowRate);
-
-            // Transfer the stream buffer to Staking Reward Controller before starting the flow
-            program.token.transfer(address(STAKING_REWARD_CONTROLLER), _calculateBuffer(actualSubsidyFlowRate));
-
-            // Refresh the subsidy distribution flow
-            STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlowRate);
+            _increaseSubsidyFlow(program.token, subsidyFlowRate);
         }
     }
 
@@ -281,10 +253,8 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
 
         // if the program is stopped during its early end period, calculate the flow compensations
         if (endDate > block.timestamp) {
-            earlyEndCompensation =
-                (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate) + (programDetails.fundingRemainder);
-            subsidyEarlyEndCompensation =
-                (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate) + (programDetails.subsidyRemainder);
+            earlyEndCompensation = (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate);
+            subsidyEarlyEndCompensation = (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate);
         }
 
         // Stops the distribution flow to the program pool
@@ -292,22 +262,17 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
 
         if (programDetails.subsidyFlowRate > 0) {
             // Delete or update the subsidy flow to the Staking Reward Controller
-            int96 newSubsidyFlowRate = _deleteOrUpdateSubsidyFlow(program.token, programDetails.subsidyFlowRate);
-
-            // Refresh the subsidy distribution flow
-            STAKING_REWARD_CONTROLLER.refreshSubsidyDistribution(newSubsidyFlowRate);
+            _decreaseSubsidyFlow(program.token, programDetails.subsidyFlowRate);
         }
 
         if (earlyEndCompensation > 0) {
-            // Distribute the remainder to the program pool
+            // Distribute the early end compensation to the program pool
             program.token.distributeToPool(address(this), program.distributionPool, earlyEndCompensation);
         }
 
         if (subsidyEarlyEndCompensation > 0) {
-            // Distribute the remainder to the stakers pool
-            program.token.distributeToPool(
-                address(this), STAKING_REWARD_CONTROLLER.TAX_DISTRIBUTION_POOL(), subsidyEarlyEndCompensation
-            );
+            // Distribute the early end compensation to the stakers pool
+            program.token.distributeToPool(address(this), TAX_DISTRIBUTION_POOL, subsidyEarlyEndCompensation);
         }
 
         // Delete the program details
@@ -385,22 +350,18 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
      * @param subsidyFlowRateToIncrease flow rate to add to the current global subsidy flow rate
      * @return newSubsidyFlowRate the new current global subsidy flow rate
      */
-    function _createOrUpdateSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToIncrease)
+    function _increaseSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToIncrease)
         internal
         returns (int96 newSubsidyFlowRate)
     {
-        // Fetch current flow between this contract and the Staking Reward Controller
-        int96 currentSubsidyFlowRate = token.getFlowRate(address(this), address(STAKING_REWARD_CONTROLLER));
+        // Fetch current flow between this contract and the tax distribution pool
+        int96 currentSubsidyFlowRate = token.getFlowDistributionFlowRate(address(this), TAX_DISTRIBUTION_POOL);
 
         // Calculate the new subsidy flow rate
         newSubsidyFlowRate = currentSubsidyFlowRate + subsidyFlowRateToIncrease;
 
-        // Create the flow if it does not exists, increase it otherwise
-        if (currentSubsidyFlowRate == 0) {
-            token.createFlow(address(STAKING_REWARD_CONTROLLER), newSubsidyFlowRate);
-        } else {
-            token.updateFlow(address(STAKING_REWARD_CONTROLLER), newSubsidyFlowRate);
-        }
+        // Update the distribution flow rate to the tax distribution pool
+        token.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, newSubsidyFlowRate);
     }
 
     /**
@@ -409,24 +370,19 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
      * @param subsidyFlowRateToDecrease flow rate to deduce from the current global subsidy flow rate
      * @return newSubsidyFlowRate the new current global subsidy flow rate
      */
-    function _deleteOrUpdateSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToDecrease)
+    function _decreaseSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToDecrease)
         internal
         returns (int96 newSubsidyFlowRate)
     {
-        // Fetch current flow between this contract and the Staking Reward Controller
-        int96 currentSubsidyFlowRate = token.getFlowRate(address(this), address(STAKING_REWARD_CONTROLLER));
+        // Fetch current flow between this contract and the tax distribution pool
+        int96 currentSubsidyFlowRate = token.getFlowDistributionFlowRate(address(this), TAX_DISTRIBUTION_POOL);
 
-        // Delete the flow if it is only composed of the current subsidy flow to remove, decrease it otherwise
-        if (currentSubsidyFlowRate <= subsidyFlowRateToDecrease) {
-            newSubsidyFlowRate = 0;
-            token.deleteFlow(address(this), address(STAKING_REWARD_CONTROLLER));
-        } else {
-            newSubsidyFlowRate = currentSubsidyFlowRate - subsidyFlowRateToDecrease;
-            token.updateFlow(address(STAKING_REWARD_CONTROLLER), newSubsidyFlowRate);
-        }
-    }
+        // Calculate the new subsidy flow rate
+        newSubsidyFlowRate = currentSubsidyFlowRate <= subsidyFlowRateToDecrease
+            ? int96(0)
+            : currentSubsidyFlowRate - subsidyFlowRateToDecrease;
 
-    function _calculateBuffer(int96 flowRate) internal pure returns (uint256 requiredBuffer) {
-        requiredBuffer = int256(flowRate).toUint256() * _BUFFER_DURATION;
+        // Update the distribution flow rate to the tax distribution pool
+        token.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, newSubsidyFlowRate);
     }
 }

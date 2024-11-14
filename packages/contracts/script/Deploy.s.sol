@@ -81,9 +81,8 @@ function deployAll(DeploySettings memory settings)
     stakingRewardControllerAddress = address(stakingRewardController);
 
     // Deploy Ecosystem Partner Program Manager
-    FluidEPProgramManager programManager = new FluidEPProgramManager(
-        settings.owner, settings.treasury, IStakingRewardController(stakingRewardControllerAddress)
-    );
+    FluidEPProgramManager programManager =
+        new FluidEPProgramManager(settings.owner, settings.treasury, stakingRewardController.TAX_DISTRIBUTION_POOL());
     programManagerAddress = address(programManager);
 
     // Deploy the Fontaine Implementation and associated Beacon contract
@@ -115,9 +114,6 @@ function deployAll(DeploySettings memory settings)
 
     // Sets the FluidLockerFactory address in the StakingRewardController
     stakingRewardController.setLockerFactory(lockerFactoryAddress);
-
-    // Sets the FluidProgramManager address in the StakingRewardController
-    stakingRewardController.setProgramManager(programManagerAddress);
 
     // Sets the FluidLockerFactory address in the ProgramManager
     programManager.setLockerFactory(lockerFactoryAddress);

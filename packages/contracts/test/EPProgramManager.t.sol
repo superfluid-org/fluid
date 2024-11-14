@@ -539,9 +539,7 @@ contract FluidEPProgramManagerTest is SFTest {
             _fluid.estimateFlowDistributionActualFlowRate(address(_programManager), pool, requestedProgramFlowRate);
 
         (, int96 totalSubsidyDistributionFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(_stakingRewardController),
-            _stakingRewardController.TAX_DISTRIBUTION_POOL(),
-            requestedSubsidyFlowRate
+            address(_programManager), _programManager.TAX_DISTRIBUTION_POOL(), requestedSubsidyFlowRate
         );
 
         assertEq(
@@ -581,25 +579,27 @@ contract FluidEPProgramManagerTest is SFTest {
         int96 requestedSubsidyFlowRate = int256(subsidyAmount / PROGRAM_DURATION).toInt96();
         int96 requestedProgramFlowRate = int256(programAmount / PROGRAM_DURATION).toInt96();
 
-        (, int96 actualSubsidyFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(_stakingRewardController),
-            _stakingRewardController.TAX_DISTRIBUTION_POOL(),
-            requestedSubsidyFlowRate
+        (, int96 requestedSubsidyFlowRateBeforeNewFunding) = _fluid.estimateFlowDistributionActualFlowRate(
+            address(_programManager), _programManager.TAX_DISTRIBUTION_POOL(), requestedSubsidyFlowRate
         );
 
-        int96 subsidyFlowBeforeNewFunding =
-            _fluid.getFlowRate(address(_programManager), address(_stakingRewardController));
+        int96 actualSubsidyFlowRateBeforeNewFunding =
+            _fluid.getFlowDistributionFlowRate(address(_programManager), _programManager.TAX_DISTRIBUTION_POOL());
 
-        assertEq(actualSubsidyFlowRate, subsidyFlowBeforeNewFunding, "incorrect subsidy flow before new funding");
+        assertEq(
+            actualSubsidyFlowRateBeforeNewFunding,
+            requestedSubsidyFlowRateBeforeNewFunding,
+            "incorrect subsidy flow before new funding"
+        );
 
         _helperStartFunding(2, fundingAmount);
 
-        int96 subsidyFlowAfterNewFunding =
-            _fluid.getFlowRate(address(_programManager), address(_stakingRewardController));
+        int96 actualSubsidyFlowRateAfterNewFunding =
+            _fluid.getFlowDistributionFlowRate(address(_programManager), _programManager.TAX_DISTRIBUTION_POOL());
 
         assertEq(
-            subsidyFlowAfterNewFunding,
-            actualSubsidyFlowRate + subsidyFlowBeforeNewFunding,
+            actualSubsidyFlowRateAfterNewFunding,
+            requestedSubsidyFlowRateBeforeNewFunding * 2,
             "incorrect subsidy flow after new funding"
         );
     }
