@@ -39,15 +39,11 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
      * @param fundingFlowRate flow rate between this contract and the program pool
      * @param subsidyFlowRate flow rate between the Staking Reward Controller contract and the tax distribution pool
      * @param fundingStartDate timestamp at which the program is funded
-     * @param fundingRemainder program residual amount
-     * @param subsidyRemainder subsidy residual amount
      */
     struct FluidProgramDetails {
         int96 fundingFlowRate;
         int96 subsidyFlowRate;
         uint64 fundingStartDate;
-        uint256 fundingRemainder;
-        uint256 subsidyRemainder;
     }
 
     //     ______           __                     ______
@@ -178,10 +174,8 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         uint256 undistributedSubsidyAmount;
 
         if (endDate > block.timestamp) {
-            undistributedFundingAmount =
-                (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate) + programDetails.fundingRemainder;
-            undistributedSubsidyAmount =
-                (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate) + programDetails.subsidyRemainder;
+            undistributedFundingAmount = (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate);
+            undistributedSubsidyAmount = (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate);
         }
 
         program.token.distributeFlow(address(this), program.distributionPool, 0);
@@ -192,7 +186,7 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         }
 
         if (undistributedFundingAmount + undistributedSubsidyAmount > 0) {
-            // Distribute the remainder to the program pool
+            // Transfer back the undistributed amounts to the treasury
             program.token.transfer(fluidTreasury, undistributedFundingAmount + undistributedSubsidyAmount);
         }
 
@@ -217,21 +211,11 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         int96 subsidyFlowRate = int256(subsidyAmount / PROGRAM_DURATION).toInt96();
         int96 fundingFlowRate = int256(fundingAmount / PROGRAM_DURATION).toInt96();
 
-        // TODO : Calculate accurate flow rates
-
-        uint256 fundingRemainder =
-            fundingAmount > 0 ? fundingAmount - (SafeCast.toUint256(fundingFlowRate) * PROGRAM_DURATION) : 0;
-
-        uint256 subsidyRemainder =
-            subsidyAmount > 0 ? subsidyAmount - (SafeCast.toUint256(subsidyFlowRate) * PROGRAM_DURATION) : 0;
-
         // Persist program details
         _fluidProgramDetails[programId] = FluidProgramDetails({
             fundingFlowRate: fundingFlowRate,
             subsidyFlowRate: subsidyFlowRate,
-            fundingStartDate: uint64(block.timestamp),
-            fundingRemainder: fundingRemainder,
-            subsidyRemainder: subsidyRemainder
+            fundingStartDate: uint64(block.timestamp)
         });
 
         // Fetch funds from FLUID Treasury (requires prior approval from the Treasury)
@@ -269,10 +253,8 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
 
         // if the program is stopped during its early end period, calculate the flow compensations
         if (endDate > block.timestamp) {
-            earlyEndCompensation =
-                (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate) + (programDetails.fundingRemainder);
-            subsidyEarlyEndCompensation =
-                (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate) + (programDetails.subsidyRemainder);
+            earlyEndCompensation = (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate);
+            subsidyEarlyEndCompensation = (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate);
         }
 
         // Stops the distribution flow to the program pool
@@ -284,12 +266,12 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         }
 
         if (earlyEndCompensation > 0) {
-            // Distribute the remainder to the program pool
+            // Distribute the early end compensation to the program pool
             program.token.distributeToPool(address(this), program.distributionPool, earlyEndCompensation);
         }
 
         if (subsidyEarlyEndCompensation > 0) {
-            // Distribute the remainder to the stakers pool
+            // Distribute the early end compensation to the stakers pool
             program.token.distributeToPool(address(this), TAX_DISTRIBUTION_POOL, subsidyEarlyEndCompensation);
         }
 
