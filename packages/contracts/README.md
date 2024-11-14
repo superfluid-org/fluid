@@ -13,6 +13,20 @@ Latest deployed contract address
 | Fontaine (Logic)      | 0x9a2D08fE4fe75D33990085A436B4aB215Bf9e524 | https://sepolia.basescan.org/address/0x9a2D08fE4fe75D33990085A436B4aB215Bf9e524 |
 | FluidLockerFactory    | 0x8DaF7BF1a2052B6BDA0eC46619855Cec77DfbC76 | https://sepolia.basescan.org/address/0x8DaF7BF1a2052B6BDA0eC46619855Cec77DfbC76 |
 
+## Test Coverage :
+
+Current test coverage is as follow :
+
+| File                            | % Lines          | % Statements     | % Branches      | % Funcs         |
+| ------------------------------- | ---------------- | ---------------- | --------------- | --------------- |
+| src/EPProgramManager.sol        | 100.00% (42/42)  | 100.00% (56/56)  | 100.00% (14/14) | 100.00% (13/13) |
+| src/FluidEPProgramManager.sol   | 97.70% (85/87)   | 96.43% (108/112) | 87.50% (21/24)  | 100.00% (13/13) |
+| src/FluidLocker.sol             | 100.00% (75/75)  | 97.92% (94/96)   | 84.62% (11/13)  | 100.00% (21/21) |
+| src/FluidLockerFactory.sol      | 85.00% (17/20)   | 80.95% (17/21)   | 0.00% (0/2)     | 81.82% (9/11)   |
+| src/Fontaine.sol                | 100.00% (6/6)    | 85.71% (6/7)     | 0.00% (0/1)     | 100.00% (2/2)   |
+| src/StakingRewardController.sol | 100.00% (20/20)  | 100.00% (25/25)  | 100.00% (4/4)   | 100.00% (9/9)   |
+| Total                           | 74.75% (299/400) | 74.30% (373/502) | 84.75% (50/59)  | 83.15% (74/89)  |
+
 ## Foundry
 
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
