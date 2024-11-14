@@ -78,9 +78,6 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     /// @notice Basis points denominator (for percentage calculation)
     uint96 private constant _BP_DENOMINATOR = 10_000;
 
-    /// @notice Superfluid Buffer basis calculation
-    uint256 private constant _BUFFER_DURATION = 4 hours;
-
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
