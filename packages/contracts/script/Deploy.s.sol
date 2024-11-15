@@ -28,7 +28,7 @@ struct DeploySettings {
     bool unlockStatus;
 }
 
-function deployFontaineBeacon(ISuperToken fluid, ISuperfluidPool taxDistributionPool, address governor)
+function _deployFontaineBeacon(ISuperToken fluid, ISuperfluidPool taxDistributionPool, address governor)
     returns (address fontaineLogicAddress, address fontaineBeaconAddress)
 {
     // Deploy the Fontaine Implementation and associated Beacon contract
@@ -40,7 +40,7 @@ function deployFontaineBeacon(ISuperToken fluid, ISuperfluidPool taxDistribution
     fontaineBeacon.transferOwnership(governor);
 }
 
-function deployLockerBeacon(
+function _deployLockerBeacon(
     DeploySettings memory settings,
     ISuperfluidPool taxDistributionPool,
     address programManagerAddress,
@@ -65,7 +65,7 @@ function deployLockerBeacon(
     lockerBeacon.transferOwnership(settings.governor);
 }
 
-function deployStakingRewardController(ISuperToken fluid, address owner)
+function _deployStakingRewardController(ISuperToken fluid, address owner)
     returns (address stakingRewardControllerProxyAddress)
 {
     // Deploy the Staking Reward Controller contract
@@ -78,7 +78,7 @@ function deployStakingRewardController(ISuperToken fluid, address owner)
     stakingRewardControllerProxyAddress = address(stakingRewardControllerProxy);
 }
 
-function deployFluidEPProgramManager(address owner, address treasury, ISuperfluidPool taxDistributionPool)
+function _deployFluidEPProgramManager(address owner, address treasury, ISuperfluidPool taxDistributionPool)
     returns (address programManagerProxyAddress)
 {
     // Deploy the Staking Reward Controller contract
@@ -90,7 +90,7 @@ function deployFluidEPProgramManager(address owner, address treasury, ISuperflui
     programManagerProxyAddress = address(programManagerProxy);
 }
 
-function deployAll(DeploySettings memory settings)
+function _deployAll(DeploySettings memory settings)
     returns (
         address programManagerAddress,
         address stakingRewardControllerProxyAddress,
@@ -101,20 +101,20 @@ function deployAll(DeploySettings memory settings)
         address fontaineBeaconAddress
     )
 {
-    stakingRewardControllerProxyAddress = deployStakingRewardController(settings.fluid, settings.owner);
+    stakingRewardControllerProxyAddress = _deployStakingRewardController(settings.fluid, settings.owner);
 
     ISuperfluidPool taxDistributionPool =
         StakingRewardController(stakingRewardControllerProxyAddress).taxDistributionPool();
 
     // Deploy Ecosystem Partner Program Manager
-    programManagerAddress = deployFluidEPProgramManager(settings.owner, settings.treasury, taxDistributionPool);
+    programManagerAddress = _deployFluidEPProgramManager(settings.owner, settings.treasury, taxDistributionPool);
 
     // Deploy the Fontaine Implementation and associated Beacon contract
     (fontaineLogicAddress, fontaineBeaconAddress) =
-        deployFontaineBeacon(settings.fluid, taxDistributionPool, settings.governor);
+        _deployFontaineBeacon(settings.fluid, taxDistributionPool, settings.governor);
 
     // Deploy the Fluid Locker Implementation and associated Beacon contract
-    (lockerLogicAddress, lockerBeaconAddress) = deployLockerBeacon(
+    (lockerLogicAddress, lockerBeaconAddress) = _deployLockerBeacon(
         settings, taxDistributionPool, programManagerAddress, stakingRewardControllerProxyAddress, fontaineBeaconAddress
     );
 
@@ -184,7 +184,7 @@ contract DeployScript is Script {
             address lockerBeaconAddress,
             address fontaineLogicAddress,
             address fontaineBeaconAddress
-        ) = deployAll(settings);
+        ) = _deployAll(settings);
 
         _logDeploymentSummary(
             programManagerAddress,

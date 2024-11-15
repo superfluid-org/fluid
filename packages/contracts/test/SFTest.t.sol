@@ -22,7 +22,7 @@ import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
 import { StakingRewardController } from "../src/StakingRewardController.sol";
 
-import { deployAll, DeploySettings } from "../script/Deploy.s.sol";
+import { _deployAll, DeploySettings } from "../script/Deploy.s.sol";
 
 using SuperTokenV1Library for SuperToken;
 using SuperTokenV1Library for ISuperToken;
@@ -105,7 +105,7 @@ contract SFTest is Test {
             address lockerBeaconAddress,
             address fontaineLogicAddress,
             address fontaineBeaconAddress
-        ) = deployAll(settings);
+        ) = _deployAll(settings);
 
         _programManager = FluidEPProgramManager(programManagerAddress);
         _stakingRewardController = StakingRewardController(stakingRewardControllerAddress);
