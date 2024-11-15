@@ -72,4 +72,12 @@ interface IStakingRewardController {
      * @param lockerAddress Locker contract address to be approved
      */
     function approveLocker(address lockerAddress) external;
+
+    /**
+     * @notice Upgrade this proxy logic
+     * @dev Only the owner address can perform this operation
+     * @param newImplementation new logic contract address
+     * @param data calldata for potential initializer
+     */
+    function upgradeTo(address newImplementation, bytes calldata data) external;
 }

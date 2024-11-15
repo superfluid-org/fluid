@@ -114,7 +114,7 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
         emit LockerApproved(lockerAddress);
     }
 
-    /// FIXME : Add comments
+    /// @inheritdoc IStakingRewardController
     function upgradeTo(address newImplementation, bytes calldata data) external onlyOwner {
         ERC1967Utils.upgradeToAndCall(newImplementation, data);
     }

@@ -335,7 +335,12 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         token.transfer(fluidTreasury, token.balanceOf(address(this)));
     }
 
-    /// FIXME : Add comments
+    /**
+     * @notice Upgrade this proxy logic
+     * @dev Only the owner address can perform this operation
+     * @param newImplementation new logic contract address
+     * @param data calldata for potential initializer
+     */
     function upgradeTo(address newImplementation, bytes calldata data) external onlyOwner {
         ERC1967Utils.upgradeToAndCall(newImplementation, data);
     }
