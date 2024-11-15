@@ -5,6 +5,8 @@ import { SFTest } from "./SFTest.t.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 
+import { Script, console2 } from "forge-std/Script.sol";
+
 import {
     ISuperToken,
     ISuperfluidPool
@@ -670,7 +672,6 @@ contract FluidEPProgramManagerTest is SFTest {
         /// TODO : add asserts
     }
 
-    // function testStopFundingMultipleProgram() external { }
     function testCancelProgram(uint256 cancelAfter, address nonAdmin) external {
         vm.assume(nonAdmin != ADMIN);
         cancelAfter = bound(cancelAfter, 1, 89 days);
@@ -704,6 +705,8 @@ contract FluidEPProgramManagerTest is SFTest {
         );
         /// TODO : add asserts
     }
+
+    // function testStopFundingMultipleProgram() external { }
     // function testCancelProgramMultipleProgram() external { }
 
     function _helperGrantUnitsToAlice(uint256 programId, uint256 units, uint96 signerPkey) internal {
@@ -726,5 +729,46 @@ contract FluidEPProgramManagerTest is SFTest {
 
         vm.prank(ADMIN);
         _programManager.startFunding(_programId, _fundingAmount);
+    }
+}
+
+contract FluidEPProgramManagerLayoutTest is FluidEPProgramManager {
+    constructor() FluidEPProgramManager(ISuperfluidPool(address(0))) { }
+
+    function testStorageLayout() external pure {
+        uint256 slot;
+        uint256 offset;
+
+        // FluidEPProgramManager storage
+
+        assembly {
+            slot := programs.slot
+            offset := programs.offset
+        }
+        require(slot == 0 && offset == 0, "programs changed location");
+
+        // private state : _lastValidNonces
+        // slot = 1 - offset = 0
+
+        // private state : _fluidProgramDetails
+        // slot = 2 - offset = 0
+
+        assembly {
+            slot := subsidyFundingRate.slot
+            offset := subsidyFundingRate.offset
+        }
+        require(slot == 3 && offset == 0, "subsidyFundingRate changed location");
+
+        assembly {
+            slot := fluidLockerFactory.slot
+            offset := fluidLockerFactory.offset
+        }
+        require(slot == 3 && offset == 12, "fluidLockerFactory changed location");
+
+        assembly {
+            slot := fluidTreasury.slot
+            offset := fluidTreasury.offset
+        }
+        require(slot == 4 && offset == 0, "fluidTreasury changed location");
     }
 }

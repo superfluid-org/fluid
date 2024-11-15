@@ -86,6 +86,9 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     //   ___/ / /_/ /_/ / /_/  __(__  )
     //  /____/\__/\__,_/\__/\___/____/
 
+    /// @notice Stores the subsidyFlowRate for a given program
+    mapping(uint256 programId => FluidProgramDetails programDetails) private _fluidProgramDetails;
+
     /// @notice Staking subsidy funding rate
     uint96 public subsidyFundingRate;
 
@@ -94,9 +97,6 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
     /// @notice Fluid treasury account address
     address public fluidTreasury;
-
-    /// @notice Stores the subsidyFlowRate for a given program
-    mapping(uint256 programId => FluidProgramDetails programDetails) private _fluidProgramDetails;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
