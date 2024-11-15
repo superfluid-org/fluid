@@ -35,9 +35,6 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     /// @notice $FLUID SuperToken interface
     ISuperToken public immutable FLUID;
 
-    /// @notice Superfluid pool interface
-    ISuperfluidPool public TAX_DISTRIBUTION_POOL;
-
     /// @notice Value used to convert staked amount into GDA pool units
     uint128 private constant _UNIT_DOWNSCALER = 1e16;
 
@@ -46,6 +43,9 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
     //   ___/ / /_/ /_/ / /_/  __(__  )
     //  /____/\__/\__,_/\__/\___/____/
+
+    /// @notice Superfluid pool interface
+    ISuperfluidPool public taxDistributionPool;
 
     /// @notice Locker Factory contract address
     address public lockerFactory;
@@ -84,7 +84,7 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
             PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
 
         // Create Superfluid GDA Pool
-        TAX_DISTRIBUTION_POOL = FLUID.createPool(address(this), poolConfig);
+        taxDistributionPool = FLUID.createPool(address(this), poolConfig);
     }
 
     //      ______     __                        __   ______                 __  _
@@ -95,7 +95,7 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
 
     /// @inheritdoc IStakingRewardController
     function updateStakerUnits(uint256 lockerStakedBalance) external onlyApprovedLocker {
-        FLUID.updateMemberUnits(TAX_DISTRIBUTION_POOL, msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
+        FLUID.updateMemberUnits(taxDistributionPool, msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
 
         emit UpdatedStakersUnits(msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
     }

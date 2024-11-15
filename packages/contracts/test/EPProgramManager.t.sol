@@ -112,7 +112,7 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_invalidSignerPkey != 0);
         vm.assume(_signerPkey != _invalidSignerPkey);
         vm.assume(_user != address(0));
-        vm.assume(_user != address(_stakingRewardController.TAX_DISTRIBUTION_POOL()));
+        vm.assume(_user != address(_stakingRewardController.taxDistributionPool()));
         _units = bound(_units, 1, 1_000_000);
 
         uint256 programId = 1;
@@ -154,7 +154,7 @@ contract EPProgramManagerTest is SFTest {
     function testBatchUpdateUnits(uint8 _batchAmount, uint96 _signerPkey, address _user, uint256 _units) external {
         vm.assume(_signerPkey != 0);
         vm.assume(_user != address(0));
-        vm.assume(_user != address(_stakingRewardController.TAX_DISTRIBUTION_POOL()));
+        vm.assume(_user != address(_stakingRewardController.taxDistributionPool()));
         _units = bound(_units, 1, 1_000_000);
         _batchAmount = uint8(bound(_batchAmount, 2, 8));
 
@@ -500,7 +500,7 @@ contract FluidEPProgramManagerTest is SFTest {
         );
 
         assertEq(
-            _stakingRewardController.TAX_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
+            _stakingRewardController.taxDistributionPool().getMemberFlowRate(address(bobLocker)),
             0,
             "subsidy distribution flow to staker should be 0"
         );
@@ -549,7 +549,7 @@ contract FluidEPProgramManagerTest is SFTest {
         );
 
         assertEq(
-            _stakingRewardController.TAX_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
+            _stakingRewardController.taxDistributionPool().getMemberFlowRate(address(bobLocker)),
             totalSubsidyDistributionFlowRate,
             "subsidy distribution flow to staker is incorrect"
         );

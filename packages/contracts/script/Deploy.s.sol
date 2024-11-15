@@ -92,7 +92,7 @@ function deployAll(DeploySettings memory settings)
     stakingRewardControllerProxyAddress = deployStakingRewardController(settings.fluid, settings.owner);
 
     ISuperfluidPool taxDistributionPool =
-        StakingRewardController(stakingRewardControllerProxyAddress).TAX_DISTRIBUTION_POOL();
+        StakingRewardController(stakingRewardControllerProxyAddress).taxDistributionPool();
 
     // Deploy Ecosystem Partner Program Manager
     FluidEPProgramManager programManager =

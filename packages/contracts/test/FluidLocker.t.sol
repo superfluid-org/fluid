@@ -214,7 +214,7 @@ contract FluidLockerTest is SFTest {
         assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available bal after op");
         assertEq(aliceLocker.getStakedBalance(), funding, "incorrect staked bal after op");
         assertEq(
-            _stakingRewardController.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)),
+            _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
             funding / 1e16,
             "incorrect units"
         );
@@ -233,7 +233,7 @@ contract FluidLockerTest is SFTest {
         assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available bal before op");
         assertEq(aliceLocker.getStakedBalance(), funding, "incorrect staked bal before op");
         assertEq(
-            _stakingRewardController.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)),
+            _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
             funding / 1e16,
             "incorrect units before op"
         );
@@ -247,9 +247,7 @@ contract FluidLockerTest is SFTest {
         assertEq(aliceLocker.getAvailableBalance(), funding, "incorrect available bal after op");
         assertEq(aliceLocker.getStakedBalance(), 0, "incorrect staked bal after op");
         assertEq(
-            _stakingRewardController.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)),
-            0,
-            "incorrect units after op"
+            _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)), 0, "incorrect units after op"
         );
 
         vm.expectRevert(IFluidLocker.NO_FLUID_TO_UNSTAKE.selector);
@@ -308,7 +306,7 @@ contract FluidLockerTTETest is SFTest {
         _nonUnlockableLockerLogic = address(
             new FluidLocker(
                 _fluid,
-                _stakingRewardController.TAX_DISTRIBUTION_POOL(),
+                _stakingRewardController.taxDistributionPool(),
                 IEPProgramManager(address(_programManager)),
                 IStakingRewardController(address(_stakingRewardController)),
                 address(_fontaineLogic),
@@ -484,7 +482,7 @@ contract FluidLockerTTETest is SFTest {
         assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available bal after op");
         assertEq(aliceLocker.getStakedBalance(), funding, "incorrect staked bal after op");
         assertEq(
-            _stakingRewardController.TAX_DISTRIBUTION_POOL().getUnits(address(aliceLocker)),
+            _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
             funding / 1e16,
             "incorrect units"
         );

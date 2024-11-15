@@ -23,7 +23,7 @@ contract StakingRewardControllerTest is SFTest {
 
     function testUpdateStakerUnits(address caller, uint256 stakingAmount) external {
         vm.assume(caller != address(0));
-        vm.assume(caller != address(_stakingRewardController.TAX_DISTRIBUTION_POOL()));
+        vm.assume(caller != address(_stakingRewardController.taxDistributionPool()));
         stakingAmount = bound(stakingAmount, 1e16, 10_000_000e18);
 
         vm.prank(caller);
@@ -40,7 +40,7 @@ contract StakingRewardControllerTest is SFTest {
         _stakingRewardController.updateStakerUnits(stakingAmount);
 
         assertEq(
-            _stakingRewardController.TAX_DISTRIBUTION_POOL().getUnits(caller),
+            _stakingRewardController.taxDistributionPool().getUnits(caller),
             stakingAmount / _UNIT_DOWNSCALER,
             "incorrect amount of units"
         );
