@@ -9,7 +9,7 @@ import {
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
-import { IStakingRewardController } from "../src/interfaces/IStakingRewardController.sol";
+import { StakingRewardController, IStakingRewardController } from "../src/StakingRewardController.sol";
 
 using SuperTokenV1Library for ISuperToken;
 
@@ -44,5 +44,31 @@ contract StakingRewardControllerTest is SFTest {
             stakingAmount / _UNIT_DOWNSCALER,
             "incorrect amount of units"
         );
+    }
+}
+
+contract StakingRewardControllerLayoutTest is StakingRewardController {
+    constructor() StakingRewardController(ISuperToken(address(0))) { }
+
+    function testStorageLayout() external pure {
+        uint256 slot;
+        uint256 offset;
+
+        // StakingRewardController storage
+
+        // private state : _approvedLockers
+        // slot = 0 - offset = 0
+
+        assembly {
+            slot := taxDistributionPool.slot
+            offset := taxDistributionPool.offset
+        }
+        require(slot == 1 && offset == 0, "taxDistributionPool changed location");
+
+        assembly {
+            slot := lockerFactory.slot
+            offset := lockerFactory.offset
+        }
+        require(slot == 2 && offset == 0, "lockerFactory changed location");
     }
 }

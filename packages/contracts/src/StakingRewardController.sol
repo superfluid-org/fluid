@@ -44,14 +44,14 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     //   ___/ / /_/ /_/ / /_/  __(__  )
     //  /____/\__/\__,_/\__/\___/____/
 
+    /// @notice Stores the approval status of a given locker contract address
+    mapping(address locker => bool isApproved) private _approvedLockers;
+
     /// @notice Superfluid pool interface
     ISuperfluidPool public taxDistributionPool;
 
     /// @notice Locker Factory contract address
     address public lockerFactory;
-
-    /// @notice Stores the approval status of a given locker contract address
-    mapping(address locker => bool isApproved) private _approvedLockers;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
