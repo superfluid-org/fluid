@@ -98,18 +98,21 @@ contract SFTest is Test {
         vm.startPrank(ADMIN);
 
         (
-            address programManagerAddress,
-            address stakingRewardControllerAddress,
-            address lockerFactoryAddress,
+            address programManagerLogicAddress,
+            address programManagerProxyAddress,
+            address stakingRewardControllerLogicAddress,
+            address stakingRewardControllerProxyAddress,
+            address lockerFactoryLogicAddress,
+            address lockerFactoryProxyAddress,
             address lockerLogicAddress,
             address lockerBeaconAddress,
             address fontaineLogicAddress,
             address fontaineBeaconAddress
         ) = _deployAll(settings);
 
-        _programManager = FluidEPProgramManager(programManagerAddress);
-        _stakingRewardController = StakingRewardController(stakingRewardControllerAddress);
-        _fluidLockerFactory = FluidLockerFactory(lockerFactoryAddress);
+        _programManager = FluidEPProgramManager(programManagerProxyAddress);
+        _stakingRewardController = StakingRewardController(stakingRewardControllerProxyAddress);
+        _fluidLockerFactory = FluidLockerFactory(lockerFactoryProxyAddress);
         _fluidLockerLogic = FluidLocker(lockerLogicAddress);
         _fontaineLogic = Fontaine(fontaineLogicAddress);
         _fluid = ISuperToken(address(_fluidSuperToken));

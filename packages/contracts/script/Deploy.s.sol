@@ -66,48 +66,73 @@ function _deployLockerBeacon(
 }
 
 function _deployStakingRewardController(ISuperToken fluid, address owner)
-    returns (address stakingRewardControllerProxyAddress)
+    returns (address stakingRewardControllerLogicAddress, address stakingRewardControllerProxyAddress)
 {
     // Deploy the Staking Reward Controller contract
     StakingRewardController stakingRewardControllerLogic = new StakingRewardController(fluid);
+    stakingRewardControllerLogicAddress = address(stakingRewardControllerLogic);
 
     ERC1967Proxy stakingRewardControllerProxy = new ERC1967Proxy(
-        address(stakingRewardControllerLogic),
-        abi.encodeWithSelector(StakingRewardController.initialize.selector, owner)
+        stakingRewardControllerLogicAddress, abi.encodeWithSelector(StakingRewardController.initialize.selector, owner)
     );
     stakingRewardControllerProxyAddress = address(stakingRewardControllerProxy);
 }
 
 function _deployFluidEPProgramManager(address owner, address treasury, ISuperfluidPool taxDistributionPool)
-    returns (address programManagerProxyAddress)
+    returns (address programManagerLogicAddress, address programManagerProxyAddress)
 {
     // Deploy the Staking Reward Controller contract
     FluidEPProgramManager programManagerLogic = new FluidEPProgramManager(taxDistributionPool);
+    programManagerLogicAddress = address(programManagerLogic);
 
     ERC1967Proxy programManagerProxy = new ERC1967Proxy(
-        address(programManagerLogic), abi.encodeWithSelector(FluidEPProgramManager.initialize.selector, owner, treasury)
+        programManagerLogicAddress, abi.encodeWithSelector(FluidEPProgramManager.initialize.selector, owner, treasury)
     );
     programManagerProxyAddress = address(programManagerProxy);
 }
 
+function _deployLockerFactory(
+    bool factoryPauseStatus,
+    address governor,
+    address lockerBeaconAddress,
+    address stakingRewardControllerProxyAddress
+) returns (address lockerFactoryLogicAddress, address lockerFactoryProxyAddress) {
+    // Deploy the Fluid Locker Factory contract
+    FluidLockerFactory lockerFactoryLogic = new FluidLockerFactory(
+        lockerBeaconAddress, IStakingRewardController(stakingRewardControllerProxyAddress), factoryPauseStatus
+    );
+
+    lockerFactoryLogicAddress = address(lockerFactoryLogic);
+
+    ERC1967Proxy lockerFactoryProxy = new ERC1967Proxy(
+        lockerFactoryLogicAddress, abi.encodeWithSelector(FluidLockerFactory.initialize.selector, governor)
+    );
+    lockerFactoryProxyAddress = address(lockerFactoryProxy);
+}
+
 function _deployAll(DeploySettings memory settings)
     returns (
-        address programManagerAddress,
+        address programManagerLogicAddress,
+        address programManagerProxyAddress,
+        address stakingRewardControllerLogicAddress,
         address stakingRewardControllerProxyAddress,
-        address lockerFactoryAddress,
+        address lockerFactoryLogicAddress,
+        address lockerFactoryProxyAddress,
         address lockerLogicAddress,
         address lockerBeaconAddress,
         address fontaineLogicAddress,
         address fontaineBeaconAddress
     )
 {
-    stakingRewardControllerProxyAddress = _deployStakingRewardController(settings.fluid, settings.owner);
+    (stakingRewardControllerLogicAddress, stakingRewardControllerProxyAddress) =
+        _deployStakingRewardController(settings.fluid, settings.owner);
 
     ISuperfluidPool taxDistributionPool =
         StakingRewardController(stakingRewardControllerProxyAddress).taxDistributionPool();
 
     // Deploy Ecosystem Partner Program Manager
-    programManagerAddress = _deployFluidEPProgramManager(settings.owner, settings.treasury, taxDistributionPool);
+    (programManagerLogicAddress, programManagerProxyAddress) =
+        _deployFluidEPProgramManager(settings.owner, settings.treasury, taxDistributionPool);
 
     // Deploy the Fontaine Implementation and associated Beacon contract
     (fontaineLogicAddress, fontaineBeaconAddress) =
@@ -115,28 +140,22 @@ function _deployAll(DeploySettings memory settings)
 
     // Deploy the Fluid Locker Implementation and associated Beacon contract
     (lockerLogicAddress, lockerBeaconAddress) = _deployLockerBeacon(
-        settings, taxDistributionPool, programManagerAddress, stakingRewardControllerProxyAddress, fontaineBeaconAddress
+        settings,
+        taxDistributionPool,
+        programManagerProxyAddress,
+        stakingRewardControllerProxyAddress,
+        fontaineBeaconAddress
     );
 
-    // Deploy the Fluid Locker Factory contract
-    FluidLockerFactory lockerFactoryLogic = new FluidLockerFactory(
-        lockerBeaconAddress, IStakingRewardController(stakingRewardControllerProxyAddress), settings.factoryPauseStatus
+    (lockerFactoryLogicAddress, lockerFactoryProxyAddress) = _deployLockerFactory(
+        settings.factoryPauseStatus, settings.governor, lockerBeaconAddress, stakingRewardControllerProxyAddress
     );
-
-    ERC1967Proxy lockerFactoryProxy = new ERC1967Proxy(
-        address(lockerFactoryLogic), abi.encodeWithSelector(FluidLockerFactory.initialize.selector, settings.governor)
-    );
-
-    FluidLockerFactory lockerFactory = FluidLockerFactory(address(lockerFactoryProxy));
-    lockerFactory.LOCKER_BEACON().transferOwnership(settings.governor);
-
-    lockerFactoryAddress = address(lockerFactory);
 
     // Sets the FluidLockerFactory address in the StakingRewardController
-    StakingRewardController(stakingRewardControllerProxyAddress).setLockerFactory(lockerFactoryAddress);
+    StakingRewardController(stakingRewardControllerProxyAddress).setLockerFactory(lockerFactoryProxyAddress);
 
     // Sets the FluidLockerFactory address in the ProgramManager
-    FluidEPProgramManager(programManagerAddress).setLockerFactory(lockerFactoryAddress);
+    FluidEPProgramManager(programManagerProxyAddress).setLockerFactory(lockerFactoryProxyAddress);
 }
 
 // forge script script/Deploy.s.sol:DeployScript --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify -vvvv
@@ -177,9 +196,12 @@ contract DeployScript is Script {
 
         vm.startBroadcast(deployerPrivateKey);
         (
-            address programManagerAddress,
-            address stakingRewardControllerAddress,
-            address lockerFactoryAddress,
+            address programManagerLogicAddress,
+            address programManagerProxyAddress,
+            address stakingRewardControllerLogicAddress,
+            address stakingRewardControllerProxyAddress,
+            address lockerFactoryLogicAddress,
+            address lockerFactoryProxyAddress,
             address lockerLogicAddress,
             address lockerBeaconAddress,
             address fontaineLogicAddress,
@@ -187,9 +209,12 @@ contract DeployScript is Script {
         ) = _deployAll(settings);
 
         _logDeploymentSummary(
-            programManagerAddress,
-            stakingRewardControllerAddress,
-            lockerFactoryAddress,
+            programManagerLogicAddress,
+            programManagerProxyAddress,
+            stakingRewardControllerLogicAddress,
+            stakingRewardControllerProxyAddress,
+            lockerFactoryLogicAddress,
+            lockerFactoryProxyAddress,
             lockerLogicAddress,
             lockerBeaconAddress,
             fontaineLogicAddress,
@@ -206,7 +231,7 @@ contract DeployScript is Script {
         bool unlockStatus
     ) internal pure {
         console2.log("");
-        console2.log("*-------------------------------* DEPLOYMENT SETTINGS *------------------------------*");
+        console2.log("*----------------------------------* DEPLOYMENT SETTINGS *---------------------------------*");
         console2.log("|                                                                                    ");
         console2.log("| Deployer Address          : %s", deployer);
         console2.log("| FLUID Token Address       : %s", fluid);
@@ -214,29 +239,35 @@ contract DeployScript is Script {
         console2.log("| Treasury Address          : %s", treasury);
         console2.log("| Factory Pause Status      : %s", factoryPauseStatus);
         console2.log("| Locker Unlock Status      : %s", unlockStatus);
-        console2.log("*------------------------------------------------------------------------------------*");
+        console2.log("*------------------------------------------------------------------------------------------*");
     }
 
     function _logDeploymentSummary(
-        address programManagerAddress,
-        address stakingRewardControllerAddress,
-        address lockerFactoryAddress,
+        address programManagerLogicAddress,
+        address programManagerProxyAddress,
+        address stakingRewardControllerLogicAddress,
+        address stakingRewardControllerProxyAddress,
+        address lockerFactoryLogicAddress,
+        address lockerFactoryProxyAddress,
         address lockerLogicAddress,
         address lockerBeaconAddress,
         address fontaineLogicAddress,
         address fontaineBeaconAddress
     ) internal pure {
         console2.log("");
-        console2.log("*-------------------------------* DEPLOYMENT SUMMARY *-------------------------------*");
-        console2.log("|                                                                                    |");
-        console2.log("| FluidEPProgramManager     : deployed at %s |", programManagerAddress);
-        console2.log("| StakingRewardController   : deployed at %s |", stakingRewardControllerAddress);
-        console2.log("| FluidLocker (Logic)       : deployed at %s |", lockerLogicAddress);
-        console2.log("| FluidLocker (Beacon)      : deployed at %s |", lockerBeaconAddress);
-        console2.log("| Fontaine (Logic)          : deployed at %s |", fontaineLogicAddress);
-        console2.log("| Fontaine (Beacon)         : deployed at %s |", fontaineBeaconAddress);
-        console2.log("| FluidLockerFactory        : deployed at %s |", lockerFactoryAddress);
-        console2.log("*------------------------------------------------------------------------------------*");
+        console2.log("*----------------------------------* DEPLOYMENT SUMMARY *----------------------------------*");
+        console2.log("|                                                                                          |");
+        console2.log("| FluidEPProgramManager (Logic)   : deployed at %s |", programManagerLogicAddress);
+        console2.log("| FluidEPProgramManager (Proxy)   : deployed at %s |", programManagerProxyAddress);
+        console2.log("| StakingRewardController (Logic) : deployed at %s |", stakingRewardControllerLogicAddress);
+        console2.log("| StakingRewardController (Proxy) : deployed at %s |", stakingRewardControllerProxyAddress);
+        console2.log("| FluidLocker (Logic)             : deployed at %s |", lockerLogicAddress);
+        console2.log("| FluidLocker (Beacon)            : deployed at %s |", lockerBeaconAddress);
+        console2.log("| Fontaine (Logic)                : deployed at %s |", fontaineLogicAddress);
+        console2.log("| Fontaine (Beacon)               : deployed at %s |", fontaineBeaconAddress);
+        console2.log("| FluidLockerFactory (Logic)      : deployed at %s |", lockerFactoryLogicAddress);
+        console2.log("| FluidLockerFactory (Proxy)      : deployed at %s |", lockerFactoryProxyAddress);
+        console2.log("*------------------------------------------------------------------------------------------*");
     }
 
     function _showGitRevision() internal {
