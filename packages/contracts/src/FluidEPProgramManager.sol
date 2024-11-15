@@ -2,7 +2,9 @@
 pragma solidity ^0.8.23;
 
 /* Openzeppelin Contracts & Interfaces */
-import { Ownable } from "@openzeppelin-v5/contracts/access/Ownable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import { ERC1967Utils } from "@openzeppelin-v5/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
@@ -26,7 +28,7 @@ using SafeCast for int256;
  * @notice Contract responsible for administrating the GDA pool that distribute FLUID to lockers
  *
  */
-contract FluidEPProgramManager is Ownable, EPProgramManager {
+contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramManager {
     //      ____        __        __
     //     / __ \____ _/ /_____ _/ /___  ______  ___  _____
     //    / / / / __ `/ __/ __ `/ __/ / / / __ \/ _ \/ ___/
@@ -104,11 +106,26 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
 
     /**
      * @notice Superfluid Ecosystem Partner Program Manager constructor
-     * @param owner contract owner address
+     * @param taxDistributionPool Tax Distribution Pool GDA contract interface
      */
-    constructor(address owner, address treasury, ISuperfluidPool taxDistributionPool) Ownable(owner) {
-        fluidTreasury = treasury;
+    constructor(ISuperfluidPool taxDistributionPool) {
+        // Disable initializers to prevent implementation contract initalization
+        _disableInitializers();
+
         TAX_DISTRIBUTION_POOL = taxDistributionPool;
+    }
+
+    /**
+     * @notice Superfluid Ecosystem Partner Program Manager initializer
+     * @param owner contract owner address
+     * @param treasury fluid treasury address
+     */
+    function initialize(address owner, address treasury) external initializer {
+        // Initialize Ownable
+        __Ownable_init(owner);
+
+        // Sets the treasury address
+        fluidTreasury = treasury;
     }
 
     //      ______     __                        __   ______                 __  _
@@ -318,6 +335,10 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
         token.transfer(fluidTreasury, token.balanceOf(address(this)));
     }
 
+    /// FIXME : Add comments
+    function upgradeTo(address newImplementation, bytes calldata data) external onlyOwner {
+        ERC1967Utils.upgradeToAndCall(newImplementation, data);
+    }
     //      ____      __                        __   ______                 __  _
     //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/

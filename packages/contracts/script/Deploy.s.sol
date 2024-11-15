@@ -78,6 +78,18 @@ function deployStakingRewardController(ISuperToken fluid, address owner)
     stakingRewardControllerProxyAddress = address(stakingRewardControllerProxy);
 }
 
+function deployFluidEPProgramManager(address owner, address treasury, ISuperfluidPool taxDistributionPool)
+    returns (address programManagerProxyAddress)
+{
+    // Deploy the Staking Reward Controller contract
+    FluidEPProgramManager programManagerLogic = new FluidEPProgramManager(taxDistributionPool);
+
+    ERC1967Proxy programManagerProxy = new ERC1967Proxy(
+        address(programManagerLogic), abi.encodeWithSelector(FluidEPProgramManager.initialize.selector, owner, treasury)
+    );
+    programManagerProxyAddress = address(programManagerProxy);
+}
+
 function deployAll(DeploySettings memory settings)
     returns (
         address programManagerAddress,
@@ -95,9 +107,7 @@ function deployAll(DeploySettings memory settings)
         StakingRewardController(stakingRewardControllerProxyAddress).taxDistributionPool();
 
     // Deploy Ecosystem Partner Program Manager
-    FluidEPProgramManager programManager =
-        new FluidEPProgramManager(settings.owner, settings.treasury, taxDistributionPool);
-    programManagerAddress = address(programManager);
+    programManagerAddress = deployFluidEPProgramManager(settings.owner, settings.treasury, taxDistributionPool);
 
     // Deploy the Fontaine Implementation and associated Beacon contract
     (fontaineLogicAddress, fontaineBeaconAddress) =
@@ -126,7 +136,7 @@ function deployAll(DeploySettings memory settings)
     StakingRewardController(stakingRewardControllerProxyAddress).setLockerFactory(lockerFactoryAddress);
 
     // Sets the FluidLockerFactory address in the ProgramManager
-    programManager.setLockerFactory(lockerFactoryAddress);
+    FluidEPProgramManager(programManagerAddress).setLockerFactory(lockerFactoryAddress);
 }
 
 // forge script script/Deploy.s.sol:DeployScript --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify -vvvv
