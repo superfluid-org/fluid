@@ -48,8 +48,9 @@ interface IFluidLockerFactory {
      * @notice Upgrade this proxy logic
      * @dev Only the governor address can perform this operation
      * @param newImplementation new logic contract address
+     * @param data calldata for potential initializer
      */
-    function upgradeTo(address newImplementation) external;
+    function upgradeTo(address newImplementation, bytes calldata data) external;
 
     /**
      * @notice Sets the governor address
