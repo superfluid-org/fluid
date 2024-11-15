@@ -53,11 +53,11 @@ contract FluidEPProgramManager is Ownable, EPProgramManager {
     //  \____/\__,_/____/\__/\____/_/ /_/ /_/  /_____/_/  /_/   \____/_/  /____/
 
     /// @notice Error thrown when attempting to add units to a non-existant locker
-    /// @dev Error Selector :
+    /// @dev Error Selector : 0x2d2cd50c
     error LOCKER_NOT_FOUND();
 
     /// @notice Error thrown when attempting to stop a program's funding earlier than expected
-    /// @dev Error Selector :
+    /// @dev Error Selector : 0xc582137f
     error TOO_EARLY_TO_END_PROGRAM();
 
     //      ____                          __        __    __        _____ __        __
