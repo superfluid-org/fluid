@@ -666,6 +666,9 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.warp(earlyEnd);
         _programManager.stopFunding(programId);
 
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        _programManager.stopFunding(programId);
+
         assertEq(
             _fluid.balanceOf(address(_stakingRewardController)), 0, "Staking Reward Controller balance should be 0"
         );
@@ -697,8 +700,12 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.expectRevert();
         _programManager.cancelProgram(programId);
 
-        vm.prank(ADMIN);
+        vm.startPrank(ADMIN);
         _programManager.cancelProgram(programId);
+
+        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
+        _programManager.cancelProgram(programId);
+        vm.stopPrank();
 
         assertEq(
             _fluid.balanceOf(address(_stakingRewardController)), 0, "Staking Reward Controller balance should be 0"
