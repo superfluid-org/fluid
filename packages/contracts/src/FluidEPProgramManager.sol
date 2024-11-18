@@ -29,6 +29,33 @@ using SafeCast for int256;
  *
  */
 contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramManager {
+    //      ______                 __
+    //     / ____/   _____  ____  / /______
+    //    / __/ | | / / _ \/ __ \/ __/ ___/
+    //   / /___ | |/ /  __/ / / / /_(__  )
+    //  /_____/ |___/\___/_/ /_/\__/____/
+
+    /// @notice Event emitted when a reward program is cancelled
+    event ProgramCancelled(
+        uint256 indexed programId,
+        uint256 indexed undistributedFundingAmount,
+        uint256 indexed undistributedSubsidyAmount
+    );
+
+    /// @notice Event emitted when a reward program is funded
+    event ProgramFunded(
+        uint256 indexed programId,
+        uint256 indexed fundingAmount,
+        uint256 indexed subsidyAmount,
+        uint256 earlyEndDate,
+        uint256 endDate
+    );
+
+    /// @notice Event emitted when a reward program is stopped
+    event ProgramStopped(
+        uint256 indexed programId, uint256 indexed fundingCompensationAmount, uint256 indexed subsidyCompensationAmount
+    );
+
     //      ____        __        __
     //     / __ \____ _/ /_____ _/ /___  ______  ___  _____
     //    / / / / __ `/ __/ __ `/ __/ / / / __ \/ _ \/ ___/
@@ -206,6 +233,8 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
         // Delete the program details
         delete _fluidProgramDetails[programId];
+
+        emit ProgramCancelled(programId, undistributedFundingAmount, undistributedSubsidyAmount);
     }
 
     /**
@@ -242,6 +271,14 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
             // Create or update the subsidy flow to the Staking Reward Controller
             _increaseSubsidyFlow(program.token, subsidyFlowRate);
         }
+
+        emit ProgramFunded(
+            programId,
+            fundingAmount,
+            subsidyAmount,
+            block.timestamp + PROGRAM_DURATION - EARLY_PROGRAM_END,
+            block.timestamp + PROGRAM_DURATION
+        );
     }
 
     /**
@@ -291,6 +328,8 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
         // Delete the program details
         delete _fluidProgramDetails[programId];
+
+        emit ProgramStopped(programId, earlyEndCompensation, subsidyEarlyEndCompensation);
     }
 
     /**
@@ -344,6 +383,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     function upgradeTo(address newImplementation, bytes calldata data) external onlyOwner {
         ERC1967Utils.upgradeToAndCall(newImplementation, data);
     }
+
     //      ____      __                        __   ______                 __  _
     //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -368,7 +408,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     }
 
     /**
-     * @notice Create or update the subsidy flow from this contract to the staking subsidy reserve
+     * @notice Create or update the subsidy flow from this contract to the tax distribution pool
      * @param token token contract address
      * @param subsidyFlowRateToIncrease flow rate to add to the current global subsidy flow rate
      * @return newSubsidyFlowRate the new current global subsidy flow rate
@@ -388,7 +428,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     }
 
     /**
-     * @notice Delete or update the subsidy flow from this contract to the staking subsidy reserve
+     * @notice Delete or update the subsidy flow from this contract to the tax distribution pool
      * @param token token contract address
      * @param subsidyFlowRateToDecrease flow rate to deduce from the current global subsidy flow rate
      * @return newSubsidyFlowRate the new current global subsidy flow rate
