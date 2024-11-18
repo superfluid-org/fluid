@@ -113,7 +113,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     //   ___/ / /_/ /_/ / /_/  __(__  )
     //  /____/\__/\__,_/\__/\___/____/
 
-    /// @notice Stores the subsidyFlowRate for a given program
+    /// @notice Stores the program details of a given program
     mapping(uint256 programId => FluidProgramDetails programDetails) private _fluidProgramDetails;
 
     /// @notice Staking subsidy funding rate
@@ -199,7 +199,9 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     }
 
     /**
-     * @notice Stop flows from this contract to the distribution pool and to the staking reserve
+     * @notice Stop flows from this contract to the distribution pool and to the staking reserve.
+     *         Return the undistributed funds to the treasury
+     *  @dev Only the contract owner can perform this operation
      * @param programId program identifier to cancel
      */
     function cancelProgram(uint256 programId) external onlyOwner {
@@ -209,8 +211,10 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         // Ensure program exists or has not already been terminated
         if (programDetails.fundingStartDate == 0) revert IEPProgramManager.INVALID_PARAMETER();
 
+        // Calculate the end date
         uint256 endDate = programDetails.fundingStartDate + PROGRAM_DURATION;
 
+        // Calculate the undistributed amounts (if the end date has not passed)
         uint256 undistributedFundingAmount;
         uint256 undistributedSubsidyAmount;
 
@@ -219,6 +223,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
             undistributedSubsidyAmount = (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate);
         }
 
+        // Stop the stream to the program pool
         program.token.distributeFlow(address(this), program.distributionPool, 0);
 
         if (programDetails.subsidyFlowRate > 0) {
@@ -283,6 +288,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
     /**
      * @notice Stop flows from this contract to the distribution pool and to the staking reserve
+     *         Send the undistributed funds to the program pool and tax distribution pool
      * @param programId program identifier to stop funding
      */
     function stopFunding(uint256 programId) external {

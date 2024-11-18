@@ -158,6 +158,7 @@ contract EPProgramManager is IEPProgramManager {
     ) public {
         uint256 length = programIds.length;
 
+        // Validate array sizes
         if (length == 0) revert INVALID_PARAMETER();
         if (length != newUnits.length || length != nonces.length || length != stackSignatures.length) {
             revert INVALID_PARAMETER();

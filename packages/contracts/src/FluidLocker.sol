@@ -42,7 +42,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice FLUID SuperToken interface
     ISuperToken public immutable FLUID;
 
-    /// @notice Superfluid GDA pool interface
+    /// @notice Superfluid GDA Tax Distribution Pool interface
     ISuperfluidPool public immutable TAX_DISTRIBUTION_POOL;
 
     /// @notice Distribution Program Manager interface
@@ -60,10 +60,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Staking cooldown period
     uint80 private constant _STAKING_COOLDOWN_PERIOD = 3 days;
 
-    /// @notice Minimum unlock period allowed
+    /// @notice Minimum unlock period allowed (1 week)
     uint128 private constant _MIN_UNLOCK_PERIOD = 7 days;
 
-    /// @notice Maximum unlock period allowed
+    /// @notice Maximum unlock period allowed (18 months)
     uint128 private constant _MAX_UNLOCK_PERIOD = 540 days;
 
     /// @notice Instant unlock penalty percentage (expressed in basis points)
@@ -164,6 +164,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             FLUID.connectPool(programPool);
         }
 
+        // Request program manager to update this locker's units
         EP_PROGRAM_MANAGER.updateUserUnits(lockerOwner, programId, totalProgramUnits, nonce, stackSignature);
 
         emit IFluidLocker.FluidStreamClaimed(programId, totalProgramUnits);
@@ -186,6 +187,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             }
         }
 
+        // Request program manager to update this locker's units
         EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonces, stackSignatures);
 
         emit IFluidLocker.FluidStreamsClaimed(programIds, totalProgramUnits);
@@ -206,6 +208,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             revert INVALID_UNLOCK_PERIOD();
         }
 
+        // Ensure recipient is not the zero-address
         if (recipient == address(0)) {
             revert FORBIDDEN();
         }
