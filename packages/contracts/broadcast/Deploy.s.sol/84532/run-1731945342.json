@@ -42,7 +42,9 @@
       "contractName": "FluidEPProgramManager",
       "contractAddress": "0xb183b05F37027d6A17d1dC0bfbF629dd3ebe6b8C",
       "function": null,
-      "arguments": ["0x74bEBf4AA48Ea1aD9753879eaDD570FdD9174A52"],
+      "arguments": [
+        "0x74bEBf4AA48Ea1aD9753879eaDD570FdD9174A52"
+      ],
       "transaction": {
         "from": "0x48CA32c738DC2Af6cE8bB33934fF1b59cF8B1831",
         "gas": "0x31b2fd",
@@ -114,7 +116,9 @@
       "contractName": null,
       "contractAddress": "0xA613A7Ace7f6e5447fcCCAb3dd1e3E969DEE1d31",
       "function": "transferOwnership(address)",
-      "arguments": ["0x48CA32c738DC2Af6cE8bB33934fF1b59cF8B1831"],
+      "arguments": [
+        "0x48CA32c738DC2Af6cE8bB33934fF1b59cF8B1831"
+      ],
       "transaction": {
         "from": "0x48CA32c738DC2Af6cE8bB33934fF1b59cF8B1831",
         "to": "0xA613A7Ace7f6e5447fcCCAb3dd1e3E969DEE1d31",
@@ -176,7 +180,9 @@
       "contractName": null,
       "contractAddress": "0xd1ac1cFb3c52c3D36886A0abd02c4892910A8919",
       "function": "transferOwnership(address)",
-      "arguments": ["0x48CA32c738DC2Af6cE8bB33934fF1b59cF8B1831"],
+      "arguments": [
+        "0x48CA32c738DC2Af6cE8bB33934fF1b59cF8B1831"
+      ],
       "transaction": {
         "from": "0x48CA32c738DC2Af6cE8bB33934fF1b59cF8B1831",
         "to": "0xd1ac1cFb3c52c3D36886A0abd02c4892910A8919",
@@ -235,7 +241,9 @@
       "contractName": null,
       "contractAddress": "0xef72D3cE2E917F721476966FF34880fB2A560644",
       "function": "setLockerFactory(address)",
-      "arguments": ["0x3903e080aC5c2452A8e4adbE17b80C54DF53E8C1"],
+      "arguments": [
+        "0x3903e080aC5c2452A8e4adbE17b80C54DF53E8C1"
+      ],
       "transaction": {
         "from": "0x48CA32c738DC2Af6cE8bB33934fF1b59cF8B1831",
         "to": "0xef72D3cE2E917F721476966FF34880fB2A560644",
@@ -254,7 +262,9 @@
       "contractName": null,
       "contractAddress": "0xbDCa01AD2ae01827aEA8B323CE5457F642f9E7e1",
       "function": "setLockerFactory(address)",
-      "arguments": ["0x3903e080aC5c2452A8e4adbE17b80C54DF53E8C1"],
+      "arguments": [
+        "0x3903e080aC5c2452A8e4adbE17b80C54DF53E8C1"
+      ],
       "transaction": {
         "from": "0x48CA32c738DC2Af6cE8bB33934fF1b59cF8B1831",
         "to": "0xbDCa01AD2ae01827aEA8B323CE5457F642f9E7e1",

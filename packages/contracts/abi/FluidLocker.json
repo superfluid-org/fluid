@@ -18,19 +18,19 @@
         "internalType": "contract IEPProgramManager"
       },
       {
-        "name": "penaltyManager",
+        "name": "stakingRewardController",
         "type": "address",
-        "internalType": "contract IPenaltyManager"
+        "internalType": "contract IStakingRewardController"
       },
       {
-        "name": "fontaineImplementation",
+        "name": "fontaineBeacon",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "governor",
-        "type": "address",
-        "internalType": "address"
+        "name": "isUnlockAvailable",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "nonpayable"
@@ -76,13 +76,13 @@
   },
   {
     "type": "function",
-    "name": "PENALTY_MANAGER",
+    "name": "STAKING_REWARD_CONTROLLER",
     "inputs": [],
     "outputs": [
       {
         "name": "",
         "type": "address",
-        "internalType": "contract IPenaltyManager"
+        "internalType": "contract IStakingRewardController"
       }
     ],
     "stateMutability": "view"
@@ -402,6 +402,113 @@
   },
   {
     "type": "event",
+    "name": "FluidLocked",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FluidStaked",
+    "inputs": [
+      {
+        "name": "newTotalStakedBalance",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "addedAmount",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FluidStreamClaimed",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalProgramUnits",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FluidStreamsClaimed",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint256[]",
+        "indexed": true,
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "totalProgramUnits",
+        "type": "uint256[]",
+        "indexed": true,
+        "internalType": "uint256[]"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FluidUnlocked",
+    "inputs": [
+      {
+        "name": "unlockPeriod",
+        "type": "uint128",
+        "indexed": true,
+        "internalType": "uint128"
+      },
+      {
+        "name": "availableBalance",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "recipient",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "fontaine",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FluidUnstaked",
+    "inputs": [],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Initialized",
     "inputs": [
       {
@@ -478,5 +585,10 @@
         "internalType": "int256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "TTE_NOT_ACTIVATED",
+    "inputs": []
   }
 ]
