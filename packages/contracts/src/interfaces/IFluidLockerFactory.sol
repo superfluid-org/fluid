@@ -8,6 +8,18 @@ pragma solidity ^0.8.23;
  *
  */
 interface IFluidLockerFactory {
+    //      ______                 __
+    //     / ____/   _____  ____  / /______
+    //    / __/ | | / / _ \/ __ \/ __/ ___/
+    //   / /___ | |/ /  __/ / / / /_(__  )
+    //  /_____/ |___/\___/_/ /_/\__/____/
+
+    /// @notice Event emitted upon creation of a new locker
+    event LockerCreated(address lockerOwner, address lockerAddress);
+
+    /// @notice Event emitted upon governor address update
+    event GovernorUpdated(address newGovernor);
+
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
     //   / /   / / / / ___/ __/ __ \/ __ `__ \   / __/ / ___/ ___/ __ \/ ___/ ___/
@@ -36,8 +48,9 @@ interface IFluidLockerFactory {
      * @notice Upgrade this proxy logic
      * @dev Only the governor address can perform this operation
      * @param newImplementation new logic contract address
+     * @param data calldata for potential initializer
      */
-    function upgradeTo(address newImplementation) external;
+    function upgradeTo(address newImplementation, bytes calldata data) external;
 
     /**
      * @notice Sets the governor address
@@ -46,30 +59,11 @@ interface IFluidLockerFactory {
      */
     function setGovernor(address newGovernor) external;
 
-    /**
-     * @notice Pause the locker creation operations
-     * @dev Only the governor address can perform this operation
-     */
-    function pauseLockerCreation() external;
-
-    /**
-     * @notice Unpause the locker creation operations
-     * @dev Only the governor address can perform this operation
-     */
-    function unpauseLockerCreation() external;
-
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
     //  | |/ / /  __/ |/ |/ /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
-
-    /**
-     * @notice Returns wheather or not a locker has been deployed
-     * @param locker Locker address to be queried
-     * @return isCreated True if the locker is created, false otherwise
-     */
-    function isLockerCreated(address locker) external view returns (bool isCreated);
 
     /**
      * @notice Returns the users' locker address

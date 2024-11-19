@@ -30,11 +30,11 @@ interface IFontaine {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /**
-     * @notice Creates a flow to the locker owner and distribute a flow to the penalty GDA pool
+     * @notice Creates a flow to the locker owner and distribute a flow to the tax distribution GDA pool
      * @dev Fontaine contract initializer
      * @param unlockRecipient recipient account address
      * @param unlockFlowRate FLUID flow rate from this contract to the locker owner
-     * @param taxFlowRate FLUID flow rate from this contract to the penalty GDA pool
+     * @param taxFlowRate FLUID flow rate from this contract to the tax distribution GDA pool
      */
     function initialize(address unlockRecipient, int96 unlockFlowRate, int96 taxFlowRate) external;
 }

@@ -2,7 +2,9 @@
 pragma solidity ^0.8.23;
 
 /* Openzeppelin Contracts & Interfaces */
-import { Ownable } from "@openzeppelin-v5/contracts/access/Ownable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import { ERC1967Utils } from "@openzeppelin-v5/contracts/proxy/ERC1967/ERC1967Utils.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {
@@ -13,17 +15,17 @@ import {
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
 /* FLUID Interfaces */
-import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
+import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 
 using SuperTokenV1Library for ISuperToken;
 
 /**
- * @title Penalty Manager Contract
+ * @title Staking Reward Controller Contract
  * @author Superfluid
- * @notice Contract responsible for administrating the GDA pool that distribute the unlocking tax to stakers or liquidity providers
+ * @notice Contract responsible for administrating the GDA pool that distribute the unlocking tax to stakers
  *
  */
-contract PenaltyManager is Ownable, IPenaltyManager {
+contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingRewardController {
     //      ____                          __        __    __        _____ __        __
     //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
     //     / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -32,9 +34,6 @@ contract PenaltyManager is Ownable, IPenaltyManager {
 
     /// @notice $FLUID SuperToken interface
     ISuperToken public immutable FLUID;
-
-    /// @notice Superfluid pool interface
-    ISuperfluidPool public immutable TAX_DISTRIBUTION_POOL;
 
     /// @notice Value used to convert staked amount into GDA pool units
     uint128 private constant _UNIT_DOWNSCALER = 1e16;
@@ -45,11 +44,14 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     //   ___/ / /_/ /_/ / /_/  __(__  )
     //  /____/\__/\__,_/\__/\___/____/
 
-    /// @notice Locker Factory contract address
-    address public lockerFactory;
-
     /// @notice Stores the approval status of a given locker contract address
     mapping(address locker => bool isApproved) private _approvedLockers;
+
+    /// @notice Superfluid pool interface
+    ISuperfluidPool public taxDistributionPool;
+
+    /// @notice Locker Factory contract address
+    address public lockerFactory;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -58,19 +60,31 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     //  \____/\____/_/ /_/____/\__/_/   \__,_/\___/\__/\____/_/
 
     /**
-     * @notice Penalty Manager contract constructor
-     * @param owner Penalty Manager contract owner address
+     * @notice Staking Reward Controller contract constructor
      * @param fluid FLUID SuperToken contract interface
      */
-    constructor(address owner, ISuperToken fluid) Ownable(owner) {
+    constructor(ISuperToken fluid) {
+        // Disable initializers to prevent implementation contract initalization
+        _disableInitializers();
+
+        // Set immutable state
         FLUID = fluid;
+    }
+
+    /**
+     * @notice Staking Reward Controller contract initializer
+     * @param owner Staking Reward Controller contract owner address
+     */
+    function initialize(address owner) external initializer {
+        // Sets the owner
+        __Ownable_init(owner);
 
         // Configure Superfluid GDA Pool
         PoolConfig memory poolConfig =
             PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
 
         // Create Superfluid GDA Pool
-        TAX_DISTRIBUTION_POOL = fluid.createPool(address(this), poolConfig);
+        taxDistributionPool = FLUID.createPool(address(this), poolConfig);
     }
 
     //      ______     __                        __   ______                 __  _
@@ -79,22 +93,30 @@ contract PenaltyManager is Ownable, IPenaltyManager {
     //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
-    /// @inheritdoc IPenaltyManager
-    function updateStakerUnits(uint256 lockerStakedBalance) external {
-        if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
+    /// @inheritdoc IStakingRewardController
+    function updateStakerUnits(uint256 lockerStakedBalance) external onlyApprovedLocker {
+        FLUID.updateMemberUnits(taxDistributionPool, msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
 
-        /// FIXME Define proper stakedBalance to GDA pool units calculation
-        FLUID.updateMemberUnits(TAX_DISTRIBUTION_POOL, msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
+        emit UpdatedStakersUnits(msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
     }
 
-    /// @inheritdoc IPenaltyManager
+    /// @inheritdoc IStakingRewardController
     function setLockerFactory(address lockerFactoryAddress) external onlyOwner {
         lockerFactory = lockerFactoryAddress;
+
+        emit LockerFactoryAddressUpdated(lockerFactoryAddress);
     }
 
-    /// @inheritdoc IPenaltyManager
+    /// @inheritdoc IStakingRewardController
     function approveLocker(address lockerAddress) external onlyLockerFactory {
         _approvedLockers[lockerAddress] = true;
+
+        emit LockerApproved(lockerAddress);
+    }
+
+    /// @inheritdoc IStakingRewardController
+    function upgradeTo(address newImplementation, bytes calldata data) external onlyOwner {
+        ERC1967Utils.upgradeToAndCall(newImplementation, data);
     }
 
     //      __  ___          ___ _____
@@ -108,6 +130,14 @@ contract PenaltyManager is Ownable, IPenaltyManager {
      */
     modifier onlyLockerFactory() {
         if (msg.sender != lockerFactory) revert NOT_LOCKER_FACTORY();
+        _;
+    }
+
+    /**
+     * @dev Throws if called by any account other than an approved locker contract
+     */
+    modifier onlyApprovedLocker() {
+        if (!_approvedLockers[msg.sender]) revert NOT_APPROVED_LOCKER();
         _;
     }
 }

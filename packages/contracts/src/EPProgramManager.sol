@@ -54,6 +54,7 @@ contract EPProgramManager is IEPProgramManager {
     /// @inheritdoc IEPProgramManager
     function createProgram(uint256 programId, address programAdmin, address signer, ISuperToken token)
         external
+        virtual
         returns (ISuperfluidPool distributionPool)
     {
         // Input validation
@@ -80,7 +81,9 @@ contract EPProgramManager is IEPProgramManager {
             distributionPool: distributionPool
         });
 
-        /// FIXME emit ProgramCreated event
+        emit IEPProgramManager.ProgramCreated(
+            programId, programAdmin, signer, address(token), address(distributionPool)
+        );
     }
 
     /// @inheritdoc IEPProgramManager
@@ -94,7 +97,7 @@ contract EPProgramManager is IEPProgramManager {
         // Update the program signer
         programs[programId].stackSigner = newSigner;
 
-        /// FIXME emit ProgramSignerUpdated event
+        emit IEPProgramManager.ProgramSignerUpdated(programId, newSigner);
     }
 
     /// @inheritdoc IEPProgramManager
@@ -142,7 +145,7 @@ contract EPProgramManager is IEPProgramManager {
         // Update units in pool
         _poolUpdate(program, newUnits, user);
 
-        /// FIXME emit UserUnitsUpdated event
+        emit UserUnitsUpdated(user, programId, newUnits);
     }
 
     /// @inheritdoc IEPProgramManager
@@ -155,6 +158,7 @@ contract EPProgramManager is IEPProgramManager {
     ) public {
         uint256 length = programIds.length;
 
+        // Validate array sizes
         if (length == 0) revert INVALID_PARAMETER();
         if (length != newUnits.length || length != nonces.length || length != stackSignatures.length) {
             revert INVALID_PARAMETER();
@@ -189,13 +193,13 @@ contract EPProgramManager is IEPProgramManager {
 
     /**
      * @notice Update GDA Pool units
-     * @dev This function can be overriden if the is a need to convert the stackPoints into GDA pool units
+     * @dev This function can be overriden if there is a need to convert the stackPoints into GDA pool units
      * @param program The program associated with the update
      * @param stackPoints Amount of stack points
      * @param user The user address to receive the units
      */
     function _poolUpdate(EPProgram memory program, uint256 stackPoints, address user) internal virtual {
-        program.token.updateMemberUnits(program.distributionPool, user, uint128(stackPoints));
+        program.distributionPool.updateMemberUnits(user, uint128(stackPoints));
     }
 
     /**

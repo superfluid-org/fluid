@@ -8,6 +8,32 @@ pragma solidity ^0.8.23;
  *
  */
 interface IFluidLocker {
+    //      ______                 __
+    //     / ____/   _____  ____  / /______
+    //    / __/ | | / / _ \/ __ \/ __/ ___/
+    //   / /___ | |/ /  __/ / / / /_(__  )
+    //  /_____/ |___/\___/_/ /_/\__/____/
+
+    /// @notice Event emitted when locker owner claims units
+    event FluidStreamClaimed(uint256 indexed programId, uint256 indexed totalProgramUnits);
+
+    /// @notice Event emitted when locker owner batch claims units
+    event FluidStreamsClaimed(uint256[] indexed programId, uint256[] indexed totalProgramUnits);
+
+    /// @notice Event emitted when new $FLUID are locked into the locker
+    event FluidLocked(uint256 indexed amount);
+
+    /// @notice Event emitted when $FLUID are unlocked from the locker
+    event FluidUnlocked(
+        uint128 indexed unlockPeriod, uint256 indexed availableBalance, address recipient, address indexed fontaine
+    );
+
+    /// @notice Event emitted when $FLUID are staked
+    event FluidStaked(uint256 indexed newTotalStakedBalance, uint256 indexed addedAmount);
+
+    /// @notice Event emitted when $FLUID are unstaked
+    event FluidUnstaked();
+
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
     //   / /   / / / / ___/ __/ __ \/ __ `__ \   / __/ / ___/ ___/ __ \/ ___/ ___/
@@ -34,6 +60,9 @@ interface IFluidLocker {
 
     /// @notice Error thrown when attempting to unstake while the staking cooldown is not yet elapsed
     error STAKING_COOLDOWN_NOT_ELAPSED();
+
+    /// @notice Error thrown when attempting to unlock or stake while this operation is not yet available
+    error TTE_NOT_ACTIVATED();
 
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____

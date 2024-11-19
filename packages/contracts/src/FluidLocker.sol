@@ -18,7 +18,7 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 /* FLUID Interfaces */
 import { IEPProgramManager } from "./interfaces/IEPProgramManager.sol";
 import { IFluidLocker } from "./interfaces/IFluidLocker.sol";
-import { IPenaltyManager } from "./interfaces/IPenaltyManager.sol";
+import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 import { IFontaine } from "./interfaces/IFontaine.sol";
 
 import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
@@ -42,27 +42,28 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice FLUID SuperToken interface
     ISuperToken public immutable FLUID;
 
-    /// @notice Superfluid GDA pool interface
+    /// @notice Superfluid GDA Tax Distribution Pool interface
     ISuperfluidPool public immutable TAX_DISTRIBUTION_POOL;
 
     /// @notice Distribution Program Manager interface
     IEPProgramManager public immutable EP_PROGRAM_MANAGER;
 
-    /// @notice Penalty Manager interface
-    IPenaltyManager public immutable PENALTY_MANAGER;
+    /// @notice Staking Reward Controller interface
+    IStakingRewardController public immutable STAKING_REWARD_CONTROLLER;
 
     /// @notice Fontaine Beacon contract address
     UpgradeableBeacon public immutable FONTAINE_BEACON;
 
+    /// @notice Boolean sets to True if unlock is available
     bool public immutable UNLOCK_AVAILABLE;
 
     /// @notice Staking cooldown period
     uint80 private constant _STAKING_COOLDOWN_PERIOD = 3 days;
 
-    /// @notice Minimum unlock period allowed
+    /// @notice Minimum unlock period allowed (1 week)
     uint128 private constant _MIN_UNLOCK_PERIOD = 7 days;
 
-    /// @notice Maximum unlock period allowed
+    /// @notice Maximum unlock period allowed (18 months)
     uint128 private constant _MAX_UNLOCK_PERIOD = 540 days;
 
     /// @notice Instant unlock penalty percentage (expressed in basis points)
@@ -109,31 +110,30 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      * @param fluid FLUID SuperToken contract interface
      * @param taxDistributionPool Tax Distribution Pool GDA contract interface
      * @param programManager Ecosystem Partner Program Manager contract interface
-     * @param fontaineImplementation Fontaine implementation contract address
+     * @param stakingRewardController Staking Reward Controller contract interface
+     * @param fontaineBeacon Fontaine Beacon contract address
+     * @param isUnlockAvailable True if the unlock is available, false otherwise
      */
     constructor(
         ISuperToken fluid,
         ISuperfluidPool taxDistributionPool,
         IEPProgramManager programManager,
-        IPenaltyManager penaltyManager,
-        address fontaineImplementation,
-        address governor
+        IStakingRewardController stakingRewardController,
+        address fontaineBeacon,
+        bool isUnlockAvailable
     ) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
 
         // Sets immutable states
-        UNLOCK_AVAILABLE = true;
+        UNLOCK_AVAILABLE = isUnlockAvailable;
         FLUID = fluid;
         TAX_DISTRIBUTION_POOL = taxDistributionPool;
         EP_PROGRAM_MANAGER = programManager;
-        PENALTY_MANAGER = penaltyManager;
+        STAKING_REWARD_CONTROLLER = stakingRewardController;
 
-        // Deploy the Fontaine beacon with the Fontaine implementation contract
-        FONTAINE_BEACON = new UpgradeableBeacon(fontaineImplementation);
-
-        // Transfer ownership of the Fontaine beacon to the governor address
-        FONTAINE_BEACON.transferOwnership(governor);
+        // Sets the Fontaine beacon address
+        FONTAINE_BEACON = UpgradeableBeacon(fontaineBeacon);
     }
 
     /**
@@ -164,7 +164,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             FLUID.connectPool(programPool);
         }
 
+        // Request program manager to update this locker's units
         EP_PROGRAM_MANAGER.updateUserUnits(lockerOwner, programId, totalProgramUnits, nonce, stackSignature);
+
+        emit IFluidLocker.FluidStreamClaimed(programId, totalProgramUnits);
     }
 
     /// @inheritdoc IFluidLocker
@@ -184,7 +187,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             }
         }
 
+        // Request program manager to update this locker's units
         EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonces, stackSignatures);
+
+        emit IFluidLocker.FluidStreamsClaimed(programIds, totalProgramUnits);
     }
 
     /// @inheritdoc IFluidLocker
@@ -192,16 +198,17 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Fetch the amount of FLUID Token to be locked from the caller
         FLUID.transferFrom(msg.sender, address(this), amount);
 
-        /// FIXME emit `FLUID locked` event
+        emit FluidLocked(amount);
     }
 
     /// @inheritdoc IFluidLocker
-    function unlock(uint128 unlockPeriod, address recipient) external nonReentrant onlyOwner {
+    function unlock(uint128 unlockPeriod, address recipient) external nonReentrant onlyLockerOwner unlockAvailable {
         // Enforce unlock period validity
         if (unlockPeriod != 0 && (unlockPeriod < _MIN_UNLOCK_PERIOD || unlockPeriod > _MAX_UNLOCK_PERIOD)) {
             revert INVALID_UNLOCK_PERIOD();
         }
 
+        // Ensure recipient is not the zero-address
         if (recipient == address(0)) {
             revert FORBIDDEN();
         }
@@ -217,12 +224,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         } else {
             _vestUnlock(availableBalance, unlockPeriod, recipient);
         }
-
-        /// FIXME emit `unlocked locker` event
     }
 
     /// @inheritdoc IFluidLocker
-    function stake() external nonReentrant onlyOwner {
+    function stake() external nonReentrant onlyLockerOwner unlockAvailable {
         uint256 amountToStake = getAvailableBalance();
 
         if (amountToStake == 0) revert NO_FLUID_TO_STAKE();
@@ -238,14 +243,14 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Update unlock timestamp
         stakingUnlocksAt = uint80(block.timestamp) + _STAKING_COOLDOWN_PERIOD;
 
-        // Call Penalty Manager to update staker's units
-        PENALTY_MANAGER.updateStakerUnits(_stakedBalance);
+        // Call Staking Reward Controller to update staker's units
+        STAKING_REWARD_CONTROLLER.updateStakerUnits(_stakedBalance);
 
-        /// FIXME emit `staked` event
+        emit FluidStaked(_stakedBalance, amountToStake);
     }
 
     /// @inheritdoc IFluidLocker
-    function unstake() external nonReentrant onlyOwner {
+    function unstake() external nonReentrant onlyLockerOwner unlockAvailable {
         if (block.timestamp < stakingUnlocksAt) {
             revert STAKING_COOLDOWN_NOT_ELAPSED();
         }
@@ -256,13 +261,13 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Set staked balance to 0
         _stakedBalance = 0;
 
-        // Call Penalty Manager to update staker's units
-        PENALTY_MANAGER.updateStakerUnits(0);
+        // Call Staking Reward Controller to update staker's units
+        STAKING_REWARD_CONTROLLER.updateStakerUnits(0);
 
         // Disconnect this locker from the Tax Distribution Pool
         FLUID.disconnectPool(TAX_DISTRIBUTION_POOL);
 
-        /// FIXME emit `unstaked` event
+        emit FluidUnstaked();
     }
 
     //   _    ___                 ______                 __  _
@@ -337,6 +342,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         // Transfer the leftover $FLUID to the locker owner
         FLUID.transfer(recipient, amountToUnlock - penaltyAmount);
+
+        emit FluidUnlocked(0, amountToUnlock, recipient, address(0));
     }
 
     function _vestUnlock(uint256 amountToUnlock, uint128 unlockPeriod, address recipient) internal {
@@ -358,6 +365,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         // Initialize the new Fontaine instance (this initiate the unlock process)
         IFontaine(newFontaine).initialize(recipient, unlockFlowRate, taxFlowRate);
+
+        emit FluidUnlocked(unlockPeriod, amountToUnlock, recipient, newFontaine);
     }
 
     function _calculateVestUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)
@@ -391,8 +400,16 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /**
      * @dev Throws if called by any account other than the owner
      */
-    modifier onlyOwner() {
+    modifier onlyLockerOwner() {
         if (msg.sender != lockerOwner) revert NOT_LOCKER_OWNER();
+        _;
+    }
+
+    /**
+     * @dev Throws if called operation is not available
+     */
+    modifier unlockAvailable() {
+        if (!UNLOCK_AVAILABLE) revert TTE_NOT_ACTIVATED();
         _;
     }
 }

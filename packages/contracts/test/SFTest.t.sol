@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
+import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 import { SuperfluidFrameworkDeployer } from
     "@superfluid-finance/ethereum-contracts/contracts/utils/SuperfluidFrameworkDeployer.sol";
@@ -15,13 +16,13 @@ import { TestToken } from "@superfluid-finance/ethereum-contracts/contracts/util
 import { SuperToken, ISuperToken } from "@superfluid-finance/ethereum-contracts/contracts/superfluid/SuperToken.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
-import { EPProgramManager } from "../src/EPProgramManager.sol";
+import { FluidEPProgramManager } from "../src/FluidEPProgramManager.sol";
 import { FluidLocker } from "../src/FluidLocker.sol";
 import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
-import { PenaltyManager } from "../src/PenaltyManager.sol";
+import { StakingRewardController } from "../src/StakingRewardController.sol";
 
-import { deployAll } from "../script/Deploy.s.sol";
+import { _deployAll, DeploySettings } from "../script/Deploy.s.sol";
 
 using SuperTokenV1Library for SuperToken;
 using SuperTokenV1Library for ISuperToken;
@@ -31,9 +32,13 @@ using SafeCast for int256;
 contract SFTest is Test {
     uint256 public constant INITIAL_BALANCE = 10000 ether;
     uint256 public constant FLUID_SUPPLY = 1_000_000_000 ether;
+    uint256 public constant PROGRAM_DURATION = 90 days;
 
     SuperfluidFrameworkDeployer.Framework internal _sf;
     SuperfluidFrameworkDeployer internal _deployer;
+
+    bool public constant FACTORY_IS_PAUSED = false;
+    bool public constant LOCKER_CAN_UNLOCK = true;
 
     address public constant ADMIN = address(0x420);
     address public constant ALICE = address(0x1);
@@ -46,11 +51,13 @@ contract SFTest is Test {
     SuperToken internal _fluidSuperToken;
     ISuperToken internal _fluid;
 
-    EPProgramManager internal _programManager;
+    FluidEPProgramManager internal _programManager;
     FluidLocker internal _fluidLockerLogic;
     Fontaine internal _fontaineLogic;
     FluidLockerFactory internal _fluidLockerFactory;
-    PenaltyManager internal _penaltyManager;
+    StakingRewardController internal _stakingRewardController;
+    UpgradeableBeacon internal _lockerBeacon;
+    UpgradeableBeacon internal _fontaineBeacon;
 
     function setUp() public virtual {
         // Superfluid Protocol Deployment Start
@@ -78,24 +85,39 @@ contract SFTest is Test {
         _fluidSuperToken.upgrade(FLUID_SUPPLY);
         vm.stopPrank();
 
+        DeploySettings memory settings = DeploySettings({
+            fluid: _fluidSuperToken,
+            governor: ADMIN,
+            owner: ADMIN,
+            treasury: FLUID_TREASURY,
+            factoryPauseStatus: FACTORY_IS_PAUSED,
+            unlockStatus: LOCKER_CAN_UNLOCK
+        });
+
         // FLUID Contracts Deployment Start
         vm.startPrank(ADMIN);
 
         (
-            address programManagerAddress,
-            address penaltyManagerAddress,
-            address lockerFactoryAddress,
+            address programManagerLogicAddress,
+            address programManagerProxyAddress,
+            address stakingRewardControllerLogicAddress,
+            address stakingRewardControllerProxyAddress,
+            address lockerFactoryLogicAddress,
+            address lockerFactoryProxyAddress,
             address lockerLogicAddress,
-            address fontaineLogicAddress
-        ) = deployAll(_fluidSuperToken, ADMIN, ADMIN);
+            address lockerBeaconAddress,
+            address fontaineLogicAddress,
+            address fontaineBeaconAddress
+        ) = _deployAll(settings);
 
-        _programManager = EPProgramManager(programManagerAddress);
-        _penaltyManager = PenaltyManager(penaltyManagerAddress);
-        _fluidLockerFactory = FluidLockerFactory(lockerFactoryAddress);
+        _programManager = FluidEPProgramManager(programManagerProxyAddress);
+        _stakingRewardController = StakingRewardController(stakingRewardControllerProxyAddress);
+        _fluidLockerFactory = FluidLockerFactory(lockerFactoryProxyAddress);
         _fluidLockerLogic = FluidLocker(lockerLogicAddress);
         _fontaineLogic = Fontaine(fontaineLogicAddress);
         _fluid = ISuperToken(address(_fluidSuperToken));
-
+        _lockerBeacon = UpgradeableBeacon(lockerBeaconAddress);
+        _fontaineBeacon = UpgradeableBeacon(fontaineBeaconAddress);
         vm.stopPrank();
 
         // FLUID Contracts Deployment End
@@ -108,7 +130,12 @@ contract SFTest is Test {
     //  /_/ /_/\___/_/ .___/\___/_/     /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
     //              /_/
 
-    function _helperCreateProgram(uint256 pId, address admin, address signer) internal returns (ISuperfluidPool pool) {
+    function _helperCreateProgram(uint256 pId, address admin, address signer)
+        internal
+        virtual
+        returns (ISuperfluidPool pool)
+    {
+        vm.prank(ADMIN);
         pool = _programManager.createProgram(pId, admin, signer, _fluidSuperToken);
     }
 
@@ -116,11 +143,14 @@ contract SFTest is Test {
         internal
         returns (ISuperfluidPool[] memory pools)
     {
+        vm.startPrank(ADMIN);
         pools = new ISuperfluidPool[](pIds.length);
 
         for (uint256 i; i < pIds.length; ++i) {
             pools[i] = _programManager.createProgram(pIds[i], admin, signer, _fluidSuperToken);
         }
+
+        vm.stopPrank();
     }
 
     function _helperGenerateSignature(
@@ -173,5 +203,10 @@ contract SFTest is Test {
             _fluid.distributeFlow(FLUID_TREASURY, pool, distributionFlowRate);
             vm.stopPrank();
         }
+    }
+
+    function _helperFundLocker(address locker, uint256 amount) internal {
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.transfer(locker, amount);
     }
 }
