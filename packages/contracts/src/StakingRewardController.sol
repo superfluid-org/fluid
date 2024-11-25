@@ -95,7 +95,7 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
 
     /// @inheritdoc IStakingRewardController
     function updateStakerUnits(uint256 lockerStakedBalance) external onlyApprovedLocker {
-        FLUID.updateMemberUnits(taxDistributionPool, msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
+        taxDistributionPool.updateMemberUnits(msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
 
         emit UpdatedStakersUnits(msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
     }
