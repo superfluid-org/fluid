@@ -222,6 +222,42 @@
   },
   {
     "type": "function",
+    "name": "getProgramDetails",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "details",
+        "type": "tuple",
+        "internalType": "struct FluidEPProgramManager.FluidProgramDetails",
+        "components": [
+          {
+            "name": "fundingFlowRate",
+            "type": "int96",
+            "internalType": "int96"
+          },
+          {
+            "name": "subsidyFlowRate",
+            "type": "int96",
+            "internalType": "int96"
+          },
+          {
+            "name": "fundingStartDate",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getProgramPool",
     "inputs": [
       {
