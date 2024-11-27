@@ -651,7 +651,7 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.prank(ADMIN);
         _programManager.setSubsidyRate(subsidyRate);
 
-        ISuperfluidPool pool1 = _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
+        ISuperfluidPool programPool = _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
         uint256 beforeEarlyEnd = block.timestamp + invalidDuration;
         uint256 earlyEnd = block.timestamp + earlyEndDuration;
 
@@ -669,9 +669,8 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
         _programManager.stopFunding(programId);
 
-        assertEq(
-            _fluid.balanceOf(address(_stakingRewardController)), 0, "Staking Reward Controller balance should be 0"
-        );
+        assertEq(_programManager.TAX_DISTRIBUTION_POOL().getTotalFlowRate(), 0, "Tax Distribution Pool flow Rate should be 0");
+        assertEq(programPool.getTotalFlowRate(), 0, "Program Pool flow rate should be 0");
         /// TODO : add asserts
     }
 
@@ -687,7 +686,7 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.prank(ADMIN);
         _programManager.setSubsidyRate(subsidyRate);
 
-        _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
+        ISuperfluidPool programPool = _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
         uint256 cancelDate = block.timestamp + cancelAfter;
 
         _helperGrantUnitsToAlice(programId, 1, signerPkey);
@@ -710,6 +709,9 @@ contract FluidEPProgramManagerTest is SFTest {
         assertEq(
             _fluid.balanceOf(address(_stakingRewardController)), 0, "Staking Reward Controller balance should be 0"
         );
+
+        assertEq(programPool.getTotalFlowRate(), 0, "Pool flow rate should be 0");
+
         /// TODO : add asserts
     }
 
