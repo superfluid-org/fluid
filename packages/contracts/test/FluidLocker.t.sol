@@ -29,8 +29,9 @@ contract FluidLockerTest is SFTest {
     uint256 public constant signerPkey = 0x69;
 
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
-
     uint128 internal constant _MAX_UNLOCK_PERIOD = 540 days;
+    uint256 private constant _BP_DENOMINATOR = 10_000;
+    uint256 internal constant _SCALER = 1e18;
 
     ISuperfluidPool[] public programPools;
     IFluidLocker public aliceLocker;
@@ -271,14 +272,19 @@ contract FluidLockerTest is SFTest {
         pure
         returns (int96 taxFlowRate, int96 unlockFlowRate)
     {
-        uint256 unlockingPercentageBP =
-            (100 * (((80 * 1e18) / Math.sqrt(540 * 1e18)) * (Math.sqrt(unlockPeriod * 1e18) / 1e18) + 20 * 1e18)) / 1e18;
+        int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
 
-        uint256 amountToUser = (amountToUnlock * unlockingPercentageBP) / 10_000;
-        uint256 penaltyAmount = amountToUnlock - amountToUser;
+        unlockFlowRate = (globalFlowRate * int256(_FluidLocker_internal_getUnlockingPercentage(unlockPeriod))).toInt96()
+            / int256(_BP_DENOMINATOR).toInt96();
+        taxFlowRate = globalFlowRate - unlockFlowRate;
+    }
 
-        taxFlowRate = int256(penaltyAmount / unlockPeriod).toInt96();
-        unlockFlowRate = int256(amountToUser / unlockPeriod).toInt96();
+    function _FluidLocker_internal_getUnlockingPercentage(uint128 unlockPeriod)
+        internal
+        pure
+        returns (uint256 unlockingPercentageBP)
+    {
+        unlockingPercentageBP = (2_000 + ((8_000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(540 days * _SCALER)));
     }
 }
 
@@ -291,9 +297,11 @@ contract FluidLockerTTETest is SFTest {
     uint256 public constant PROGRAM_2 = 3;
     uint256 public constant signerPkey = 0x69;
 
+    uint256 private constant _BP_DENOMINATOR = 10_000;
+    uint256 internal constant _SCALER = 1e18;
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
-
     uint128 internal constant _MAX_UNLOCK_PERIOD = 540 days;
+    uint256 internal constant _PERCENT_TO_BP = 100;
 
     ISuperfluidPool[] public programPools;
     IFluidLocker public aliceLocker;
@@ -510,14 +518,34 @@ contract FluidLockerTTETest is SFTest {
         pure
         returns (int96 taxFlowRate, int96 unlockFlowRate)
     {
-        uint256 unlockingPercentageBP =
-            (100 * (((80 * 1e18) / Math.sqrt(540 * 1e18)) * (Math.sqrt(unlockPeriod * 1e18) / 1e18) + 20 * 1e18)) / 1e18;
+        int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
 
-        uint256 amountToUser = (amountToUnlock * unlockingPercentageBP) / 10_000;
-        uint256 penaltyAmount = amountToUnlock - amountToUser;
+        unlockFlowRate = (globalFlowRate * int256(_FluidLocker_internal_getUnlockingPercentage(unlockPeriod))).toInt96()
+            / int256(_BP_DENOMINATOR).toInt96();
+        taxFlowRate = globalFlowRate - unlockFlowRate;
+    }
 
-        taxFlowRate = int256(penaltyAmount / unlockPeriod).toInt96();
-        unlockFlowRate = int256(amountToUser / unlockPeriod).toInt96();
+    function _FluidLocker_internal_getUnlockingPercentage(uint128 unlockPeriod)
+        internal
+        pure
+        returns (uint256 unlockingPercentageBP)
+    {
+        unlockingPercentageBP = (2_000 + ((8_000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(540 days * _SCALER)));
+    }
+
+    function test_getUnlockingPercentage(uint128 unlockPeriod) public {
+        unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
+
+        uint256 unlockPercentage = _FluidLocker_internal_getUnlockingPercentage(unlockPeriod);
+        assertGe(unlockPercentage, 2910, "shouldnt be any smaller");
+        assertLe(unlockPercentage, 10000, "shouldnt be any larger");
+
+        // Test different periods
+        assertEq(_FluidLocker_internal_getUnlockingPercentage(7 days), 2910, "should be 2910");
+        assertEq(_FluidLocker_internal_getUnlockingPercentage(30 days), 3885, "should be 3885");
+        assertEq(_FluidLocker_internal_getUnlockingPercentage(90 days), 5265, "should be 5265");
+        assertEq(_FluidLocker_internal_getUnlockingPercentage(180 days), 6618, "should be 6618");
+        assertEq(_FluidLocker_internal_getUnlockingPercentage(540 days), 10000, "should be 10000");
     }
 }
 
