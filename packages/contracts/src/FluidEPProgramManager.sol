@@ -390,6 +390,21 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         ERC1967Utils.upgradeToAndCall(newImplementation, data);
     }
 
+    //   _    ___                 ______                 __  _
+    //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
+    //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //  | |/ / /  __/ |/ |/ /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /**
+     * @notice Returns the given `programId` program details
+     * @param programId program identifier to query
+     * @return details the program details associated to the given `programId`
+     */
+    function getProgramDetails(uint256 programId) external view returns (FluidProgramDetails memory details) {
+        details = _fluidProgramDetails[programId];
+    }
+
     //      ____      __                        __   ______                 __  _
     //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
