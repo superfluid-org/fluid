@@ -382,13 +382,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     function _getUnlockingPercentage(uint128 unlockPeriod) internal pure returns (uint256 unlockingPercentageBP) {
-        unlockingPercentageBP = (
-            _PERCENT_TO_BP
-                * (
-                    ((80 * _SCALER) / Math.sqrt(540 * _SCALER)) * (Math.sqrt(unlockPeriod * _SCALER) / _SCALER)
-                        + 20 * _SCALER
-                )
-        ) / _SCALER;
+        unlockingPercentageBP = (2_000 + ((8_000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(540 days * _SCALER)));
     }
 
     //      __  ___          ___ _____
