@@ -213,6 +213,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             revert FORBIDDEN();
         }
 
+        // Ensure that the tax distribution pools has at least one unit distributed
+        if (TAX_DISTRIBUTION_POOL.getTotalUnits() == 0) {
+            revert TAX_DISTRIBUTION_POOL_HAS_NO_UNITS();
+        }
+
         // Get balance available for unlocking
         uint256 availableBalance = getAvailableBalance();
 
