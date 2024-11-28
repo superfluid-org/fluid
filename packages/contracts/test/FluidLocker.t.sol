@@ -164,7 +164,7 @@ contract FluidLockerTest is SFTest {
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
-        aliceLocker.unlock(0, ALICE);
+        aliceLocker.unlock(unlockPeriod, ALICE);
 
         _helperBobStaking();
 
@@ -468,7 +468,7 @@ contract FluidLockerTTETest is SFTest {
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
-        aliceLocker.unlock(0, ALICE);
+        aliceLocker.unlock(unlockPeriod, ALICE);
 
         _helperBobStaking();
 
