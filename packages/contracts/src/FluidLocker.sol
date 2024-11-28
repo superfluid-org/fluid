@@ -369,7 +369,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         fontaineCount++;
 
         // Initialize the new Fontaine instance (this initiate the unlock process)
-        IFontaine(newFontaine).initialize(recipient, unlockFlowRate, taxFlowRate);
+        IFontaine(newFontaine).initialize(recipient, unlockFlowRate, taxFlowRate, unlockPeriod);
 
         emit FluidUnlocked(unlockPeriod, amountToUnlock, recipient, newFontaine);
     }
