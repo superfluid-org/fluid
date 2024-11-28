@@ -126,6 +126,11 @@ contract FluidLockerTest is SFTest {
 
     function testInstantUnlock() external virtual {
         _helperFundLocker(address(aliceLocker), 10_000e18);
+
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        aliceLocker.unlock(0, ALICE);
+
         _helperBobStaking();
 
         assertEq(_fluidSuperToken.balanceOf(address(ALICE)), 0, "incorrect Alice bal before op");
@@ -156,6 +161,11 @@ contract FluidLockerTest is SFTest {
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
         uint256 funding = 10_000e18;
         _helperFundLocker(address(aliceLocker), funding);
+
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        aliceLocker.unlock(0, ALICE);
+
         _helperBobStaking();
 
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), funding, "incorrect Locker bal before op");
@@ -420,6 +430,11 @@ contract FluidLockerTTETest is SFTest {
         aliceLocker.unlock(0, ALICE);
 
         _helperUpgradeLocker();
+
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        aliceLocker.unlock(0, ALICE);
+
         _helperBobStaking();
 
         vm.prank(ALICE);
@@ -450,6 +465,11 @@ contract FluidLockerTTETest is SFTest {
         aliceLocker.unlock(unlockPeriod, ALICE);
 
         _helperUpgradeLocker();
+
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        aliceLocker.unlock(0, ALICE);
+
         _helperBobStaking();
 
         vm.prank(ALICE);
