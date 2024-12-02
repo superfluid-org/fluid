@@ -102,6 +102,11 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
 
     /// @inheritdoc IStakingRewardController
     function setLockerFactory(address lockerFactoryAddress) external onlyOwner {
+        // Enforce non-zero-address
+        if (lockerFactoryAddress == address(0)) {
+            revert IStakingRewardController.INVALID_PARAMETER();
+        }
+
         lockerFactory = lockerFactoryAddress;
 
         emit LockerFactoryAddressUpdated(lockerFactoryAddress);
