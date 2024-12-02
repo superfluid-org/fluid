@@ -42,4 +42,9 @@ interface IFontaine {
      */
     function initialize(address unlockRecipient, int96 unlockFlowRate, int96 taxFlowRate, uint128 unlockPeriod)
         external;
+
+    /**
+     * @notice Terminate the unlocking flows
+     */
+    function terminateUnlock() external;
 }

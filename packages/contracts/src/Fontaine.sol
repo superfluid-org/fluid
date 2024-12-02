@@ -44,10 +44,10 @@ contract Fontaine is Initializable, IFontaine {
     address public recipient;
 
     /// @notice Flow rate between this Fontaine and the Tax Distribution Pool
-    uint96 private _taxFlowRate;
+    uint96 public taxFlowRate;
 
     /// @notice Flow rate between this Fontaine and the unlock recipient
-    uint96 private _unlockFlowRate;
+    uint96 public unlockFlowRate;
 
     /// @notice Date at which the unlock is completed
     uint128 public endDate;
@@ -73,7 +73,7 @@ contract Fontaine is Initializable, IFontaine {
     }
 
     /// @inheritdoc IFontaine
-    function initialize(address unlockRecipient, int96 unlockFlowRate, int96 taxFlowRate, uint128 unlockPeriod)
+    function initialize(address unlockRecipient, int96 _unlockFlowRate, int96 _taxFlowRate, uint128 unlockPeriod)
         external
         initializer
     {
@@ -87,14 +87,14 @@ contract Fontaine is Initializable, IFontaine {
         endDate = uint128(block.timestamp) + unlockPeriod;
 
         // Store the streams flow rate
-        _taxFlowRate = uint96(taxFlowRate);
-        _unlockFlowRate = uint96(unlockFlowRate);
+        taxFlowRate = uint96(_taxFlowRate);
+        unlockFlowRate = uint96(_unlockFlowRate);
 
         // Distribute Tax flow to Staker GDA Pool
-        FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, taxFlowRate);
+        FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, _taxFlowRate);
 
         // Create the unlocking flow from the Fontaine to the locker owner
-        FLUID.createFlow(unlockRecipient, unlockFlowRate);
+        FLUID.createFlow(unlockRecipient, _unlockFlowRate);
     }
 
     function terminateUnlock() external {
@@ -104,19 +104,19 @@ contract Fontaine is Initializable, IFontaine {
         }
 
         // Calculate early end compensations
-        uint256 earlyEndCompensation = (endDate - block.timestamp) * _unlockFlowRate;
-        uint256 taxEarlyEndCompensation = (endDate - block.timestamp) * _taxFlowRate;
+        uint256 earlyEndCompensation = (endDate - block.timestamp) * unlockFlowRate;
+        uint256 taxEarlyEndCompensation = (endDate - block.timestamp) * taxFlowRate;
 
         // Stops the streams
         FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, 0);
         FLUID.deleteFlow(address(this), recipient);
 
-        // Transfer the buffers (tax + unlock)
+        // Transfer the remainders (tax + unlock)
         if (earlyEndCompensation > 0) {
             FLUID.transfer(recipient, earlyEndCompensation);
         }
         if (taxEarlyEndCompensation > 0) {
-            FLUID.distributeToPool(address(this), TAX_DISTRIBUTION_POOL, taxEarlyEndCompensation);
+            FLUID.distributeToPool(address(this), TAX_DISTRIBUTION_POOL, FLUID.balanceOf(address(this)));
         }
     }
 }
