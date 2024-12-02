@@ -45,6 +45,20 @@ contract StakingRewardControllerTest is SFTest {
             "incorrect amount of units"
         );
     }
+
+    function testSetLockerFactory(address newLockerFactory) external {
+        vm.assume(newLockerFactory != address(0));
+        vm.assume(newLockerFactory != _stakingRewardController.lockerFactory());
+
+        vm.prank(ADMIN);
+        _stakingRewardController.setLockerFactory(newLockerFactory);
+
+        assertEq(_stakingRewardController.lockerFactory(), newLockerFactory);
+
+        vm.prank(ADMIN);
+        vm.expectRevert(IStakingRewardController.INVALID_PARAMETER.selector);
+        _stakingRewardController.setLockerFactory(address(0));
+    }
 }
 
 contract StakingRewardControllerLayoutTest is StakingRewardController {
