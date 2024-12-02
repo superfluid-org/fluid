@@ -112,6 +112,35 @@ contract FluidLockerTest is SFTest {
         }
     }
 
+    function testConnectToPool(uint256 units) external virtual {
+        units = bound(units, 1, 1_000_000);
+
+        uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, ALICE);
+        bytes memory signature = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce);
+
+        vm.prank(BOB);
+        _programManager.updateUserUnits(ALICE, PROGRAM_0, units, nonce, signature);
+
+        assertEq(programPools[0].getUnits(address(aliceLocker)), units, "units not updated");
+        assertEq(aliceLocker.getUnitsPerProgram(PROGRAM_0), units, "getUnitsPerProgram invalid");
+
+        int96 distributionFlowrate = _helperDistributeToProgramPool(PROGRAM_0, 1_000_000e18, _MAX_UNLOCK_PERIOD);
+
+        assertEq(aliceLocker.getFlowRatePerProgram(PROGRAM_0), distributionFlowrate, "getFlowRatePerProgram invalid");
+
+        vm.warp(block.timestamp + 5 days);
+        assertEq(_fluid.balanceOf(address(aliceLocker)), 0, "invalid disconnect balance");
+
+        vm.prank(ALICE);
+        aliceLocker.connectToPool(PROGRAM_0);
+
+        assertEq(
+            _fluid.balanceOf(address(aliceLocker)),
+            uint256(uint96(distributionFlowrate) * 5 days),
+            "invalid connected balance"
+        );
+    }
+
     function testLock(uint256 amount) external virtual {
         amount = bound(amount, 1e18, 1e24);
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect balance before operation");
