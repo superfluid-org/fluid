@@ -275,6 +275,17 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         emit FluidUnstaked();
     }
 
+    /// @inheritdoc IFluidLocker
+    function connectToPool(uint256 programId) external nonReentrant {
+        // Get the corresponding program pool
+        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
+
+        if (!FLUID.isMemberConnected(address(programPool), address(this))) {
+            // Connect this locker to the Program Pool
+            FLUID.connectPool(programPool);
+        }
+    }
+
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/

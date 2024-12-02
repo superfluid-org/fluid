@@ -123,6 +123,12 @@ interface IFluidLocker {
      */
     function unstake() external;
 
+    /**
+     * @notice Helper function to help the Locker connect to a program pool
+     * @param programId program identifier corresponding to the pool to connect to
+     */
+    function connectToPool(uint256 programId) external;
+
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
