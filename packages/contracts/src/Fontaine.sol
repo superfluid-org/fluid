@@ -73,10 +73,12 @@ contract Fontaine is Initializable, IFontaine {
     }
 
     /// @inheritdoc IFontaine
-    function initialize(address unlockRecipient, int96 _unlockFlowRate, int96 _taxFlowRate, uint128 unlockPeriod)
-        external
-        initializer
-    {
+    function initialize(
+        address unlockRecipient,
+        int96 targetUnlockFlowRate,
+        int96 targetTaxFlowRate,
+        uint128 unlockPeriod
+    ) external initializer {
         // Ensure recipient is not a SuperApp
         if (ISuperfluid(FLUID.getHost()).isApp(ISuperApp(unlockRecipient))) revert CANNOT_UNLOCK_TO_SUPERAPP();
 
@@ -87,14 +89,14 @@ contract Fontaine is Initializable, IFontaine {
         endDate = uint128(block.timestamp) + unlockPeriod;
 
         // Store the streams flow rate
-        taxFlowRate = uint96(_taxFlowRate);
-        unlockFlowRate = uint96(_unlockFlowRate);
+        taxFlowRate = uint96(targetTaxFlowRate);
+        unlockFlowRate = uint96(targetUnlockFlowRate);
 
         // Distribute Tax flow to Staker GDA Pool
-        FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, _taxFlowRate);
+        FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, targetTaxFlowRate);
 
         // Create the unlocking flow from the Fontaine to the locker owner
-        FLUID.createFlow(unlockRecipient, _unlockFlowRate);
+        FLUID.createFlow(unlockRecipient, targetUnlockFlowRate);
     }
 
     function terminateUnlock() external {
