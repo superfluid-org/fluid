@@ -26,6 +26,29 @@ import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
 
+
+
+
+/// @dev Basis points denominator (for percentage calculation)
+uint256 constant BP_DENOMINATOR = 10_000;
+
+// @dev Scaler used for unlock percentage calculation
+uint256 constant UNLOCKING_PCT_SCALER = 1e18;
+
+function calculateVestUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod) pure returns (int96 unlockFlowRate, int96 taxFlowRate)
+{
+    int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
+
+    unlockFlowRate = (globalFlowRate * int256(getUnlockingPercentage(unlockPeriod))).toInt96()
+        / int256(BP_DENOMINATOR).toInt96();
+    taxFlowRate = globalFlowRate - unlockFlowRate;
+}
+
+function getUnlockingPercentage(uint128 unlockPeriod) pure returns (uint256 unlockingPercentageBP) {
+    unlockingPercentageBP = (2_000 + ((8_000 * Math.sqrt(unlockPeriod * UNLOCKING_PCT_SCALER))
+                                      / Math.sqrt(540 days * UNLOCKING_PCT_SCALER)));
+}
+
 /**
  * @title Locker Contract
  * @author Superfluid
@@ -68,12 +91,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @notice Instant unlock penalty percentage (expressed in basis points)
     uint256 private constant _INSTANT_UNLOCK_PENALTY_BP = 8_000;
-
-    /// @notice Basis points denominator (for percentage calculation)
-    uint256 private constant _BP_DENOMINATOR = 10_000;
-
-    /// @notice Scaler used for unlock percentage calculation
-    uint256 private constant _SCALER = 1e18;
 
     /// @notice Scaler used for unlock percentage calculation
     uint256 private constant _PERCENT_TO_BP = 100;
@@ -362,7 +379,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     function _instantUnlock(uint256 amountToUnlock, address recipient) internal {
         // Calculate instant unlock penalty amount
-        uint256 penaltyAmount = (amountToUnlock * _INSTANT_UNLOCK_PENALTY_BP) / _BP_DENOMINATOR;
+        uint256 penaltyAmount = (amountToUnlock * _INSTANT_UNLOCK_PENALTY_BP) / BP_DENOMINATOR;
 
         // Distribute penalty to staker (connected to the TAX_DISTRIBUTION_POOL)
         FLUID.distribute(address(this), TAX_DISTRIBUTION_POOL, penaltyAmount);
@@ -375,7 +392,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     function _vestUnlock(uint256 amountToUnlock, uint128 unlockPeriod, address recipient) internal {
         // Calculate the unlock and penalty flow rates based on requested amount and unlock period
-        (int96 unlockFlowRate, int96 taxFlowRate) = _calculateVestUnlockFlowRates(amountToUnlock, unlockPeriod);
+        (int96 unlockFlowRate, int96 taxFlowRate) = calculateVestUnlockFlowRates(amountToUnlock, unlockPeriod);
 
         // Use create2 to deploy a Fontaine Beacon Proxy
         // The salt used for deployment is the hashed encoded Locker address and unlock identifier
@@ -394,22 +411,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         IFontaine(newFontaine).initialize(recipient, unlockFlowRate, taxFlowRate, unlockPeriod);
 
         emit FluidUnlocked(unlockPeriod, amountToUnlock, recipient, newFontaine);
-    }
-
-    function _calculateVestUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)
-        internal
-        pure
-        returns (int96 unlockFlowRate, int96 taxFlowRate)
-    {
-        int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
-
-        unlockFlowRate = (globalFlowRate * int256(_getUnlockingPercentage(unlockPeriod))).toInt96()
-            / int256(_BP_DENOMINATOR).toInt96();
-        taxFlowRate = globalFlowRate - unlockFlowRate;
-    }
-
-    function _getUnlockingPercentage(uint128 unlockPeriod) internal pure returns (uint256 unlockingPercentageBP) {
-        unlockingPercentageBP = (2_000 + ((8_000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(540 days * _SCALER)));
     }
 
     //      __  ___          ___ _____

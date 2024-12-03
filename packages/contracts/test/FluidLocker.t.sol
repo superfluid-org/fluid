@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
+import { console2 } from "forge-std/Test.sol";
+
 import { SFTest } from "./SFTest.t.sol";
 
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
@@ -13,7 +15,7 @@ import {
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
-import { FluidLocker, IFluidLocker } from "../src/FluidLocker.sol";
+import { FluidLocker, IFluidLocker, getUnlockingPercentage, calculateVestUnlockFlowRates } from "../src/FluidLocker.sol";
 import { IFontaine } from "../src/interfaces/IFontaine.sol";
 import { IEPProgramManager } from "../src/interfaces/IEPProgramManager.sol";
 import { IStakingRewardController } from "../src/interfaces/IStakingRewardController.sol";
@@ -346,12 +348,12 @@ contract FluidLockerTest is SFTest {
     {
         int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
 
-        unlockFlowRate = (globalFlowRate * int256(_FluidLocker_internal_getUnlockingPercentage(unlockPeriod))).toInt96()
+        unlockFlowRate = (globalFlowRate * int256(getUnlockingPercentage(unlockPeriod))).toInt96()
             / int256(_BP_DENOMINATOR).toInt96();
         taxFlowRate = globalFlowRate - unlockFlowRate;
     }
 
-    function _FluidLocker_internal_getUnlockingPercentage(uint128 unlockPeriod)
+    function getUnlockingPercentage(uint128 unlockPeriod)
         internal
         pure
         returns (uint256 unlockingPercentageBP)
@@ -602,32 +604,50 @@ contract FluidLockerTTETest is SFTest {
     {
         int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
 
-        unlockFlowRate = (globalFlowRate * int256(_FluidLocker_internal_getUnlockingPercentage(unlockPeriod))).toInt96()
+        unlockFlowRate = (globalFlowRate * int256(getUnlockingPercentage(unlockPeriod))).toInt96()
             / int256(_BP_DENOMINATOR).toInt96();
         taxFlowRate = globalFlowRate - unlockFlowRate;
     }
 
-    function _FluidLocker_internal_getUnlockingPercentage(uint128 unlockPeriod)
-        internal
-        pure
-        returns (uint256 unlockingPercentageBP)
-    {
-        unlockingPercentageBP = (2_000 + ((8_000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(540 days * _SCALER)));
-    }
-
+    // Note: golden (characteristic) test
     function test_getUnlockingPercentage(uint128 unlockPeriod) public {
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
 
-        uint256 unlockPercentage = _FluidLocker_internal_getUnlockingPercentage(unlockPeriod);
+        uint256 unlockPercentage = getUnlockingPercentage(unlockPeriod);
         assertGe(unlockPercentage, 2910, "shouldnt be any smaller");
         assertLe(unlockPercentage, 10000, "shouldnt be any larger");
 
         // Test different periods
-        assertEq(_FluidLocker_internal_getUnlockingPercentage(7 days), 2910, "should be 2910");
-        assertEq(_FluidLocker_internal_getUnlockingPercentage(30 days), 3885, "should be 3885");
-        assertEq(_FluidLocker_internal_getUnlockingPercentage(90 days), 5265, "should be 5265");
-        assertEq(_FluidLocker_internal_getUnlockingPercentage(180 days), 6618, "should be 6618");
-        assertEq(_FluidLocker_internal_getUnlockingPercentage(540 days), 10000, "should be 10000");
+        assertEq(getUnlockingPercentage(7 days), 2910, "should be 2910");
+        assertEq(getUnlockingPercentage(30 days), 3885, "should be 3885");
+        assertEq(getUnlockingPercentage(90 days), 5265, "should be 5265");
+        assertEq(getUnlockingPercentage(180 days), 6618, "should be 6618");
+        assertEq(getUnlockingPercentage(540 days), 10000, "should be 10000");
+    }
+
+    // Note: property based testing
+    // Property: monotonicity of getUnlockingPercentage / "Punitive high-time preference law"
+    function test_getUnlockingPercentage_strictlyMonotonicity(uint128 t1, uint128 t2) public {
+        t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD,  _MAX_UNLOCK_PERIOD));
+        t2 = uint128(bound(t2, _MIN_UNLOCK_PERIOD,  _MAX_UNLOCK_PERIOD));
+        // make sure that t1 is less equal to t2
+        if (t1 > t2) (t1, t2) = (t2, t1);
+        console2.log("using t1 t2", t1, t2);
+
+        (uint256 p1, uint256 p2) = (getUnlockingPercentage(t1), getUnlockingPercentage(t2));
+        assertLe(p1, p2, "monotonicity violated");
+    }
+
+    function test_calculateVestUnlockFlowRates_xxxx(uint128 t1, uint128 t2) public {
+        t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD,  _MAX_UNLOCK_PERIOD));
+        t2 = uint128(bound(t2, _MIN_UNLOCK_PERIOD,  _MAX_UNLOCK_PERIOD));
+        // make sure that t1 is less equal to t2
+        if (t1 > t2) (t1, t2) = (t2, t1);
+        console2.log("using t1 t2", t1, t2);
+
+        (int96 r1, ) = calculateVestUnlockFlowRates(1 ether, t1);
+        (int96 r2, ) = calculateVestUnlockFlowRates(1 ether, t2);
+        assertGe(r1, r2, "monotonicity violated");
     }
 }
 
