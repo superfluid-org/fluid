@@ -365,7 +365,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         uint256 penaltyAmount = (amountToUnlock * _INSTANT_UNLOCK_PENALTY_BP) / _BP_DENOMINATOR;
 
         // Distribute penalty to staker (connected to the TAX_DISTRIBUTION_POOL)
-        FLUID.distributeToPool(address(this), TAX_DISTRIBUTION_POOL, penaltyAmount);
+        FLUID.distribute(address(this), TAX_DISTRIBUTION_POOL, penaltyAmount);
 
         // Transfer the leftover $FLUID to the locker owner
         FLUID.transfer(recipient, amountToUnlock - penaltyAmount);
