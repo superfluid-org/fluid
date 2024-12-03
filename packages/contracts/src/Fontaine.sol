@@ -96,7 +96,7 @@ contract Fontaine is Initializable, IFontaine {
         FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, targetTaxFlowRate);
 
         // Create the unlocking flow from the Fontaine to the locker owner
-        FLUID.createFlow(unlockRecipient, targetUnlockFlowRate);
+        FLUID.flow(unlockRecipient, targetUnlockFlowRate);
     }
 
     function terminateUnlock() external {
@@ -105,20 +105,21 @@ contract Fontaine is Initializable, IFontaine {
             revert TOO_EARLY_TO_TERMINATE_UNLOCK();
         }
 
-        // Calculate early end compensations
-        uint256 earlyEndCompensation = (endDate - block.timestamp) * unlockFlowRate;
+        // Calculate early end tax compensation
         uint256 taxEarlyEndCompensation = (endDate - block.timestamp) * taxFlowRate;
 
-        // Stops the streams
+        // Stops the streams by updating the flowrates to 0
         FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, 0);
-        FLUID.deleteFlow(address(this), recipient);
+        FLUID.flow(recipient, 0);
 
         // Transfer the remainders (tax + unlock)
-        if (earlyEndCompensation > 0) {
-            FLUID.transfer(recipient, earlyEndCompensation);
-        }
         if (taxEarlyEndCompensation > 0) {
-            FLUID.distributeToPool(address(this), TAX_DISTRIBUTION_POOL, FLUID.balanceOf(address(this)));
+            FLUID.distribute(address(this), TAX_DISTRIBUTION_POOL, taxEarlyEndCompensation);
+        }
+
+        uint256 leftoverBalance = FLUID.balanceOf(address(this));
+        if (leftoverBalance > 0) {
+            FLUID.transfer(recipient, leftoverBalance);
         }
     }
 }
