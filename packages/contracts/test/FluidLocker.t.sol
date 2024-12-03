@@ -335,6 +335,52 @@ contract FluidLockerTest is SFTest {
         assertEq(_fluidLockerLogic.getFontaineBeaconImplementation(), address(_fontaineLogic));
     }
 
+    // Note: golden (characteristic) test
+    function testGetUnlockingPercentage(uint128 unlockPeriod) public pure {
+        unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
+
+        uint256 unlockPercentage = getUnlockingPercentage(unlockPeriod);
+        assertGe(unlockPercentage, 2910, "shouldnt be any smaller");
+        assertLe(unlockPercentage, 10000, "shouldnt be any larger");
+
+        // Test different periods
+        assertEq(getUnlockingPercentage(7 days), 2910, "should be 2910");
+        assertEq(getUnlockingPercentage(30 days), 3885, "should be 3885");
+        assertEq(getUnlockingPercentage(90 days), 5265, "should be 5265");
+        assertEq(getUnlockingPercentage(180 days), 6618, "should be 6618");
+        assertEq(getUnlockingPercentage(540 days), 10000, "should be 10000");
+    }
+
+    // Note: property based testing
+    // Property: monotonicity of getUnlockingPercentage / "Punitive high-time preference law"
+    function testGetUnlockingPercentageStrictMonotonicity(uint128 t1, uint128 t2) public pure {
+        t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
+        t2 = uint128(bound(t2, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
+
+        // Ensure `t1` is always lower than `t2`
+        if (t1 > t2) (t1, t2) = (t2, t1);
+        console2.log("using t1 t2", t1, t2);
+
+        (uint256 p1, uint256 p2) = (getUnlockingPercentage(t1), getUnlockingPercentage(t2));
+        assertLe(p1, p2, "monotonicity violated");
+    }
+
+    // Property : lower time-preference shall result in higher flowrate
+    function testCalculateVestUnlockFlowRates(uint128 t1, uint128 t2) public pure {
+        uint256 amount = 1 ether;
+        uint256 minDistance = 80 minutes;
+
+        t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD - minDistance));
+        t2 = uint128(bound(t2, t1 + minDistance, _MAX_UNLOCK_PERIOD));
+
+        console2.log("using t1 t2", t1, t2);
+
+        (int96 ur1, int96 tr1) = calculateVestUnlockFlowRates(amount, t1);
+        (int96 ur2, int96 tr2) = calculateVestUnlockFlowRates(amount, t2);
+        assertGe(ur1, ur2, "unlock rate monotonicity violated");
+        assertGe(tr1, tr2, "tax rate monotonicity violated");
+    }
+
     function _helperBobStaking() internal {
         _helperFundLocker(address(bobLocker), 10_000e18);
         vm.prank(BOB);
@@ -351,14 +397,6 @@ contract FluidLockerTest is SFTest {
         unlockFlowRate = (globalFlowRate * int256(getUnlockingPercentage(unlockPeriod))).toInt96()
             / int256(_BP_DENOMINATOR).toInt96();
         taxFlowRate = globalFlowRate - unlockFlowRate;
-    }
-
-    function getUnlockingPercentage(uint128 unlockPeriod)
-        internal
-        pure
-        returns (uint256 unlockingPercentageBP)
-    {
-        unlockingPercentageBP = (2_000 + ((8_000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(540 days * _SCALER)));
     }
 }
 
@@ -610,7 +648,7 @@ contract FluidLockerTTETest is SFTest {
     }
 
     // Note: golden (characteristic) test
-    function test_getUnlockingPercentage(uint128 unlockPeriod) public {
+    function testGetUnlockingPercentageCharacteristic(uint128 unlockPeriod) public pure {
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
 
         uint256 unlockPercentage = getUnlockingPercentage(unlockPeriod);
@@ -627,10 +665,11 @@ contract FluidLockerTTETest is SFTest {
 
     // Note: property based testing
     // Property: monotonicity of getUnlockingPercentage / "Punitive high-time preference law"
-    function test_getUnlockingPercentage_strictlyMonotonicity(uint128 t1, uint128 t2) public {
-        t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD,  _MAX_UNLOCK_PERIOD));
-        t2 = uint128(bound(t2, _MIN_UNLOCK_PERIOD,  _MAX_UNLOCK_PERIOD));
-        // make sure that t1 is less equal to t2
+    function testGetUnlockingPercentageStrictMonotonicity(uint128 t1, uint128 t2) public pure {
+        t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
+        t2 = uint128(bound(t2, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
+
+        // Ensure `t1` is always lower than `t2`
         if (t1 > t2) (t1, t2) = (t2, t1);
         console2.log("using t1 t2", t1, t2);
 
@@ -638,16 +677,46 @@ contract FluidLockerTTETest is SFTest {
         assertLe(p1, p2, "monotonicity violated");
     }
 
-    function test_calculateVestUnlockFlowRates_xxxx(uint128 t1, uint128 t2) public {
-        t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD,  _MAX_UNLOCK_PERIOD));
-        t2 = uint128(bound(t2, _MIN_UNLOCK_PERIOD,  _MAX_UNLOCK_PERIOD));
-        // make sure that t1 is less equal to t2
-        if (t1 > t2) (t1, t2) = (t2, t1);
+    /// Note: golden (characteristic) test
+    function testCalculateVestUnlockFlowRatesCharacteristic() public pure {
+        uint256 amount = 1 ether;
+
+        // Test different periods
+        (int96 unlockFlowRate, int96 taxFlowRate) = calculateVestUnlockFlowRates(amount, 7 days);
+        assertEq(unlockFlowRate, 481_150_793_650, "(7 days) unlock flow rate should be 481150793650");
+        assertEq(taxFlowRate, 1_172_288_359_789, "(7 days) tax flow rate should be 481150793650");
+
+        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 30 days);
+        assertEq(unlockFlowRate, 149_884_259_258, "(30 days) unlock flow rate should be 481150793650");
+        assertEq(taxFlowRate, 235_918_209_877, "(30 days) tax flow rate should be 481150793650");
+
+        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 90 days);
+        assertEq(unlockFlowRate, 67_708_333_333, "(90 days) unlock flow rate should be 481150793650");
+        assertEq(taxFlowRate, 60_892_489_712, "(90 days) tax flow rate should be 481150793650");
+
+        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 180 days);
+        assertEq(unlockFlowRate, 42_554_012_345, "(180 days) unlock flow rate should be 481150793650");
+        assertEq(taxFlowRate, 21_746_399_177, "(180 days) tax flow rate should be 481150793650");
+
+        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 540 days);
+        assertEq(unlockFlowRate, 21_433_470_507, "(540 days) unlock flow rate should be 481150793650");
+        assertEq(taxFlowRate, 0, "(540 days) tax flow rate should be 481150793650");
+    }
+
+    // Property : lower time-preference shall result in higher flowrate
+    function testCalculateVestUnlockFlowRatesStrictMonotonicity(uint128 t1, uint128 t2) public pure {
+        uint256 amount = 1 ether;
+        uint256 minDistance = 80 minutes;
+
+        t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD - minDistance));
+        t2 = uint128(bound(t2, t1 + minDistance, _MAX_UNLOCK_PERIOD));
+
         console2.log("using t1 t2", t1, t2);
 
-        (int96 r1, ) = calculateVestUnlockFlowRates(1 ether, t1);
-        (int96 r2, ) = calculateVestUnlockFlowRates(1 ether, t2);
-        assertGe(r1, r2, "monotonicity violated");
+        (int96 ur1, int96 tr1) = calculateVestUnlockFlowRates(amount, t1);
+        (int96 ur2, int96 tr2) = calculateVestUnlockFlowRates(amount, t2);
+        assertGe(ur1, ur2, "unlock rate monotonicity violated");
+        assertGe(tr1, tr2, "tax rate monotonicity violated");
     }
 }
 
