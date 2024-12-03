@@ -131,6 +131,10 @@ contract FluidLockerTest is SFTest {
         vm.warp(block.timestamp + 5 days);
         assertEq(_fluid.balanceOf(address(aliceLocker)), 0, "invalid disconnect balance");
 
+        vm.prank(BOB);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.connectToPool(PROGRAM_0);
+
         vm.prank(ALICE);
         aliceLocker.connectToPool(PROGRAM_0);
 
@@ -138,6 +142,35 @@ contract FluidLockerTest is SFTest {
             _fluid.balanceOf(address(aliceLocker)),
             uint256(uint96(distributionFlowrate) * 5 days),
             "invalid connected balance"
+        );
+    }
+
+    function testDisconnectFromPool(uint256 units) external virtual {
+        units = bound(units, 1, 1_000_000);
+
+        uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, ALICE);
+        bytes memory signature = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce);
+
+        vm.prank(ALICE);
+        aliceLocker.claim(PROGRAM_0, units, nonce, signature);
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
+            true,
+            "Locker should be connected to pool"
+        );
+
+        vm.prank(BOB);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.disconnectFromPool(PROGRAM_0);
+
+        vm.prank(ALICE);
+        aliceLocker.disconnectFromPool(PROGRAM_0);
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
+            false,
+            "Locker should be disconnected from pool"
         );
     }
 
