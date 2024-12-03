@@ -26,27 +26,27 @@ import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
 
-
-
-
 /// @dev Basis points denominator (for percentage calculation)
 uint256 constant BP_DENOMINATOR = 10_000;
 
-// @dev Scaler used for unlock percentage calculation
+/// @dev Scaler used for unlock percentage calculation
 uint256 constant UNLOCKING_PCT_SCALER = 1e18;
 
-function calculateVestUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod) pure returns (int96 unlockFlowRate, int96 taxFlowRate)
+function calculateVestUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)
+    pure
+    returns (int96 unlockFlowRate, int96 taxFlowRate)
 {
     int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
 
-    unlockFlowRate = (globalFlowRate * int256(getUnlockingPercentage(unlockPeriod))).toInt96()
-        / int256(BP_DENOMINATOR).toInt96();
+    unlockFlowRate =
+        (globalFlowRate * int256(getUnlockingPercentage(unlockPeriod))).toInt96() / int256(BP_DENOMINATOR).toInt96();
     taxFlowRate = globalFlowRate - unlockFlowRate;
 }
 
 function getUnlockingPercentage(uint128 unlockPeriod) pure returns (uint256 unlockingPercentageBP) {
-    unlockingPercentageBP = (2_000 + ((8_000 * Math.sqrt(unlockPeriod * UNLOCKING_PCT_SCALER))
-                                      / Math.sqrt(540 days * UNLOCKING_PCT_SCALER)));
+    unlockingPercentageBP = (
+        2_000 + ((8_000 * Math.sqrt(unlockPeriod * UNLOCKING_PCT_SCALER)) / Math.sqrt(540 days * UNLOCKING_PCT_SCALER))
+    );
 }
 
 /**
