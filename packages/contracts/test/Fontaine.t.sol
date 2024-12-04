@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
+import { console2 } from "forge-std/Test.sol";
+
 import { SFTest } from "./SFTest.t.sol";
 import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
@@ -14,6 +16,7 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 import { IFluidLocker } from "../src/FluidLocker.sol";
 import { IFontaine } from "../src/interfaces/IFontaine.sol";
 import { Fontaine } from "../src/Fontaine.sol";
+import { calculateVestUnlockFlowRates } from "../src/FluidLocker.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -105,6 +108,45 @@ contract FontaineTest is SFTest {
         assertApproxEqAbs(
             _fluid.balanceOf(user), expectedUserBalance, expectedUserBalance * 2 / 100, "invalid unlocked amount"
         );
+    }
+
+    function testAccidentalStreamCancel() external {
+        uint128 unlockPeriod = _MAX_UNLOCK_PERIOD;
+        uint256 unlockAmount = 10 ether;
+
+        // Setup & Start Fontaine
+        address newFontaine = _helperCreateFontaine();
+
+        vm.prank(FLUID_TREASURY);
+        _fluid.transfer(newFontaine, unlockAmount);
+
+        address user = makeAddr("user");
+        (int96 unlockFlowRate, int96 taxFlowRate) = calculateVestUnlockFlowRates(unlockAmount, unlockPeriod);
+        assertEq(taxFlowRate, 0, "tax flow rate shall be 0");
+
+        IFontaine(newFontaine).initialize(user, unlockFlowRate, taxFlowRate, unlockPeriod);
+
+        uint256 halfwayUnlockPeriod = block.timestamp + 270 days;
+        uint256 afterEndUnlockPeriod = block.timestamp + 542 days;
+
+        vm.warp(halfwayUnlockPeriod);
+
+        assertGt(_fluid.getFlowRate(newFontaine, user), 1, "there should be a flowrate");
+
+        vm.startPrank(user);
+        _fluid.deleteFlow(newFontaine, user);
+        vm.stopPrank();
+
+        assertEq(_fluid.getFlowRate(newFontaine, user), 0, "incorrect unlock flowrate");
+
+        uint256 currentFontaineBalance = _fluid.balanceOf(newFontaine);
+
+        vm.warp(afterEndUnlockPeriod);
+
+        vm.prank(user);
+        IFontaine(newFontaine).terminateUnlock();
+
+        assertEq(_fluid.balanceOf(newFontaine), 0);
     }
 
     function _helperBobStaking() internal {
