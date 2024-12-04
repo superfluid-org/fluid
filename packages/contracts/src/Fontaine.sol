@@ -105,8 +105,12 @@ contract Fontaine is Initializable, IFontaine {
             revert TOO_EARLY_TO_TERMINATE_UNLOCK();
         }
 
-        // Calculate early end tax compensation
-        uint256 taxEarlyEndCompensation = (endDate - block.timestamp) * taxFlowRate;
+        uint256 taxEarlyEndCompensation;
+
+        if (block.timestamp < endDate) {
+            // Calculate early end tax compensation
+            taxEarlyEndCompensation = (endDate - block.timestamp) * taxFlowRate;
+        }
 
         // Stops the streams by updating the flowrates to 0
         FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, 0);
