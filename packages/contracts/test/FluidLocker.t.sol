@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
+import { console2 } from "forge-std/Test.sol";
+
 import { SFTest } from "./SFTest.t.sol";
 
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
@@ -13,7 +15,7 @@ import {
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
-import { FluidLocker, IFluidLocker } from "../src/FluidLocker.sol";
+import { FluidLocker, IFluidLocker, getUnlockingPercentage, calculateVestUnlockFlowRates } from "../src/FluidLocker.sol";
 import { IFontaine } from "../src/interfaces/IFontaine.sol";
 import { IEPProgramManager } from "../src/interfaces/IEPProgramManager.sol";
 import { IStakingRewardController } from "../src/interfaces/IStakingRewardController.sol";
@@ -29,8 +31,9 @@ contract FluidLockerTest is SFTest {
     uint256 public constant signerPkey = 0x69;
 
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
-
     uint128 internal constant _MAX_UNLOCK_PERIOD = 540 days;
+    uint256 private constant _BP_DENOMINATOR = 10_000;
+    uint256 internal constant _SCALER = 1e18;
 
     ISuperfluidPool[] public programPools;
     IFluidLocker public aliceLocker;
@@ -111,6 +114,68 @@ contract FluidLockerTest is SFTest {
         }
     }
 
+    function testConnectToPool(uint256 units) external virtual {
+        units = bound(units, 1, 1_000_000);
+
+        uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, ALICE);
+        bytes memory signature = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce);
+
+        vm.prank(BOB);
+        _programManager.updateUserUnits(ALICE, PROGRAM_0, units, nonce, signature);
+
+        assertEq(programPools[0].getUnits(address(aliceLocker)), units, "units not updated");
+        assertEq(aliceLocker.getUnitsPerProgram(PROGRAM_0), units, "getUnitsPerProgram invalid");
+
+        int96 distributionFlowrate = _helperDistributeToProgramPool(PROGRAM_0, 1_000_000e18, _MAX_UNLOCK_PERIOD);
+
+        assertEq(aliceLocker.getFlowRatePerProgram(PROGRAM_0), distributionFlowrate, "getFlowRatePerProgram invalid");
+
+        vm.warp(block.timestamp + 5 days);
+        assertEq(_fluid.balanceOf(address(aliceLocker)), 0, "invalid disconnect balance");
+
+        vm.prank(BOB);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.connectToPool(PROGRAM_0);
+
+        vm.prank(ALICE);
+        aliceLocker.connectToPool(PROGRAM_0);
+
+        assertEq(
+            _fluid.balanceOf(address(aliceLocker)),
+            uint256(uint96(distributionFlowrate) * 5 days),
+            "invalid connected balance"
+        );
+    }
+
+    function testDisconnectFromPool(uint256 units) external virtual {
+        units = bound(units, 1, 1_000_000);
+
+        uint256 nonce = _programManager.getNextValidNonce(PROGRAM_0, ALICE);
+        bytes memory signature = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce);
+
+        vm.prank(ALICE);
+        aliceLocker.claim(PROGRAM_0, units, nonce, signature);
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
+            true,
+            "Locker should be connected to pool"
+        );
+
+        vm.prank(BOB);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.disconnectFromPool(PROGRAM_0);
+
+        vm.prank(ALICE);
+        aliceLocker.disconnectFromPool(PROGRAM_0);
+
+        assertEq(
+            _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
+            false,
+            "Locker should be disconnected from pool"
+        );
+    }
+
     function testLock(uint256 amount) external virtual {
         amount = bound(amount, 1e18, 1e24);
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect balance before operation");
@@ -125,6 +190,11 @@ contract FluidLockerTest is SFTest {
 
     function testInstantUnlock() external virtual {
         _helperFundLocker(address(aliceLocker), 10_000e18);
+
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        aliceLocker.unlock(0, ALICE);
+
         _helperBobStaking();
 
         assertEq(_fluidSuperToken.balanceOf(address(ALICE)), 0, "incorrect Alice bal before op");
@@ -155,6 +225,11 @@ contract FluidLockerTest is SFTest {
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
         uint256 funding = 10_000e18;
         _helperFundLocker(address(aliceLocker), funding);
+
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        aliceLocker.unlock(unlockPeriod, ALICE);
+
         _helperBobStaking();
 
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), funding, "incorrect Locker bal before op");
@@ -260,6 +335,52 @@ contract FluidLockerTest is SFTest {
         assertEq(_fluidLockerLogic.getFontaineBeaconImplementation(), address(_fontaineLogic));
     }
 
+    // Note: golden (characteristic) test
+    function testGetUnlockingPercentage(uint128 unlockPeriod) public pure {
+        unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
+
+        uint256 unlockPercentage = getUnlockingPercentage(unlockPeriod);
+        assertGe(unlockPercentage, 2910, "shouldnt be any smaller");
+        assertLe(unlockPercentage, 10000, "shouldnt be any larger");
+
+        // Test different periods
+        assertEq(getUnlockingPercentage(7 days), 2910, "should be 2910");
+        assertEq(getUnlockingPercentage(30 days), 3885, "should be 3885");
+        assertEq(getUnlockingPercentage(90 days), 5265, "should be 5265");
+        assertEq(getUnlockingPercentage(180 days), 6618, "should be 6618");
+        assertEq(getUnlockingPercentage(540 days), 10000, "should be 10000");
+    }
+
+    // Note: property based testing
+    // Property: monotonicity of getUnlockingPercentage / "Punitive high-time preference law"
+    function testGetUnlockingPercentageStrictMonotonicity(uint128 t1, uint128 t2) public pure {
+        t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
+        t2 = uint128(bound(t2, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
+
+        // Ensure `t1` is always lower than `t2`
+        if (t1 > t2) (t1, t2) = (t2, t1);
+        console2.log("using t1 t2", t1, t2);
+
+        (uint256 p1, uint256 p2) = (getUnlockingPercentage(t1), getUnlockingPercentage(t2));
+        assertLe(p1, p2, "monotonicity violated");
+    }
+
+    // Property : lower time-preference shall result in higher flowrate
+    function testCalculateVestUnlockFlowRates(uint128 t1, uint128 t2) public pure {
+        uint256 amount = 1 ether;
+        uint256 minDistance = 80 minutes;
+
+        t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD - minDistance));
+        t2 = uint128(bound(t2, t1 + minDistance, _MAX_UNLOCK_PERIOD));
+
+        console2.log("using t1 t2", t1, t2);
+
+        (int96 ur1, int96 tr1) = calculateVestUnlockFlowRates(amount, t1);
+        (int96 ur2, int96 tr2) = calculateVestUnlockFlowRates(amount, t2);
+        assertGe(ur1, ur2, "unlock rate monotonicity violated");
+        assertGe(tr1, tr2, "tax rate monotonicity violated");
+    }
+
     function _helperBobStaking() internal {
         _helperFundLocker(address(bobLocker), 10_000e18);
         vm.prank(BOB);
@@ -271,14 +392,11 @@ contract FluidLockerTest is SFTest {
         pure
         returns (int96 taxFlowRate, int96 unlockFlowRate)
     {
-        uint256 unlockingPercentageBP =
-            (100 * (((80 * 1e18) / Math.sqrt(540 * 1e18)) * (Math.sqrt(unlockPeriod * 1e18) / 1e18) + 20 * 1e18)) / 1e18;
+        int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
 
-        uint256 amountToUser = (amountToUnlock * unlockingPercentageBP) / 10_000;
-        uint256 penaltyAmount = amountToUnlock - amountToUser;
-
-        taxFlowRate = int256(penaltyAmount / unlockPeriod).toInt96();
-        unlockFlowRate = int256(amountToUser / unlockPeriod).toInt96();
+        unlockFlowRate = (globalFlowRate * int256(getUnlockingPercentage(unlockPeriod))).toInt96()
+            / int256(_BP_DENOMINATOR).toInt96();
+        taxFlowRate = globalFlowRate - unlockFlowRate;
     }
 }
 
@@ -291,9 +409,11 @@ contract FluidLockerTTETest is SFTest {
     uint256 public constant PROGRAM_2 = 3;
     uint256 public constant signerPkey = 0x69;
 
+    uint256 private constant _BP_DENOMINATOR = 10_000;
+    uint256 internal constant _SCALER = 1e18;
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
-
     uint128 internal constant _MAX_UNLOCK_PERIOD = 540 days;
+    uint256 internal constant _PERCENT_TO_BP = 100;
 
     ISuperfluidPool[] public programPools;
     IFluidLocker public aliceLocker;
@@ -412,6 +532,11 @@ contract FluidLockerTTETest is SFTest {
         aliceLocker.unlock(0, ALICE);
 
         _helperUpgradeLocker();
+
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        aliceLocker.unlock(0, ALICE);
+
         _helperBobStaking();
 
         vm.prank(ALICE);
@@ -442,6 +567,11 @@ contract FluidLockerTTETest is SFTest {
         aliceLocker.unlock(unlockPeriod, ALICE);
 
         _helperUpgradeLocker();
+
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        aliceLocker.unlock(unlockPeriod, ALICE);
+
         _helperBobStaking();
 
         vm.prank(ALICE);
@@ -510,14 +640,83 @@ contract FluidLockerTTETest is SFTest {
         pure
         returns (int96 taxFlowRate, int96 unlockFlowRate)
     {
-        uint256 unlockingPercentageBP =
-            (100 * (((80 * 1e18) / Math.sqrt(540 * 1e18)) * (Math.sqrt(unlockPeriod * 1e18) / 1e18) + 20 * 1e18)) / 1e18;
+        int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
 
-        uint256 amountToUser = (amountToUnlock * unlockingPercentageBP) / 10_000;
-        uint256 penaltyAmount = amountToUnlock - amountToUser;
+        unlockFlowRate = (globalFlowRate * int256(getUnlockingPercentage(unlockPeriod))).toInt96()
+            / int256(_BP_DENOMINATOR).toInt96();
+        taxFlowRate = globalFlowRate - unlockFlowRate;
+    }
 
-        taxFlowRate = int256(penaltyAmount / unlockPeriod).toInt96();
-        unlockFlowRate = int256(amountToUser / unlockPeriod).toInt96();
+    // Note: golden (characteristic) test
+    function testGetUnlockingPercentageCharacteristic(uint128 unlockPeriod) public pure {
+        unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
+
+        uint256 unlockPercentage = getUnlockingPercentage(unlockPeriod);
+        assertGe(unlockPercentage, 2910, "shouldnt be any smaller");
+        assertLe(unlockPercentage, 10000, "shouldnt be any larger");
+
+        // Test different periods
+        assertEq(getUnlockingPercentage(7 days), 2910, "should be 2910");
+        assertEq(getUnlockingPercentage(30 days), 3885, "should be 3885");
+        assertEq(getUnlockingPercentage(90 days), 5265, "should be 5265");
+        assertEq(getUnlockingPercentage(180 days), 6618, "should be 6618");
+        assertEq(getUnlockingPercentage(540 days), 10000, "should be 10000");
+    }
+
+    // Note: property based testing
+    // Property: monotonicity of getUnlockingPercentage / "Punitive high-time preference law"
+    function testGetUnlockingPercentageStrictMonotonicity(uint128 t1, uint128 t2) public pure {
+        t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
+        t2 = uint128(bound(t2, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
+
+        // Ensure `t1` is always lower than `t2`
+        if (t1 > t2) (t1, t2) = (t2, t1);
+        console2.log("using t1 t2", t1, t2);
+
+        (uint256 p1, uint256 p2) = (getUnlockingPercentage(t1), getUnlockingPercentage(t2));
+        assertLe(p1, p2, "monotonicity violated");
+    }
+
+    /// Note: golden (characteristic) test
+    function testCalculateVestUnlockFlowRatesCharacteristic() public pure {
+        uint256 amount = 1 ether;
+
+        // Test different periods
+        (int96 unlockFlowRate, int96 taxFlowRate) = calculateVestUnlockFlowRates(amount, 7 days);
+        assertEq(unlockFlowRate, 481_150_793_650, "(7 days) unlock flow rate should be 481150793650");
+        assertEq(taxFlowRate, 1_172_288_359_789, "(7 days) tax flow rate should be 481150793650");
+
+        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 30 days);
+        assertEq(unlockFlowRate, 149_884_259_258, "(30 days) unlock flow rate should be 481150793650");
+        assertEq(taxFlowRate, 235_918_209_877, "(30 days) tax flow rate should be 481150793650");
+
+        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 90 days);
+        assertEq(unlockFlowRate, 67_708_333_333, "(90 days) unlock flow rate should be 481150793650");
+        assertEq(taxFlowRate, 60_892_489_712, "(90 days) tax flow rate should be 481150793650");
+
+        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 180 days);
+        assertEq(unlockFlowRate, 42_554_012_345, "(180 days) unlock flow rate should be 481150793650");
+        assertEq(taxFlowRate, 21_746_399_177, "(180 days) tax flow rate should be 481150793650");
+
+        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 540 days);
+        assertEq(unlockFlowRate, 21_433_470_507, "(540 days) unlock flow rate should be 481150793650");
+        assertEq(taxFlowRate, 0, "(540 days) tax flow rate should be 481150793650");
+    }
+
+    // Property : lower time-preference shall result in higher flowrate
+    function testCalculateVestUnlockFlowRatesStrictMonotonicity(uint128 t1, uint128 t2) public pure {
+        uint256 amount = 1 ether;
+        uint256 minDistance = 80 minutes;
+
+        t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD - minDistance));
+        t2 = uint128(bound(t2, t1 + minDistance, _MAX_UNLOCK_PERIOD));
+
+        console2.log("using t1 t2", t1, t2);
+
+        (int96 ur1, int96 tr1) = calculateVestUnlockFlowRates(amount, t1);
+        (int96 ur2, int96 tr2) = calculateVestUnlockFlowRates(amount, t2);
+        assertGe(ur1, ur2, "unlock rate monotonicity violated");
+        assertGe(tr1, tr2, "tax rate monotonicity violated");
     }
 }
 

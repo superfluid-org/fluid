@@ -9,6 +9,7 @@ out/
 
 # Docs
 docs/
+lcov.info
 
 # Dotenv file
 .env

@@ -324,12 +324,12 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
         if (earlyEndCompensation > 0) {
             // Distribute the early end compensation to the program pool
-            program.token.distributeToPool(address(this), program.distributionPool, earlyEndCompensation);
+            program.token.distribute(address(this), program.distributionPool, earlyEndCompensation);
         }
 
         if (subsidyEarlyEndCompensation > 0) {
             // Distribute the early end compensation to the stakers pool
-            program.token.distributeToPool(address(this), TAX_DISTRIBUTION_POOL, subsidyEarlyEndCompensation);
+            program.token.distribute(address(this), TAX_DISTRIBUTION_POOL, subsidyEarlyEndCompensation);
         }
 
         // Delete the program details

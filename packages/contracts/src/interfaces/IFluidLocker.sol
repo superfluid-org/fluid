@@ -64,6 +64,9 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to unlock or stake while this operation is not yet available
     error TTE_NOT_ACTIVATED();
 
+    /// @notice Error thrown when attempting to unlock while the Tax Distribution Pool did not distribute units
+    error TAX_DISTRIBUTION_POOL_HAS_NO_UNITS();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -119,6 +122,20 @@ interface IFluidLocker {
      * @dev Only this Locker owner can call this function
      */
     function unstake() external;
+
+    /**
+     * @notice Helper function to help the Locker connect to a program pool
+     * @dev Only this Locker owner can call this function
+     * @param programId program identifier corresponding to the pool to connect to
+     */
+    function connectToPool(uint256 programId) external;
+
+    /**
+     * @notice Helper function to help the Locker disconnect from a program pool
+     * @dev Only this Locker owner can call this function
+     * @param programId program identifier corresponding to the pool to connect to
+     */
+    function disconnectFromPool(uint256 programId) external;
 
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
