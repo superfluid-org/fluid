@@ -20,10 +20,15 @@ contract FluidToken is ERC20, ERC20Permit, ERC20Votes {
 
     /**
      * @notice FLUID Token contract constructor
+     * @param name token name
+     * @param symbol token symbol
      * @param treasury pre-minted supply recipient address
      * @param totalSupply total finite supply of FLUID Tokens to be minted
      */
-    constructor(address treasury, uint256 totalSupply) ERC20("FLUID Token", "FLUID") ERC20Permit("FLUID Token") {
+    constructor(string memory name, string memory symbol, address treasury, uint256 totalSupply)
+        ERC20(name, symbol)
+        ERC20Permit(name)
+    {
         _mint(treasury, totalSupply);
     }
 
