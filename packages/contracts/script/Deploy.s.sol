@@ -22,7 +22,7 @@ import { StakingRewardController, IStakingRewardController } from "../src/Stakin
 struct DeploySettings {
     ISuperToken fluid;
     address governor;
-    address owner;
+    address deployer;
     address treasury;
     bool factoryPauseStatus;
     bool unlockStatus;
@@ -125,14 +125,14 @@ function _deployAll(DeploySettings memory settings)
     )
 {
     (stakingRewardControllerLogicAddress, stakingRewardControllerProxyAddress) =
-        _deployStakingRewardController(settings.fluid, settings.owner);
+        _deployStakingRewardController(settings.fluid, settings.deployer);
 
     ISuperfluidPool taxDistributionPool =
         StakingRewardController(stakingRewardControllerProxyAddress).taxDistributionPool();
 
     // Deploy Ecosystem Partner Program Manager
     (programManagerLogicAddress, programManagerProxyAddress) =
-        _deployFluidEPProgramManager(settings.owner, settings.treasury, taxDistributionPool);
+        _deployFluidEPProgramManager(settings.deployer, settings.treasury, taxDistributionPool);
 
     // Deploy the Fontaine Implementation and associated Beacon contract
     (fontaineLogicAddress, fontaineBeaconAddress) =
@@ -156,6 +156,10 @@ function _deployAll(DeploySettings memory settings)
 
     // Sets the FluidLockerFactory address in the ProgramManager
     FluidEPProgramManager(programManagerProxyAddress).setLockerFactory(lockerFactoryProxyAddress);
+
+    // Transfer ownership of the contracts to the governor
+    StakingRewardController(stakingRewardControllerProxyAddress).transferOwnership(settings.governor);
+    FluidEPProgramManager(programManagerProxyAddress).transferOwnership(settings.governor);
 }
 
 // forge script script/Deploy.s.sol:DeployScript --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify -vvvv
@@ -186,7 +190,7 @@ contract DeployScript is Script {
         DeploySettings memory settings = DeploySettings({
             fluid: fluid,
             governor: governor,
-            owner: deployer,
+            deployer: deployer,
             treasury: treasury,
             factoryPauseStatus: factoryPauseStatus,
             unlockStatus: unlockStatus

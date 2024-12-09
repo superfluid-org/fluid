@@ -88,7 +88,7 @@ contract SFTest is Test {
         DeploySettings memory settings = DeploySettings({
             fluid: _fluidSuperToken,
             governor: ADMIN,
-            owner: ADMIN,
+            deployer: ADMIN,
             treasury: FLUID_TREASURY,
             factoryPauseStatus: FACTORY_IS_PAUSED,
             unlockStatus: LOCKER_CAN_UNLOCK
