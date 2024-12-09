@@ -7,7 +7,7 @@ import { BridgedSuperTokenProxy, IBridgedSuperToken, IXERC20 } from "./BridgedSu
 /**
  * @title Extends BridgedSuperTokenProxy with the interface required by the Optimism (Superchain) Standard Bridge
  */
-contract OPBridgedSuperTokenProxy is BridgedSuperTokenProxy, IOptimismMintableERC20 {
+contract OPBridgedSuperToken is BridgedSuperTokenProxy, IOptimismMintableERC20 {
     address internal immutable _NATIVE_BRIDGE;
     address internal immutable _REMOTE_TOKEN;
 

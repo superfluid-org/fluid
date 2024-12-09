@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import {
-    OPBridgedSuperTokenProxy,
+    OPBridgedSuperToken,
     IOPBridgedSuperToken,
     IBridgedSuperToken,
     IOptimismMintableERC20
@@ -16,7 +16,7 @@ contract OPBridgedSuperTokenTest is BridgedSuperTokenTest {
 
     function _deployToken(address owner) internal override {
         // deploy proxy
-        OPBridgedSuperTokenProxy proxy = new OPBridgedSuperTokenProxy(_nativeBridge, _remoteToken);
+        OPBridgedSuperToken proxy = new OPBridgedSuperToken(_nativeBridge, _remoteToken);
         // initialize proxy
         proxy.initialize(sf.superTokenFactory, "Test Token", "TT", _owner, 1000);
         proxy.transferOwnership(owner);
