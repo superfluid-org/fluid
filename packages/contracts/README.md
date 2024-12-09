@@ -2,21 +2,27 @@
 
 Latest deployed contract address
 
+### ETHEREUM SEPOLIA :
+
+| Contract           | Address                                    | Explorer                                                                        |
+| ------------------ | ------------------------------------------ | ------------------------------------------------------------------------------- |
+| FluidToken (ERC20) | 0x50De94359BdCAE78674e6918519DF0220aEfD514 | https://sepolia.etherscan.io/address/0x50De94359BdCAE78674e6918519DF0220aEfD514 |
+
 ### BASE SEPOLIA :
 
 | Contract                        | Address                                    | Explorer                                                                        |
 | ------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
-| FluidToken                      | 0x3A193aC8FcaCCDa817c174D04081C105154a8441 | https://sepolia.basescan.org/address/0x3A193aC8FcaCCDa817c174D04081C105154a8441 |
-| FluidEPProgramManager (Logic)   | 0xb183b05F37027d6A17d1dC0bfbF629dd3ebe6b8C | https://sepolia.basescan.org/address/0xb183b05F37027d6A17d1dC0bfbF629dd3ebe6b8C |
-| FluidEPProgramManager (Proxy)   | 0xbDCa01AD2ae01827aEA8B323CE5457F642f9E7e1 | https://sepolia.basescan.org/address/0xbDCa01AD2ae01827aEA8B323CE5457F642f9E7e1 |
-| StakingRewardController (Logic) | 0x66EB7fF73Eb504fB0D332bAC7c2CADc16Acc1A15 | https://sepolia.basescan.org/address/0x66EB7fF73Eb504fB0D332bAC7c2CADc16Acc1A15 |
-| StakingRewardController (Proxy) | 0xef72D3cE2E917F721476966FF34880fB2A560644 | https://sepolia.basescan.org/address/0xef72D3cE2E917F721476966FF34880fB2A560644 |
-| FluidLocker (Logic)             | 0xb32D0Fe9E86607D6d81afe93A08406234AfB8cF3 | https://sepolia.basescan.org/address/0xb32D0Fe9E86607D6d81afe93A08406234AfB8cF3 |
-| FluidLocker (Beacon)            | 0xd1ac1cFb3c52c3D36886A0abd02c4892910A8919 | https://sepolia.basescan.org/address/0xd1ac1cFb3c52c3D36886A0abd02c4892910A8919 |
-| Fontaine (Logic)                | 0x12B8CF66Dc2D350558262be48553CabFe43A784e | https://sepolia.basescan.org/address/0x12B8CF66Dc2D350558262be48553CabFe43A784e |
-| Fontaine (Beacon)               | 0xA613A7Ace7f6e5447fcCCAb3dd1e3E969DEE1d31 | https://sepolia.basescan.org/address/0xA613A7Ace7f6e5447fcCCAb3dd1e3E969DEE1d31 |
-| FluidLockerFactory (Logic)      | 0x66eCdda65c94D4e84Dc3A55D64215B68c7eF870C | https://sepolia.basescan.org/address/0x66eCdda65c94D4e84Dc3A55D64215B68c7eF870C |
-| FluidLockerFactory (Proxy)      | 0x3903e080aC5c2452A8e4adbE17b80C54DF53E8C1 | https://sepolia.basescan.org/address/0x3903e080aC5c2452A8e4adbE17b80C54DF53E8C1 |
+| FluidToken (SuperToken)         | 0x8366107974417E0e611fAbc8C38BeCbE199d502a | https://sepolia.basescan.org/address/0x8366107974417E0e611fAbc8C38BeCbE199d502a |
+| FluidEPProgramManager (Logic)   | 0xf304464faAFD0F61d8048e410d75F9884696Fcc0 | https://sepolia.basescan.org/address/0xf304464faAFD0F61d8048e410d75F9884696Fcc0 |
+| FluidEPProgramManager (Proxy)   | 0x724639D7525Cb68b227E5C40399d73d9590E88Ca | https://sepolia.basescan.org/address/0x724639D7525Cb68b227E5C40399d73d9590E88Ca |
+| StakingRewardController (Logic) | 0x7dB7683D2BdB443189d9C439cB5961faD47C1789 | https://sepolia.basescan.org/address/0x7dB7683D2BdB443189d9C439cB5961faD47C1789 |
+| StakingRewardController (Proxy) | 0xAEe3b4d79917796821d3D0FE67554AD63c07242E | https://sepolia.basescan.org/address/0xAEe3b4d79917796821d3D0FE67554AD63c07242E |
+| FluidLocker (Logic)             | 0x29f88faC9464b2A356a286ED6bB52E554BD28B82 | https://sepolia.basescan.org/address/0x29f88faC9464b2A356a286ED6bB52E554BD28B82 |
+| FluidLocker (Beacon)            | 0x967DB599E3F13c1D3DBf5681dc28d9739736f7b5 | https://sepolia.basescan.org/address/0x967DB599E3F13c1D3DBf5681dc28d9739736f7b5 |
+| Fontaine (Logic)                | 0x2189FdFa41804D99a6D3BE6be01Ef0926ab54d9b | https://sepolia.basescan.org/address/0x2189FdFa41804D99a6D3BE6be01Ef0926ab54d9b |
+| Fontaine (Beacon)               | 0x1e9Ab15E663eA710241e786F5c2611E42011cfBC | https://sepolia.basescan.org/address/0x1e9Ab15E663eA710241e786F5c2611E42011cfBC |
+| FluidLockerFactory (Logic)      | 0x99B6822ce3E201F7D8B8A3e50DF3C689c90Afa79 | https://sepolia.basescan.org/address/0x99B6822ce3E201F7D8B8A3e50DF3C689c90Afa79 |
+| FluidLockerFactory (Proxy)      | 0xE7e0761ee3251EF9Ae0956b76cf42B4028Be1e8D | https://sepolia.basescan.org/address/0xE7e0761ee3251EF9Ae0956b76cf42B4028Be1e8D |
 
 ## Test Coverage :
 
@@ -78,7 +84,37 @@ $ forge snapshot
 $ anvil
 ```
 
-### Deploy
+## Deployment Procedure
+
+### Step 1 - ETH Mainnet Token Deployment
+
+```shell
+OWNER={OWNER_ADDRESS} \
+INITIAL_SUPPLY={INITIAL_SUPPLY} \
+forge script script/DeployFluidToken.s.sol:DeployL1FluidToken --ffi --rpc-url {ETH_MAINNET_RPC_URL} --broadcast -vvv
+```
+
+### Step 2 - Base Token Deployment
+
+```shell
+OWNER={OWNER_ADDRESS} \
+INITIAL_SUPPLY={INITIAL_SUPPLY} \
+REMOTE_TOKEN={REMOTE_TOKEN} \
+NATIVE_BRIDGE={NATIVE_BRIDGE} \
+SUPERTOKEN_FACTORY={SUPERTOKEN_FACTORY} \
+forge script script/DeployFluidToken.s.sol:DeployOPFluidSuperToken --ffi --rpc-url {BASE_MAINNET_RPC_URL} --broadcast -vvv
+```
+
+### Step 3 - Bridge Tokens to Base Network
+
+```shell
+OWNER={OWNER_ADDRESS} \
+INITIAL_SUPPLY={INITIAL_SUPPLY} \
+REMOTE_TOKEN={REMOTE_TOKEN} \
+NATIVE_BRIDGE={NATIVE_BRIDGE} \
+SUPERTOKEN_FACTORY={SUPERTOKEN_FACTORY} \
+forge script script/DeployFluidToken.s.sol:DeployOPFluidSuperToken --ffi --rpc-url {BASE_MAINNET_RPC_URL} --broadcast -vvv
+```
 
 To deploy the contract suite, fill in the `.env` file using `.env.example` as reference.
 The sections `Private Keys`, `RPCs`, and `Deployment Settings` must be complete to deploy.
