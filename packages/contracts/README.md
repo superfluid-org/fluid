@@ -1,3 +1,17 @@
+## Usage
+
+### Build
+
+```shell
+$ forge build
+```
+
+### Test
+
+```shell
+$ forge test
+```
+
 ## Address Registry :
 
 Latest deployed contract address
@@ -37,53 +51,6 @@ Current test coverage is as follow :
 | src/Fontaine.sol                | 100.00% (20/20) | 95.83% (23/24)   | 75.00% (3/4)    | 100.00% (3/3)   |
 | src/StakingRewardController.sol | 93.75% (15/16)  | 94.44% (17/18)   | 100.00% (3/3)   | 87.50% (7/8)    |
 
-## Foundry
-
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
-
-Foundry consists of:
-
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
 ## Deployment Procedure
 
 ### Step 1 - ETH Mainnet Token Deployment
@@ -94,7 +61,13 @@ INITIAL_SUPPLY={INITIAL_SUPPLY} \
 forge script script/DeployFluidToken.s.sol:DeployL1FluidToken --ffi --rpc-url {ETH_MAINNET_RPC_URL} --broadcast -vvv
 ```
 
-### Step 2 - Base Token Deployment
+### Step 2 - Transfer 650M $FLUID to Foundation Multisig (L1)
+
+```shell
+cast send --rpc-url {ETH_MAINNET_RPC_URL} {L1_FLUID_TOKEN_ADDRESS} "transfer(address,uint256)" {FOUNDATION_MULTISIG_ADDRESS} 650000000000000000000000000 --private-key $PRIVATE_KEY
+```
+
+### Step 3 - Base Token Deployment
 
 ```shell
 OWNER={OWNER_ADDRESS} \
@@ -105,19 +78,36 @@ SUPERTOKEN_FACTORY={SUPERTOKEN_FACTORY} \
 forge script script/DeployFluidToken.s.sol:DeployOPFluidSuperToken --ffi --rpc-url {BASE_MAINNET_RPC_URL} --broadcast -vvv
 ```
 
-### Step 3 - Bridge Tokens to Base Network
+### Step 4 - Bridge 350M $FLUID to Base ($FLUID on L1 -> $FLUIDx on Base L2)
+
+#### Approve the bridge contract
 
 ```shell
-OWNER={OWNER_ADDRESS} \
-INITIAL_SUPPLY={INITIAL_SUPPLY} \
-REMOTE_TOKEN={REMOTE_TOKEN} \
-NATIVE_BRIDGE={NATIVE_BRIDGE} \
-SUPERTOKEN_FACTORY={SUPERTOKEN_FACTORY} \
-forge script script/DeployFluidToken.s.sol:DeployOPFluidSuperToken --ffi --rpc-url {BASE_MAINNET_RPC_URL} --broadcast -vvv
+cast send --rpc-url $ETH_MAINNET_RPC_URL {L1_FLUID_TOKEN_ADDRESS} "approve(address,uint256)" {L1_BRIDGE_ADDRESS} 350000000000000000000000000 --private-key $PRIVATE_KEY
 ```
 
-To deploy the contract suite, fill in the `.env` file using `.env.example` as reference.
-The sections `Private Keys`, `RPCs`, and `Deployment Settings` must be complete to deploy.
+#### Bridge the tokens
+
+```shell
+cast send --rpc-url $ETH_MAINNET_RPC_URL {L1_BRIDGE_ADDRESS} "bridgeERC20(address,address,uint256,uint32,bytes)" {L1_FLUID_TOKEN_ADDRESS} {L2_FLUID_TOKEN_ADDRESS} 350000000000000000000000000 10000000 0x --private-key $PRIVATE_KEY
+```
+
+### Step 5 - Transfer 350M $FLUID to Community Multisig (L2)
+
+```shell
+cast send --rpc-url $BASE_MAINNET_RPC_URL {L2_FLUID_TOKEN_ADDRESS} "transfer(address,uint256)" {COMMUNITY_MULTISIG_ADDRESS} 350000000000000000000000000 --private-key $PRIVATE_KEY
+```
+
+### Step 6 - Locker Contract System Deployment
+
+```shell
+FLUID_ADDRESS={L2_FLUID_TOKEN_ADDRESS} \
+GOVERNOR_ADDRESS={COMMUNITY_MULTISIG_ADDRESS} \
+TREASURY_ADDRESS={COMMUNITY_MULTISIG_ADDRESS} \
+PAUSE_FACTORY_LOCKER_CREATION=false \
+FLUID_UNLOCK_STATUS=true \
+forge script script/Deploy.s.sol:DeployScript --ffi --rpc-url $BASE_MAINNET_RPC_URL --broadcast -vvv
+```
 
 ### References
 
@@ -129,8 +119,4 @@ TREASURY_ADDRESS : Treasury address holding the SuperToken to be distributed
 STACK_SIGNER_ADDRESS : Signer address to be verified in order to grant units
 PAUSE_FACTORY_LOCKER_CREATION : Whether the Factory allows Lockers to be created or not
 FLUID_UNLOCK_STATUS : Whether the Lockers allow the SuperToken to be withdrawn or not
-```
-
-```shell
-$ forge script script/Deploy.s.sol:DeployScript --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast
 ```
