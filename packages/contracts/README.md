@@ -56,12 +56,14 @@ Current test coverage is as follow :
 ### Step 1 - ETH Mainnet Token Deployment
 
 ```shell
-OWNER={OWNER_ADDRESS} \
-INITIAL_SUPPLY={INITIAL_SUPPLY} \
+OWNER={DEPLOYER_ADDRESS} \
+INITIAL_SUPPLY=1000000000000000000000000000 \
 forge script script/DeployFluidToken.s.sol:DeployL1FluidToken --ffi --rpc-url {ETH_MAINNET_RPC_URL} --broadcast -vvv
 ```
 
 ### Step 2 - Transfer 650M $FLUID to Foundation Multisig (L1)
+
+> NOTE : `transfer(address,uint256) args : sender, amount`
 
 ```shell
 cast send --rpc-url {ETH_MAINNET_RPC_URL} {L1_FLUID_TOKEN_ADDRESS} "transfer(address,uint256)" {FOUNDATION_MULTISIG_ADDRESS} 650000000000000000000000000 --private-key $PRIVATE_KEY
@@ -70,11 +72,11 @@ cast send --rpc-url {ETH_MAINNET_RPC_URL} {L1_FLUID_TOKEN_ADDRESS} "transfer(add
 ### Step 3 - Base Token Deployment
 
 ```shell
-OWNER={OWNER_ADDRESS} \
-INITIAL_SUPPLY={INITIAL_SUPPLY} \
-REMOTE_TOKEN={REMOTE_TOKEN} \
+OWNER={FOUNDATION_MULTISIG_ADDRESS} \
+INITIAL_SUPPLY=0 \
+REMOTE_TOKEN={L1_FLUID_TOKEN_ADDRESS} \
 NATIVE_BRIDGE={NATIVE_BRIDGE} \
-SUPERTOKEN_FACTORY={SUPERTOKEN_FACTORY} \
+SUPERTOKEN_FACTORY={BASE_MAINNET_SUPERTOKEN_FACTORY} \
 forge script script/DeployFluidToken.s.sol:DeployOPFluidSuperToken --ffi --rpc-url {BASE_MAINNET_RPC_URL} --broadcast -vvv
 ```
 
@@ -82,17 +84,23 @@ forge script script/DeployFluidToken.s.sol:DeployOPFluidSuperToken --ffi --rpc-u
 
 #### Approve the bridge contract
 
+> NOTE : `approve(address,uint256) args : spender, allowance`
+
 ```shell
 cast send --rpc-url $ETH_MAINNET_RPC_URL {L1_FLUID_TOKEN_ADDRESS} "approve(address,uint256)" {L1_BRIDGE_ADDRESS} 350000000000000000000000000 --private-key $PRIVATE_KEY
 ```
 
 #### Bridge the tokens
 
+> NOTE : `bridgeERC20(address,address,uint256,uint32,bytes) args : tokenAddressL1, tokenAddressL2, amount, gasLimit, data`
+
 ```shell
 cast send --rpc-url $ETH_MAINNET_RPC_URL {L1_BRIDGE_ADDRESS} "bridgeERC20(address,address,uint256,uint32,bytes)" {L1_FLUID_TOKEN_ADDRESS} {L2_FLUID_TOKEN_ADDRESS} 350000000000000000000000000 10000000 0x --private-key $PRIVATE_KEY
 ```
 
 ### Step 5 - Transfer 350M $FLUID to Community Multisig (L2)
+
+> NOTE : `transfer(address,uint256) args : sender, amount`
 
 ```shell
 cast send --rpc-url $BASE_MAINNET_RPC_URL {L2_FLUID_TOKEN_ADDRESS} "transfer(address,uint256)" {COMMUNITY_MULTISIG_ADDRESS} 350000000000000000000000000 --private-key $PRIVATE_KEY
