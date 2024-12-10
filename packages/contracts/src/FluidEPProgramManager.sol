@@ -324,12 +324,12 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
         if (earlyEndCompensation > 0) {
             // Distribute the early end compensation to the program pool
-            program.token.distributeToPool(address(this), program.distributionPool, earlyEndCompensation);
+            program.token.distribute(address(this), program.distributionPool, earlyEndCompensation);
         }
 
         if (subsidyEarlyEndCompensation > 0) {
             // Distribute the early end compensation to the stakers pool
-            program.token.distributeToPool(address(this), TAX_DISTRIBUTION_POOL, subsidyEarlyEndCompensation);
+            program.token.distribute(address(this), TAX_DISTRIBUTION_POOL, subsidyEarlyEndCompensation);
         }
 
         // Delete the program details
@@ -388,6 +388,21 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
      */
     function upgradeTo(address newImplementation, bytes calldata data) external onlyOwner {
         ERC1967Utils.upgradeToAndCall(newImplementation, data);
+    }
+
+    //   _    ___                 ______                 __  _
+    //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
+    //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //  | |/ / /  __/ |/ |/ /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /**
+     * @notice Returns the given `programId` program details
+     * @param programId program identifier to query
+     * @return details the program details associated to the given `programId`
+     */
+    function getProgramDetails(uint256 programId) external view returns (FluidProgramDetails memory details) {
+        details = _fluidProgramDetails[programId];
     }
 
     //      ____      __                        __   ______                 __  _

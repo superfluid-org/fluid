@@ -1,51 +1,3 @@
-## Address Registry :
-
-Latest deployed contract address
-
-### BASE SEPOLIA :
-
-| Contract                        | Address                                    | Explorer                                                                        |
-| ------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
-| FluidToken                      | 0x3A193aC8FcaCCDa817c174D04081C105154a8441 | https://sepolia.basescan.org/address/0x3A193aC8FcaCCDa817c174D04081C105154a8441 |
-| FluidEPProgramManager (Logic)   | 0xb183b05F37027d6A17d1dC0bfbF629dd3ebe6b8C | https://sepolia.basescan.org/address/0xb183b05F37027d6A17d1dC0bfbF629dd3ebe6b8C |
-| FluidEPProgramManager (Proxy)   | 0xbDCa01AD2ae01827aEA8B323CE5457F642f9E7e1 | https://sepolia.basescan.org/address/0xbDCa01AD2ae01827aEA8B323CE5457F642f9E7e1 |
-| StakingRewardController (Logic) | 0x66EB7fF73Eb504fB0D332bAC7c2CADc16Acc1A15 | https://sepolia.basescan.org/address/0x66EB7fF73Eb504fB0D332bAC7c2CADc16Acc1A15 |
-| StakingRewardController (Proxy) | 0xef72D3cE2E917F721476966FF34880fB2A560644 | https://sepolia.basescan.org/address/0xef72D3cE2E917F721476966FF34880fB2A560644 |
-| FluidLocker (Logic)             | 0xb32D0Fe9E86607D6d81afe93A08406234AfB8cF3 | https://sepolia.basescan.org/address/0xb32D0Fe9E86607D6d81afe93A08406234AfB8cF3 |
-| FluidLocker (Beacon)            | 0xd1ac1cFb3c52c3D36886A0abd02c4892910A8919 | https://sepolia.basescan.org/address/0xd1ac1cFb3c52c3D36886A0abd02c4892910A8919 |
-| Fontaine (Logic)                | 0x12B8CF66Dc2D350558262be48553CabFe43A784e | https://sepolia.basescan.org/address/0x12B8CF66Dc2D350558262be48553CabFe43A784e |
-| Fontaine (Beacon)               | 0xA613A7Ace7f6e5447fcCCAb3dd1e3E969DEE1d31 | https://sepolia.basescan.org/address/0xA613A7Ace7f6e5447fcCCAb3dd1e3E969DEE1d31 |
-| FluidLockerFactory (Logic)      | 0x66eCdda65c94D4e84Dc3A55D64215B68c7eF870C | https://sepolia.basescan.org/address/0x66eCdda65c94D4e84Dc3A55D64215B68c7eF870C |
-| FluidLockerFactory (Proxy)      | 0x3903e080aC5c2452A8e4adbE17b80C54DF53E8C1 | https://sepolia.basescan.org/address/0x3903e080aC5c2452A8e4adbE17b80C54DF53E8C1 |
-
-## Test Coverage :
-
-Current test coverage is as follow :
-
-| File                            | % Lines         | % Statements    | % Branches      | % Funcs         |
-| ------------------------------- | --------------- | --------------- | --------------- | --------------- |
-| src/EPProgramManager.sol        | 100.00% (42/42) | 100.00% (56/56) | 100.00% (14/14) | 100.00% (13/13) |
-| src/FluidEPProgramManager.sol   | 98.72% (77/78)  | 96.97% (96/99)  | 90.00% (18/20)  | 92.86% (13/14)  |
-| src/FluidLocker.sol             | 100.00% (75/75) | 97.92% (94/96)  | 84.62% (11/13)  | 100.00% (21/21) |
-| src/FluidLockerFactory.sol      | 85.00% (17/20)  | 80.95% (17/21)  | 0.00% (0/2)     | 81.82% (9/11)   |
-| src/Fontaine.sol                | 100.00% (6/6)   | 85.71% (6/7)    | 0.00% (0/1)     | 100.00% (2/2)   |
-| src/StakingRewardController.sol | 92.86% (13/14)  | 93.75% (15/16)  | 100.00% (2/2)   | 87.50% (7/8)    |
-
-## Foundry
-
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
-
-Foundry consists of:
-
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
 ## Usage
 
 ### Build
@@ -60,28 +12,110 @@ $ forge build
 $ forge test
 ```
 
-### Format
+## Address Registry :
+
+Latest deployed contract address
+
+### ETHEREUM SEPOLIA :
+
+| Contract           | Address                                    | Explorer                                                                        |
+| ------------------ | ------------------------------------------ | ------------------------------------------------------------------------------- |
+| FluidToken (ERC20) | 0x50De94359BdCAE78674e6918519DF0220aEfD514 | https://sepolia.etherscan.io/address/0x50De94359BdCAE78674e6918519DF0220aEfD514 |
+
+### BASE SEPOLIA :
+
+| Contract                        | Address                                    | Explorer                                                                        |
+| ------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
+| FluidToken (SuperToken)         | 0x8366107974417E0e611fAbc8C38BeCbE199d502a | https://sepolia.basescan.org/address/0x8366107974417E0e611fAbc8C38BeCbE199d502a |
+| FluidEPProgramManager (Logic)   | 0xf304464faAFD0F61d8048e410d75F9884696Fcc0 | https://sepolia.basescan.org/address/0xf304464faAFD0F61d8048e410d75F9884696Fcc0 |
+| FluidEPProgramManager (Proxy)   | 0x724639D7525Cb68b227E5C40399d73d9590E88Ca | https://sepolia.basescan.org/address/0x724639D7525Cb68b227E5C40399d73d9590E88Ca |
+| StakingRewardController (Logic) | 0x7dB7683D2BdB443189d9C439cB5961faD47C1789 | https://sepolia.basescan.org/address/0x7dB7683D2BdB443189d9C439cB5961faD47C1789 |
+| StakingRewardController (Proxy) | 0xAEe3b4d79917796821d3D0FE67554AD63c07242E | https://sepolia.basescan.org/address/0xAEe3b4d79917796821d3D0FE67554AD63c07242E |
+| FluidLocker (Logic)             | 0x29f88faC9464b2A356a286ED6bB52E554BD28B82 | https://sepolia.basescan.org/address/0x29f88faC9464b2A356a286ED6bB52E554BD28B82 |
+| FluidLocker (Beacon)            | 0x967DB599E3F13c1D3DBf5681dc28d9739736f7b5 | https://sepolia.basescan.org/address/0x967DB599E3F13c1D3DBf5681dc28d9739736f7b5 |
+| Fontaine (Logic)                | 0x2189FdFa41804D99a6D3BE6be01Ef0926ab54d9b | https://sepolia.basescan.org/address/0x2189FdFa41804D99a6D3BE6be01Ef0926ab54d9b |
+| Fontaine (Beacon)               | 0x1e9Ab15E663eA710241e786F5c2611E42011cfBC | https://sepolia.basescan.org/address/0x1e9Ab15E663eA710241e786F5c2611E42011cfBC |
+| FluidLockerFactory (Logic)      | 0x99B6822ce3E201F7D8B8A3e50DF3C689c90Afa79 | https://sepolia.basescan.org/address/0x99B6822ce3E201F7D8B8A3e50DF3C689c90Afa79 |
+| FluidLockerFactory (Proxy)      | 0xE7e0761ee3251EF9Ae0956b76cf42B4028Be1e8D | https://sepolia.basescan.org/address/0xE7e0761ee3251EF9Ae0956b76cf42B4028Be1e8D |
+
+## Test Coverage :
+
+Current test coverage is as follow :
+
+| File                            | % Lines         | % Statements     | % Branches      | % Funcs         |
+| ------------------------------- | --------------- | ---------------- | --------------- | --------------- |
+| src/EPProgramManager.sol        | 100.00% (42/42) | 100.00% (56/56)  | 100.00% (14/14) | 100.00% (13/13) |
+| src/FluidEPProgramManager.sol   | 98.72% (77/78)  | 98.99% (98/99)   | 100.00% (20/20) | 92.86% (13/14)  |
+| src/FluidLocker.sol             | 100.00% (80/80) | 98.06% (101/103) | 86.67% (13/15)  | 100.00% (22/22) |
+| src/FluidLockerFactory.sol      | 85.00% (17/20)  | 80.95% (17/21)   | 0.00% (0/2)     | 81.82% (9/11)   |
+| src/Fontaine.sol                | 100.00% (20/20) | 95.83% (23/24)   | 75.00% (3/4)    | 100.00% (3/3)   |
+| src/StakingRewardController.sol | 93.75% (15/16)  | 94.44% (17/18)   | 100.00% (3/3)   | 87.50% (7/8)    |
+
+## Deployment Procedure
+
+### Step 1 - ETH Mainnet Token Deployment
 
 ```shell
-$ forge fmt
+OWNER={DEPLOYER_ADDRESS} \
+INITIAL_SUPPLY=1000000000000000000000000000 \
+forge script script/DeployFluidToken.s.sol:DeployL1FluidToken --ffi --rpc-url {ETH_MAINNET_RPC_URL} --broadcast -vvv
 ```
 
-### Gas Snapshots
+### Step 2 - Transfer 650M $FLUID to Foundation Multisig (L1)
+
+> NOTE : `transfer(address,uint256) args : sender, amount`
 
 ```shell
-$ forge snapshot
+cast send --rpc-url {ETH_MAINNET_RPC_URL} {L1_FLUID_TOKEN_ADDRESS} "transfer(address,uint256)" {FOUNDATION_MULTISIG_ADDRESS} 650000000000000000000000000 --private-key $PRIVATE_KEY
 ```
 
-### Anvil
+### Step 3 - Base Token Deployment
 
 ```shell
-$ anvil
+OWNER={FOUNDATION_MULTISIG_ADDRESS} \
+INITIAL_SUPPLY=0 \
+REMOTE_TOKEN={L1_FLUID_TOKEN_ADDRESS} \
+NATIVE_BRIDGE={NATIVE_BRIDGE} \
+SUPERTOKEN_FACTORY={BASE_MAINNET_SUPERTOKEN_FACTORY} \
+forge script script/DeployFluidToken.s.sol:DeployOPFluidSuperToken --ffi --rpc-url {BASE_MAINNET_RPC_URL} --broadcast -vvv
 ```
 
-### Deploy
+### Step 4 - Bridge 350M $FLUID to Base ($FLUID on L1 -> $FLUIDx on Base L2)
 
-To deploy the contract suite, fill in the `.env` file using `.env.example` as reference.
-The sections `Private Keys`, `RPCs`, and `Deployment Settings` must be complete to deploy.
+#### Approve the bridge contract
+
+> NOTE : `approve(address,uint256) args : spender, allowance`
+
+```shell
+cast send --rpc-url $ETH_MAINNET_RPC_URL {L1_FLUID_TOKEN_ADDRESS} "approve(address,uint256)" {L1_BRIDGE_ADDRESS} 350000000000000000000000000 --private-key $PRIVATE_KEY
+```
+
+#### Bridge the tokens
+
+> NOTE : `bridgeERC20(address,address,uint256,uint32,bytes) args : tokenAddressL1, tokenAddressL2, amount, gasLimit, data`
+
+```shell
+cast send --rpc-url $ETH_MAINNET_RPC_URL {L1_BRIDGE_ADDRESS} "bridgeERC20(address,address,uint256,uint32,bytes)" {L1_FLUID_TOKEN_ADDRESS} {L2_FLUID_TOKEN_ADDRESS} 350000000000000000000000000 10000000 0x --private-key $PRIVATE_KEY
+```
+
+### Step 5 - Transfer 350M $FLUID to Community Multisig (L2)
+
+> NOTE : `transfer(address,uint256) args : sender, amount`
+
+```shell
+cast send --rpc-url $BASE_MAINNET_RPC_URL {L2_FLUID_TOKEN_ADDRESS} "transfer(address,uint256)" {COMMUNITY_MULTISIG_ADDRESS} 350000000000000000000000000 --private-key $PRIVATE_KEY
+```
+
+### Step 6 - Locker Contract System Deployment
+
+```shell
+FLUID_ADDRESS={L2_FLUID_TOKEN_ADDRESS} \
+GOVERNOR_ADDRESS={COMMUNITY_MULTISIG_ADDRESS} \
+TREASURY_ADDRESS={COMMUNITY_MULTISIG_ADDRESS} \
+PAUSE_FACTORY_LOCKER_CREATION=false \
+FLUID_UNLOCK_STATUS=true \
+forge script script/Deploy.s.sol:DeployScript --ffi --rpc-url $BASE_MAINNET_RPC_URL --broadcast -vvv
+```
 
 ### References
 
@@ -93,8 +127,4 @@ TREASURY_ADDRESS : Treasury address holding the SuperToken to be distributed
 STACK_SIGNER_ADDRESS : Signer address to be verified in order to grant units
 PAUSE_FACTORY_LOCKER_CREATION : Whether the Factory allows Lockers to be created or not
 FLUID_UNLOCK_STATUS : Whether the Lockers allow the SuperToken to be withdrawn or not
-```
-
-```shell
-$ forge script script/Deploy.s.sol:DeployScript --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast
 ```

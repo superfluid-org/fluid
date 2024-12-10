@@ -23,6 +23,9 @@ interface IFontaine {
     /// @notice Error thrown when attempting to unlock to a SuperApp
     error CANNOT_UNLOCK_TO_SUPERAPP();
 
+    /// @notice Error thrown when attempting to terminate the unlock too early
+    error TOO_EARLY_TO_TERMINATE_UNLOCK();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -35,6 +38,13 @@ interface IFontaine {
      * @param unlockRecipient recipient account address
      * @param unlockFlowRate FLUID flow rate from this contract to the locker owner
      * @param taxFlowRate FLUID flow rate from this contract to the tax distribution GDA pool
+     * @param unlockPeriod the desired unlocking period
      */
-    function initialize(address unlockRecipient, int96 unlockFlowRate, int96 taxFlowRate) external;
+    function initialize(address unlockRecipient, int96 unlockFlowRate, int96 taxFlowRate, uint128 unlockPeriod)
+        external;
+
+    /**
+     * @notice Terminate the unlocking flows
+     */
+    function terminateUnlock() external;
 }

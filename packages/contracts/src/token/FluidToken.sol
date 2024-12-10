@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.23;
+
+/* Openzeppelin Contracts */
+import { ERC20 } from "@openzeppelin-v5/contracts/token/ERC20/ERC20.sol";
+import { ERC20Permit, Nonces } from "@openzeppelin-v5/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import { ERC20Votes } from "@openzeppelin-v5/contracts/token/ERC20/extensions/ERC20Votes.sol";
+
+/**
+ * @title Fluid Token Contract
+ * @author Superfluid
+ * @notice ERC20 $FLUID Token contract
+ */
+contract FluidToken is ERC20, ERC20Permit, ERC20Votes {
+    //     ______                 __                  __
+    //    / ____/___  ____  _____/ /________  _______/ /_____  _____
+    //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
+    //  / /___/ /_/ / / / (__  ) /_/ /  / /_/ / /__/ /_/ /_/ / /
+    //  \____/\____/_/ /_/____/\__/_/   \__,_/\___/\__/\____/_/
+
+    /**
+     * @notice FLUID Token contract constructor
+     * @param name token name
+     * @param symbol token symbol
+     * @param treasury pre-minted supply recipient address
+     * @param totalSupply total finite supply of FLUID Tokens to be minted
+     */
+    constructor(string memory name, string memory symbol, address treasury, uint256 totalSupply)
+        ERC20(name, symbol)
+        ERC20Permit(name)
+    {
+        _mint(treasury, totalSupply);
+    }
+
+    //   _    ___                 ______                 __  _
+    //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
+    //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //  | |/ / /  __/ |/ |/ /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /// @inheritdoc ERC20Permit
+    function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
+        return super.nonces(owner);
+    }
+
+    //      ____      __                        __   ______                 __  _
+    //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
+    //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /// @inheritdoc ERC20
+    function _update(address from, address to, uint256 value) internal override(ERC20, ERC20Votes) {
+        super._update(from, to, value);
+    }
+}

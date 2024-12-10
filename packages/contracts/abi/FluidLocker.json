@@ -171,6 +171,32 @@
   },
   {
     "type": "function",
+    "name": "connectToPool",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "disconnectFromPool",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "fontaineCount",
     "inputs": [],
     "outputs": [
@@ -585,6 +611,11 @@
         "internalType": "int256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "TAX_DISTRIBUTION_POOL_HAS_NO_UNITS",
+    "inputs": []
   },
   {
     "type": "error",

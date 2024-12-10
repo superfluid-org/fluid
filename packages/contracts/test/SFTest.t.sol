@@ -8,7 +8,7 @@ import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 import { SuperfluidFrameworkDeployer } from
-    "@superfluid-finance/ethereum-contracts/contracts/utils/SuperfluidFrameworkDeployer.sol";
+    "@superfluid-finance/ethereum-contracts/contracts/utils/SuperfluidFrameworkDeployer.t.sol";
 import { ERC1820RegistryCompiled } from
     "@superfluid-finance/ethereum-contracts/contracts/libs/ERC1820RegistryCompiled.sol";
 import { ISuperfluidPool } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
@@ -88,7 +88,7 @@ contract SFTest is Test {
         DeploySettings memory settings = DeploySettings({
             fluid: _fluidSuperToken,
             governor: ADMIN,
-            owner: ADMIN,
+            deployer: ADMIN,
             treasury: FLUID_TREASURY,
             factoryPauseStatus: FACTORY_IS_PAUSED,
             unlockStatus: LOCKER_CAN_UNLOCK

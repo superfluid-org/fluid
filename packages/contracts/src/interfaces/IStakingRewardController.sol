@@ -46,6 +46,9 @@ interface IStakingRewardController {
     /// @notice Error thrown when the caller is not the Program Manager contract
     error NOT_PROGRAM_MANAGER();
 
+    /// @notice Error thrown when passing an invalid parameter
+    error INVALID_PARAMETER();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
