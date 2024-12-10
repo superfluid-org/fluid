@@ -1,27 +1,30 @@
 #!/bin/bash
 
-chains=(84532)
+chains=(84532 11155111)
 
 # Loop over each chainID
 for chain in ${chains[@]}; do
+  input_files=("broadcast/Deploy.s.sol/$chain/run-latest.json" "broadcast/DeployFluidToken.s.sol/$chain/run-latest.json")
 
   output_folder="abi/"
-  input_file="broadcast/Deploy.s.sol/$chain/run-latest.json"
 
   # Create the output folder if it does not exist
   mkdir -p "$output_folder"
 
-  # Extract contract names and addresses using jq
-  contracts=$(jq -c '.transactions[] | {name: .contractName}' "$input_file")
+  # Loop through each input file
+  for input_file in "${input_files[@]}"; do
+    # Extract contract names and addresses using jq
+    contracts=$(jq -c '.transactions[] | {name: .contractName}' "$input_file")
 
-  # Loop over each contract and create a JSON file with the contract address
-  for contract in $contracts; do
-    name=$(echo "$contract" | jq -r '.name')
-    contract_json_file="out/$name.sol/$name.json"
+    # Loop over each contract and create a JSON file with the contract address
+    for contract in $contracts; do
+      name=$(echo "$contract" | jq -r '.name')
+      contract_json_file="out/$name.sol/$name.json"
 
-    abi=$(jq -r '.abi' "$contract_json_file")
+      abi=$(jq -r '.abi' "$contract_json_file")
 
-    echo "$abi" > "$output_folder/${name}.json"
+      echo "$abi" > "$output_folder/${name}.json"
+    done
   done
 
   echo "[DONE]: ABI extracted to 'packages/contracts/abi' directory."

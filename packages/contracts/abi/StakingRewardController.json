@@ -302,6 +302,11 @@
   },
   {
     "type": "error",
+    "name": "INVALID_PARAMETER",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidInitialization",
     "inputs": []
   },

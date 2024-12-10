@@ -17,6 +17,19 @@
   },
   {
     "type": "function",
+    "name": "EARLY_END",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "FLUID",
     "inputs": [],
     "outputs": [
@@ -43,6 +56,19 @@
   },
   {
     "type": "function",
+    "name": "endDate",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint128",
+        "internalType": "uint128"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "initialize",
     "inputs": [
       {
@@ -51,18 +77,69 @@
         "internalType": "address"
       },
       {
-        "name": "unlockFlowRate",
+        "name": "targetUnlockFlowRate",
         "type": "int96",
         "internalType": "int96"
       },
       {
-        "name": "taxFlowRate",
+        "name": "targetTaxFlowRate",
         "type": "int96",
         "internalType": "int96"
+      },
+      {
+        "name": "unlockPeriod",
+        "type": "uint128",
+        "internalType": "uint128"
       }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "recipient",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "taxFlowRate",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint96",
+        "internalType": "uint96"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "terminateUnlock",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "unlockFlowRate",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint96",
+        "internalType": "uint96"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "event",
@@ -84,6 +161,11 @@
   },
   {
     "type": "error",
+    "name": "CFA_INVALID_FLOW_RATE",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidInitialization",
     "inputs": []
   },
@@ -100,6 +182,11 @@
   {
     "type": "error",
     "name": "NotInitializing",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TOO_EARLY_TO_TERMINATE_UNLOCK",
     "inputs": []
   }
 ]
