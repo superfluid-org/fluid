@@ -98,11 +98,11 @@ contract SFTest is Test {
         vm.startPrank(ADMIN);
 
         (
-            address programManagerLogicAddress,
+            , /* address programManagerLogicAddress */
             address programManagerProxyAddress,
-            address stakingRewardControllerLogicAddress,
+            , /* address stakingRewardControllerLogicAddress */
             address stakingRewardControllerProxyAddress,
-            address lockerFactoryLogicAddress,
+            , /* address lockerFactoryLogicAddress */
             address lockerFactoryProxyAddress,
             address lockerLogicAddress,
             address lockerBeaconAddress,
