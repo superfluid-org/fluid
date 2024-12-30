@@ -480,12 +480,24 @@ contract FluidEPProgramManagerTest is SFTest {
         _fundingAmount = bound(_fundingAmount, 100_000e18, 100_000_000e18);
         uint96 signerPkey = 69_420;
 
+        vm.prank(FLUID_TREASURY);
+        _fluid.approve(address(_programManager), _fundingAmount);
+
+        vm.prank(ADMIN);
+        vm.expectRevert(IEPProgramManager.PROGRAM_NOT_FOUND.selector);
+        _programManager.startFunding(_programId, _fundingAmount);
+
         ISuperfluidPool pool = _helperCreateProgram(_programId, ADMIN, vm.addr(signerPkey));
-        _helperGrantUnitsToAlice(_programId, 1, signerPkey);
         _helperBobStaking();
 
         vm.prank(FLUID_TREASURY);
         _fluid.approve(address(_programManager), _fundingAmount);
+
+        vm.prank(ADMIN);
+        vm.expectRevert(FluidEPProgramManager.POOL_HAS_NO_UNITS.selector);
+        _programManager.startFunding(_programId, _fundingAmount);
+
+        _helperGrantUnitsToAlice(_programId, 1, signerPkey);
 
         vm.prank(ADMIN);
         _programManager.startFunding(_programId, _fundingAmount);
@@ -565,9 +577,8 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.prank(ADMIN);
         _programManager.setSubsidyRate(subsidyRate);
 
-        ISuperfluidPool pool1 = _helperCreateProgram(1, ADMIN, vm.addr(signerPkey));
-        ISuperfluidPool pool2 = _helperCreateProgram(2, ADMIN, vm.addr(signerPkey));
-
+        _helperCreateProgram(1, ADMIN, vm.addr(signerPkey));
+        _helperCreateProgram(2, ADMIN, vm.addr(signerPkey));
         _helperGrantUnitsToAlice(1, 1, signerPkey);
         _helperGrantUnitsToAlice(2, 1, signerPkey);
         _helperBobStaking();
@@ -575,11 +586,9 @@ contract FluidEPProgramManagerTest is SFTest {
 
         // Calculate the funding and subsidy amount
         uint256 subsidyAmount = (fundingAmount * subsidyRate) / 10_000;
-        uint256 programAmount = fundingAmount - subsidyAmount;
 
         // Calculate the funding and subsidy flow rates
         int96 requestedSubsidyFlowRate = int256(subsidyAmount / PROGRAM_DURATION).toInt96();
-        int96 requestedProgramFlowRate = int256(programAmount / PROGRAM_DURATION).toInt96();
 
         (, int96 requestedSubsidyFlowRateBeforeNewFunding) = _fluid.estimateFlowDistributionActualFlowRate(
             address(_programManager), _programManager.TAX_DISTRIBUTION_POOL(), requestedSubsidyFlowRate
@@ -619,7 +628,7 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.prank(ADMIN);
         _programManager.setSubsidyRate(subsidyRate);
 
-        ISuperfluidPool pool1 = _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
+        _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
         uint256 beforeEarlyEnd = block.timestamp + invalidDuration;
         uint256 earlyEnd = block.timestamp + earlyEndDuration;
 
@@ -669,7 +678,9 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
         _programManager.stopFunding(programId);
 
-        assertEq(_programManager.TAX_DISTRIBUTION_POOL().getTotalFlowRate(), 0, "Tax Distribution Pool flow Rate should be 0");
+        assertEq(
+            _programManager.TAX_DISTRIBUTION_POOL().getTotalFlowRate(), 0, "Tax Distribution Pool flow Rate should be 0"
+        );
         assertEq(programPool.getTotalFlowRate(), 0, "Program Pool flow rate should be 0");
         /// TODO : add asserts
     }
