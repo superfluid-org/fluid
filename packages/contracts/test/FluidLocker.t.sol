@@ -68,7 +68,14 @@ contract FluidLockerTest is SFTest {
         bytes memory signature = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce);
 
         vm.prank(ALICE);
-        aliceLocker.claim(PROGRAM_0, units, nonce, signature);
+        aliceLocker.claim(
+            IFluidLocker.ClaimParams({
+                programId: uint96(PROGRAM_0),
+                totalProgramUnits: uint96(units),
+                nonce: uint64(nonce),
+                stackSignature: signature
+            })
+        );
 
         assertEq(programPools[0].getUnits(address(aliceLocker)), units, "units not updated");
         assertEq(aliceLocker.getUnitsPerProgram(PROGRAM_0), units, "getUnitsPerProgram invalid");
@@ -89,6 +96,7 @@ contract FluidLockerTest is SFTest {
         uint256[] memory distributionAmounts = new uint256[](3);
         uint256[] memory distributionPeriods = new uint256[](3);
 
+        IFluidLocker.ClaimParams[] memory params = new IFluidLocker.ClaimParams[](3);
         for (uint8 i = 0; i < 3; ++i) {
             programIds[i] = i + 1;
             newUnits[i] = units;
@@ -96,10 +104,17 @@ contract FluidLockerTest is SFTest {
             signatures[i] = _helperGenerateSignature(signerPkey, ALICE, units, programIds[i], nonces[i]);
             distributionAmounts[i] = 1_000_000e18;
             distributionPeriods[i] = _MAX_UNLOCK_PERIOD;
+
+            params[i] = IFluidLocker.ClaimParams({
+                programId: uint96(programIds[i]),
+                totalProgramUnits: uint96(newUnits[i]),
+                nonce: uint64(nonces[i]),
+                stackSignature: signatures[i]
+            });
         }
 
         vm.prank(ALICE);
-        aliceLocker.claim(programIds, newUnits, nonces, signatures);
+        aliceLocker.claim(params);
 
         int96[] memory distributionFlowrates =
             _helperDistributeToProgramPool(programIds, distributionAmounts, distributionPeriods);
@@ -154,7 +169,14 @@ contract FluidLockerTest is SFTest {
         bytes memory signature = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce);
 
         vm.prank(ALICE);
-        aliceLocker.claim(PROGRAM_0, units, nonce, signature);
+        aliceLocker.claim(
+            IFluidLocker.ClaimParams({
+                programId: uint96(PROGRAM_0),
+                totalProgramUnits: uint96(units),
+                nonce: uint64(nonce),
+                stackSignature: signature
+            })
+        );
 
         assertEq(
             _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
@@ -293,10 +315,6 @@ contract FluidLockerTest is SFTest {
             funding / 1e16,
             "incorrect units"
         );
-
-        vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.NO_FLUID_TO_STAKE.selector);
-        aliceLocker.stake();
     }
 
     function testUnstake() external virtual {
@@ -462,7 +480,14 @@ contract FluidLockerTTETest is SFTest {
         bytes memory signature = _helperGenerateSignature(signerPkey, ALICE, units, PROGRAM_0, nonce);
 
         vm.prank(ALICE);
-        aliceLocker.claim(PROGRAM_0, units, nonce, signature);
+        aliceLocker.claim(
+            IFluidLocker.ClaimParams({
+                programId: uint96(PROGRAM_0),
+                totalProgramUnits: uint96(units),
+                nonce: uint64(nonce),
+                stackSignature: signature
+            })
+        );
 
         assertEq(programPools[0].getUnits(address(aliceLocker)), units, "units not updated");
         assertEq(aliceLocker.getUnitsPerProgram(PROGRAM_0), units, "getUnitsPerProgram invalid");
@@ -483,6 +508,7 @@ contract FluidLockerTTETest is SFTest {
         uint256[] memory distributionAmounts = new uint256[](3);
         uint256[] memory distributionPeriods = new uint256[](3);
 
+        IFluidLocker.ClaimParams[] memory params = new IFluidLocker.ClaimParams[](3);
         for (uint8 i = 0; i < 3; ++i) {
             programIds[i] = i + 1;
             newUnits[i] = units;
@@ -490,10 +516,17 @@ contract FluidLockerTTETest is SFTest {
             signatures[i] = _helperGenerateSignature(signerPkey, ALICE, units, programIds[i], nonces[i]);
             distributionAmounts[i] = 1_000_000e18;
             distributionPeriods[i] = _MAX_UNLOCK_PERIOD;
+
+            params[i] = IFluidLocker.ClaimParams({
+                programId: uint96(programIds[i]),
+                totalProgramUnits: uint96(newUnits[i]),
+                nonce: uint64(nonces[i]),
+                stackSignature: signatures[i]
+            });
         }
 
         vm.prank(ALICE);
-        aliceLocker.claim(programIds, newUnits, nonces, signatures);
+        aliceLocker.claim(params);
 
         int96[] memory distributionFlowrates =
             _helperDistributeToProgramPool(programIds, distributionAmounts, distributionPeriods);
@@ -616,10 +649,6 @@ contract FluidLockerTTETest is SFTest {
             funding / 1e16,
             "incorrect units"
         );
-
-        vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.NO_FLUID_TO_STAKE.selector);
-        aliceLocker.stake();
     }
 
     function _helperUpgradeLocker() internal {

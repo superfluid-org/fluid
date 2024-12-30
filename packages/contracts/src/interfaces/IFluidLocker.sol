@@ -8,6 +8,27 @@ pragma solidity ^0.8.23;
  *
  */
 interface IFluidLocker {
+    //      ____        __        __
+    //     / __ \____ _/ /_____ _/ /___  ______  ___  _____
+    //    / / / / __ `/ __/ __ `/ __/ / / / __ \/ _ \/ ___/
+    //   / /_/ / /_/ / /_/ /_/ / /_/ /_/ / /_/ /  __(__  )
+    //  /_____/\__,_/\__/\__,_/\__/\__, / .___/\___/____/
+    //                            /____/_/
+
+    /**
+     * @notice ClaimParams Datatype
+     * @param programId program identifier to claim for
+     * @param totalProgramUnits new total amount of units to claim
+     * @param nonce nonce associated to the signature provided by Stack
+     * @param stackSignature stack signature containing necessary details to update units
+     */
+    struct ClaimParams {
+        uint96 programId;
+        uint96 totalProgramUnits;
+        uint64 nonce;
+        bytes stackSignature;
+    }
+
     //      ______                 __
     //     / ____/   _____  ____  / /______
     //    / __/ | | / / _ \/ __ \/ __/ ___/
@@ -29,7 +50,7 @@ interface IFluidLocker {
     );
 
     /// @notice Event emitted when $FLUID are staked
-    event FluidStaked(uint256 indexed newTotalStakedBalance, uint256 indexed addedAmount);
+    event FluidStaked(uint256 indexed newTotalStakedBalance);
 
     /// @notice Event emitted when $FLUID are unstaked
     event FluidUnstaked();
@@ -55,9 +76,6 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to unstake from locker that does not have staked $FLUID
     error NO_FLUID_TO_UNSTAKE();
 
-    /// @notice Error thrown when attempting to stake from locker that does not have available $FLUID
-    error NO_FLUID_TO_STAKE();
-
     /// @notice Error thrown when attempting to unstake while the staking cooldown is not yet elapsed
     error STAKING_COOLDOWN_NOT_ELAPSED();
 
@@ -75,26 +93,15 @@ interface IFluidLocker {
 
     /**
      * @notice Update this locker units within the given program identifier's GDA pool
-     * @param programId program identifier corresponding to the unit update
-     * @param totalProgramUnits new total amount of units
-     * @param nonce nonce associated to the signature provided by Stack
-     * @param stackSignature stack signature containing necessary info to update units
+     * @param params claim parameters (see ClaimParams datatype)
      */
-    function claim(uint256 programId, uint256 totalProgramUnits, uint256 nonce, bytes memory stackSignature) external;
+    function claim(ClaimParams calldata params) external;
 
     /**
      * @notice Batch update this locker units within the given programs identifier's GDA pools
-     * @param programIds array of program identifiers corresponding to the unit update
-     * @param totalProgramUnits array new total amount of units
-     * @param nonces array of nonce associated to the signatures provided by Stack
-     * @param stackSignatures array of stack signatures containing necessary info to update units
+     * @param params array of claim parameters (see ClaimParams datatype)
      */
-    function claim(
-        uint256[] memory programIds,
-        uint256[] memory totalProgramUnits,
-        uint256[] memory nonces,
-        bytes[] memory stackSignatures
-    ) external;
+    function claim(IFluidLocker.ClaimParams[] calldata params) external;
 
     /**
      * @notice Lock a given `amount` of FLUID Token in this Locker

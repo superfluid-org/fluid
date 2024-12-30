@@ -169,12 +169,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IFluidLocker
-    function claim(uint256 programId, uint256 totalProgramUnits, uint256 nonce, bytes memory stackSignature)
-        external
-        nonReentrant
-    {
+    function claim(ClaimParams calldata params) external nonReentrant {
         // Get the corresponding program pool
-        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
+        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(uint256(params.programId));
 
         if (!FLUID.isMemberConnected(address(programPool), address(this))) {
             // Connect this locker to the Program Pool
@@ -182,32 +179,39 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
 
         // Request program manager to update this locker's units
-        EP_PROGRAM_MANAGER.updateUserUnits(lockerOwner, programId, totalProgramUnits, nonce, stackSignature);
+        EP_PROGRAM_MANAGER.updateUserUnits(
+            lockerOwner,
+            uint256(params.programId),
+            uint256(params.totalProgramUnits),
+            uint256(params.nonce),
+            params.stackSignature
+        );
 
-        emit IFluidLocker.FluidStreamClaimed(programId, totalProgramUnits);
+        emit IFluidLocker.FluidStreamClaimed(uint256(params.programId), uint256(params.totalProgramUnits));
     }
 
     /// @inheritdoc IFluidLocker
-    function claim(
-        uint256[] memory programIds,
-        uint256[] memory totalProgramUnits,
-        uint256[] memory nonces,
-        bytes[] memory stackSignatures
-    ) external nonReentrant {
-        for (uint256 i = 0; i < programIds.length; ++i) {
+    function claim(ClaimParams[] calldata params) external nonReentrant {
+        for (uint256 i = 0; i < params.length; ++i) {
             // Get the corresponding program pool
-            ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programIds[i]);
+            ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(uint256(params[i].programId));
 
             if (!FLUID.isMemberConnected(address(programPool), address(this))) {
                 // Connect this locker to the Program Pool
                 FLUID.connectPool(programPool);
             }
+
+            // Request program manager to update this locker's units
+            EP_PROGRAM_MANAGER.updateUserUnits(
+                lockerOwner,
+                uint256(params[i].programId),
+                uint256(params[i].totalProgramUnits),
+                uint256(params[i].nonce),
+                params[i].stackSignature
+            );
+
+            emit IFluidLocker.FluidStreamClaimed(uint256(params[i].programId), uint256(params[i].totalProgramUnits));
         }
-
-        // Request program manager to update this locker's units
-        EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonces, stackSignatures);
-
-        emit IFluidLocker.FluidStreamsClaimed(programIds, totalProgramUnits);
     }
 
     /// @inheritdoc IFluidLocker
@@ -250,17 +254,13 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @inheritdoc IFluidLocker
     function stake() external nonReentrant onlyLockerOwner unlockAvailable {
-        uint256 amountToStake = getAvailableBalance();
-
-        if (amountToStake == 0) revert NO_FLUID_TO_STAKE();
-
         if (!FLUID.isMemberConnected(address(TAX_DISTRIBUTION_POOL), address(this))) {
             // Connect this locker to the Tax Distribution Pool
             FLUID.connectPool(TAX_DISTRIBUTION_POOL);
         }
 
         // Update staked balance
-        _stakedBalance += amountToStake;
+        _stakedBalance = FLUID.balanceOf(address(this));
 
         // Update unlock timestamp
         stakingUnlocksAt = uint80(block.timestamp) + _STAKING_COOLDOWN_PERIOD;
@@ -268,7 +268,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Call Staking Reward Controller to update staker's units
         STAKING_REWARD_CONTROLLER.updateStakerUnits(_stakedBalance);
 
-        emit FluidStaked(_stakedBalance, amountToStake);
+        emit FluidStaked(_stakedBalance);
     }
 
     /// @inheritdoc IFluidLocker
