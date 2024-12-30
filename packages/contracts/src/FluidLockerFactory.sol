@@ -9,14 +9,13 @@ import { Initializable } from "@openzeppelin-v5/contracts/proxy/utils/Initializa
 
 /* FLUID Contracts & Interfaces */
 import { FluidLocker } from "./FluidLocker.sol";
-import { Fontaine } from "./Fontaine.sol";
 import { IFluidLockerFactory } from "./interfaces/IFluidLockerFactory.sol";
 import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 
 /**
  * @title Fluid Locker Factory Contract
  * @author Superfluid
- * @notice Deploys new Fluid Locker contracts and their associated Fontaine
+ * @notice Deploys new Fluid Locker contracts
  *
  */
 contract FluidLockerFactory is Initializable, IFluidLockerFactory {
