@@ -89,6 +89,10 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     /// @dev Error Selector : 0xc582137f
     error TOO_EARLY_TO_END_PROGRAM();
 
+    /// @notice Error thrown when attempting to start funding a program with a pool that has no units
+    /// @dev Error Selector : 0x93005752
+    error POOL_HAS_NO_UNITS();
+
     //      ____                          __        __    __        _____ __        __
     //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
     //     / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -250,6 +254,12 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
      */
     function startFunding(uint256 programId, uint256 totalAmount) external onlyOwner {
         EPProgram memory program = programs[programId];
+
+        // Ensure program exists
+        if (address(program.distributionPool) == address(0)) revert IEPProgramManager.PROGRAM_NOT_FOUND();
+
+        // Check if program pool has units
+        if (program.distributionPool.getTotalUnits() == 0) revert POOL_HAS_NO_UNITS();
 
         // Calculate the funding and subsidy amount
         uint256 subsidyAmount = (totalAmount * subsidyFundingRate) / _BP_DENOMINATOR;
