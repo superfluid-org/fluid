@@ -11,7 +11,8 @@ import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 import {
     ISuperToken,
     ISuperfluidPool,
-    PoolConfig
+    PoolConfig,
+    PoolERC20Metadata
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
@@ -167,12 +168,14 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
     /// @inheritdoc IEPProgramManager
     /// @dev Only the contract owner can perform this operation
-    function createProgram(uint256 programId, address programAdmin, address signer, ISuperToken token)
-        external
-        override
-        onlyOwner
-        returns (ISuperfluidPool distributionPool)
-    {
+    function createProgram(
+        uint256 programId,
+        address programAdmin,
+        address signer,
+        ISuperToken token,
+        string memory poolName,
+        string memory poolSymbol
+    ) external override onlyOwner returns (ISuperfluidPool distributionPool) {
         // Input validation
         if (programId == 0) revert INVALID_PARAMETER();
         if (programAdmin == address(0)) revert INVALID_PARAMETER();
@@ -186,8 +189,11 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         PoolConfig memory poolConfig =
             PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
 
+        PoolERC20Metadata memory poolERC20Metadata =
+            PoolERC20Metadata({ name: poolName, symbol: poolSymbol, decimals: 0 });
+
         // Create Superfluid GDA Pool
-        distributionPool = token.createPool(address(this), poolConfig);
+        distributionPool = token.createPoolWithCustomERC20Metadata(address(this), poolConfig, poolERC20Metadata);
 
         // Persist program details
         programs[programId] = EPProgram({

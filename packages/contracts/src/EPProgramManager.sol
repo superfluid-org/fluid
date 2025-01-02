@@ -5,7 +5,8 @@ pragma solidity ^0.8.23;
 import {
     ISuperfluidPool,
     ISuperToken,
-    PoolConfig
+    PoolConfig,
+    PoolERC20Metadata
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
@@ -52,11 +53,14 @@ contract EPProgramManager is IEPProgramManager {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IEPProgramManager
-    function createProgram(uint256 programId, address programAdmin, address signer, ISuperToken token)
-        external
-        virtual
-        returns (ISuperfluidPool distributionPool)
-    {
+    function createProgram(
+        uint256 programId,
+        address programAdmin,
+        address signer,
+        ISuperToken token,
+        string memory poolName,
+        string memory poolSymbol
+    ) external virtual returns (ISuperfluidPool distributionPool) {
         // Input validation
         if (programId == 0) revert INVALID_PARAMETER();
         if (programAdmin == address(0)) revert INVALID_PARAMETER();
@@ -70,8 +74,11 @@ contract EPProgramManager is IEPProgramManager {
         PoolConfig memory poolConfig =
             PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
 
+        PoolERC20Metadata memory poolERC20Metadata =
+            PoolERC20Metadata({ name: poolName, symbol: poolSymbol, decimals: 0 });
+
         // Create Superfluid GDA Pool
-        distributionPool = token.createPool(address(this), poolConfig);
+        distributionPool = token.createPoolWithCustomERC20Metadata(address(this), poolConfig, poolERC20Metadata);
 
         // Persist program details
         programs[programId] = EPProgram({

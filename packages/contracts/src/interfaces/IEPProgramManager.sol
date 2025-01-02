@@ -90,11 +90,18 @@ interface IEPProgramManager {
      * @param programAdmin program admin address
      * @param signer signer address
      * @param token SuperToken to be distributed
+     * @param poolName pool ERC20 name
+     * @param poolSymbol pool ERC20 symbol
      * @return distributionPool deployed Superfluid Pool contract address
      */
-    function createProgram(uint256 programId, address programAdmin, address signer, ISuperToken token)
-        external
-        returns (ISuperfluidPool distributionPool);
+    function createProgram(
+        uint256 programId,
+        address programAdmin,
+        address signer,
+        ISuperToken token,
+        string memory poolName,
+        string memory poolSymbol
+    ) external returns (ISuperfluidPool distributionPool);
 
     /**
      * @notice Update program signer

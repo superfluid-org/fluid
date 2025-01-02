@@ -21,6 +21,9 @@ using SuperTokenV1Library for ISuperToken;
 using ECDSA for bytes32;
 using SafeCast for int256;
 
+string constant POOL_NAME = "FLUID Ecosystem Partner Test Program";
+string constant POOL_SYMBOL = "FLUID_Test_EPP";
+
 /// @dev Unit tests for Base EPProgramManager (EPProgramManager.sol)
 contract EPProgramManagerTest is SFTest {
     EPProgramManager _programManagerBase;
@@ -36,7 +39,8 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_admin != address(0));
         vm.assume(_signer != address(0));
 
-        ISuperfluidPool pool = _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        ISuperfluidPool pool =
+            _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         (address programAdmin, address stackSigner, ISuperToken token, ISuperfluidPool distributionPool) =
             _programManagerBase.programs(_pId);
@@ -50,7 +54,7 @@ contract EPProgramManagerTest is SFTest {
         );
 
         vm.expectRevert(IEPProgramManager.PROGRAM_ALREADY_CREATED.selector);
-        _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
     }
 
     function testCreateProgramReverts(uint256 _pId, address _admin, address _signer) external {
@@ -59,16 +63,16 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_signer != address(0));
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManagerBase.createProgram(0, _admin, _signer, _fluidSuperToken);
+        _programManagerBase.createProgram(0, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManagerBase.createProgram(_pId, address(0), _signer, _fluidSuperToken);
+        _programManagerBase.createProgram(_pId, address(0), _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManagerBase.createProgram(_pId, _admin, address(0), _fluidSuperToken);
+        _programManagerBase.createProgram(_pId, _admin, address(0), _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManagerBase.createProgram(_pId, _admin, _signer, ISuperToken(address(0)));
+        _programManagerBase.createProgram(_pId, _admin, _signer, ISuperToken(address(0)), POOL_NAME, POOL_SYMBOL);
     }
 
     function testUpdateProgramSigner(
@@ -85,7 +89,7 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_signer != _newSigner);
         vm.assume(_admin != _nonAdmin);
 
-        _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
         (, address signerBefore,,) = _programManagerBase.programs(_pId);
 
         assertEq(signerBefore, _signer, "incorrect signer before update");
@@ -233,7 +237,7 @@ contract EPProgramManagerTest is SFTest {
         returns (ISuperfluidPool pool)
     {
         vm.prank(ADMIN);
-        pool = _programManagerBase.createProgram(pId, admin, signer, _fluidSuperToken);
+        pool = _programManagerBase.createProgram(pId, admin, signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
     }
 }
 
@@ -319,7 +323,8 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.assume(_signer != address(0));
 
         vm.prank(ADMIN);
-        ISuperfluidPool pool = _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        ISuperfluidPool pool =
+            _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         (address programAdmin, address stackSigner, ISuperToken token, ISuperfluidPool distributionPool) =
             _programManager.programs(_pId);
@@ -334,7 +339,7 @@ contract FluidEPProgramManagerTest is SFTest {
 
         vm.prank(ADMIN);
         vm.expectRevert(IEPProgramManager.PROGRAM_ALREADY_CREATED.selector);
-        _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
     }
 
     function testCreateProgramReverts(uint256 _pId, address _admin, address _signer) external {
@@ -344,16 +349,16 @@ contract FluidEPProgramManagerTest is SFTest {
 
         vm.startPrank(ADMIN);
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.createProgram(0, _admin, _signer, _fluidSuperToken);
+        _programManager.createProgram(0, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.createProgram(_pId, address(0), _signer, _fluidSuperToken);
+        _programManager.createProgram(_pId, address(0), _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.createProgram(_pId, _admin, address(0), _fluidSuperToken);
+        _programManager.createProgram(_pId, _admin, address(0), _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.createProgram(_pId, _admin, _signer, ISuperToken(address(0)));
+        _programManager.createProgram(_pId, _admin, _signer, ISuperToken(address(0)), POOL_NAME, POOL_SYMBOL);
 
         vm.stopPrank();
     }
@@ -373,7 +378,7 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.assume(_admin != _nonAdmin);
 
         vm.prank(ADMIN);
-        _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
         (, address signerBefore,,) = _programManager.programs(_pId);
 
         assertEq(signerBefore, _signer, "incorrect signer before update");
