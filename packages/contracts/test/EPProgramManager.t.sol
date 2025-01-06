@@ -21,6 +21,9 @@ using SuperTokenV1Library for ISuperToken;
 using ECDSA for bytes32;
 using SafeCast for int256;
 
+string constant POOL_NAME = "FLUID Ecosystem Partner Test Program";
+string constant POOL_SYMBOL = "FLUID_Test_EPP";
+
 /// @dev Unit tests for Base EPProgramManager (EPProgramManager.sol)
 contract EPProgramManagerTest is SFTest {
     EPProgramManager _programManagerBase;
@@ -36,7 +39,8 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_admin != address(0));
         vm.assume(_signer != address(0));
 
-        ISuperfluidPool pool = _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        ISuperfluidPool pool =
+            _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         (address programAdmin, address stackSigner, ISuperToken token, ISuperfluidPool distributionPool) =
             _programManagerBase.programs(_pId);
@@ -50,7 +54,7 @@ contract EPProgramManagerTest is SFTest {
         );
 
         vm.expectRevert(IEPProgramManager.PROGRAM_ALREADY_CREATED.selector);
-        _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
     }
 
     function testCreateProgramReverts(uint256 _pId, address _admin, address _signer) external {
@@ -59,16 +63,16 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_signer != address(0));
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManagerBase.createProgram(0, _admin, _signer, _fluidSuperToken);
+        _programManagerBase.createProgram(0, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManagerBase.createProgram(_pId, address(0), _signer, _fluidSuperToken);
+        _programManagerBase.createProgram(_pId, address(0), _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManagerBase.createProgram(_pId, _admin, address(0), _fluidSuperToken);
+        _programManagerBase.createProgram(_pId, _admin, address(0), _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManagerBase.createProgram(_pId, _admin, _signer, ISuperToken(address(0)));
+        _programManagerBase.createProgram(_pId, _admin, _signer, ISuperToken(address(0)), POOL_NAME, POOL_SYMBOL);
     }
 
     function testUpdateProgramSigner(
@@ -85,7 +89,7 @@ contract EPProgramManagerTest is SFTest {
         vm.assume(_signer != _newSigner);
         vm.assume(_admin != _nonAdmin);
 
-        _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        _programManagerBase.createProgram(_pId, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
         (, address signerBefore,,) = _programManagerBase.programs(_pId);
 
         assertEq(signerBefore, _signer, "incorrect signer before update");
@@ -233,7 +237,7 @@ contract EPProgramManagerTest is SFTest {
         returns (ISuperfluidPool pool)
     {
         vm.prank(ADMIN);
-        pool = _programManagerBase.createProgram(pId, admin, signer, _fluidSuperToken);
+        pool = _programManagerBase.createProgram(pId, admin, signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
     }
 }
 
@@ -319,7 +323,8 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.assume(_signer != address(0));
 
         vm.prank(ADMIN);
-        ISuperfluidPool pool = _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        ISuperfluidPool pool =
+            _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         (address programAdmin, address stackSigner, ISuperToken token, ISuperfluidPool distributionPool) =
             _programManager.programs(_pId);
@@ -334,7 +339,7 @@ contract FluidEPProgramManagerTest is SFTest {
 
         vm.prank(ADMIN);
         vm.expectRevert(IEPProgramManager.PROGRAM_ALREADY_CREATED.selector);
-        _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
     }
 
     function testCreateProgramReverts(uint256 _pId, address _admin, address _signer) external {
@@ -344,16 +349,16 @@ contract FluidEPProgramManagerTest is SFTest {
 
         vm.startPrank(ADMIN);
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.createProgram(0, _admin, _signer, _fluidSuperToken);
+        _programManager.createProgram(0, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.createProgram(_pId, address(0), _signer, _fluidSuperToken);
+        _programManager.createProgram(_pId, address(0), _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.createProgram(_pId, _admin, address(0), _fluidSuperToken);
+        _programManager.createProgram(_pId, _admin, address(0), _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
 
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.createProgram(_pId, _admin, _signer, ISuperToken(address(0)));
+        _programManager.createProgram(_pId, _admin, _signer, ISuperToken(address(0)), POOL_NAME, POOL_SYMBOL);
 
         vm.stopPrank();
     }
@@ -373,7 +378,7 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.assume(_admin != _nonAdmin);
 
         vm.prank(ADMIN);
-        _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken);
+        _programManager.createProgram(_pId, _admin, _signer, _fluidSuperToken, POOL_NAME, POOL_SYMBOL);
         (, address signerBefore,,) = _programManager.programs(_pId);
 
         assertEq(signerBefore, _signer, "incorrect signer before update");
@@ -480,12 +485,24 @@ contract FluidEPProgramManagerTest is SFTest {
         _fundingAmount = bound(_fundingAmount, 100_000e18, 100_000_000e18);
         uint96 signerPkey = 69_420;
 
+        vm.prank(FLUID_TREASURY);
+        _fluid.approve(address(_programManager), _fundingAmount);
+
+        vm.prank(ADMIN);
+        vm.expectRevert(IEPProgramManager.PROGRAM_NOT_FOUND.selector);
+        _programManager.startFunding(_programId, _fundingAmount);
+
         ISuperfluidPool pool = _helperCreateProgram(_programId, ADMIN, vm.addr(signerPkey));
-        _helperGrantUnitsToAlice(_programId, 1, signerPkey);
         _helperBobStaking();
 
         vm.prank(FLUID_TREASURY);
         _fluid.approve(address(_programManager), _fundingAmount);
+
+        vm.prank(ADMIN);
+        vm.expectRevert(FluidEPProgramManager.POOL_HAS_NO_UNITS.selector);
+        _programManager.startFunding(_programId, _fundingAmount);
+
+        _helperGrantUnitsToAlice(_programId, 1, signerPkey);
 
         vm.prank(ADMIN);
         _programManager.startFunding(_programId, _fundingAmount);
@@ -565,9 +582,8 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.prank(ADMIN);
         _programManager.setSubsidyRate(subsidyRate);
 
-        ISuperfluidPool pool1 = _helperCreateProgram(1, ADMIN, vm.addr(signerPkey));
-        ISuperfluidPool pool2 = _helperCreateProgram(2, ADMIN, vm.addr(signerPkey));
-
+        _helperCreateProgram(1, ADMIN, vm.addr(signerPkey));
+        _helperCreateProgram(2, ADMIN, vm.addr(signerPkey));
         _helperGrantUnitsToAlice(1, 1, signerPkey);
         _helperGrantUnitsToAlice(2, 1, signerPkey);
         _helperBobStaking();
@@ -575,11 +591,9 @@ contract FluidEPProgramManagerTest is SFTest {
 
         // Calculate the funding and subsidy amount
         uint256 subsidyAmount = (fundingAmount * subsidyRate) / 10_000;
-        uint256 programAmount = fundingAmount - subsidyAmount;
 
         // Calculate the funding and subsidy flow rates
         int96 requestedSubsidyFlowRate = int256(subsidyAmount / PROGRAM_DURATION).toInt96();
-        int96 requestedProgramFlowRate = int256(programAmount / PROGRAM_DURATION).toInt96();
 
         (, int96 requestedSubsidyFlowRateBeforeNewFunding) = _fluid.estimateFlowDistributionActualFlowRate(
             address(_programManager), _programManager.TAX_DISTRIBUTION_POOL(), requestedSubsidyFlowRate
@@ -619,7 +633,7 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.prank(ADMIN);
         _programManager.setSubsidyRate(subsidyRate);
 
-        ISuperfluidPool pool1 = _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
+        _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
         uint256 beforeEarlyEnd = block.timestamp + invalidDuration;
         uint256 earlyEnd = block.timestamp + earlyEndDuration;
 
@@ -669,7 +683,9 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
         _programManager.stopFunding(programId);
 
-        assertEq(_programManager.TAX_DISTRIBUTION_POOL().getTotalFlowRate(), 0, "Tax Distribution Pool flow Rate should be 0");
+        assertEq(
+            _programManager.TAX_DISTRIBUTION_POOL().getTotalFlowRate(), 0, "Tax Distribution Pool flow Rate should be 0"
+        );
         assertEq(programPool.getTotalFlowRate(), 0, "Program Pool flow rate should be 0");
         /// TODO : add asserts
     }

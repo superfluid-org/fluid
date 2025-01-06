@@ -11,7 +11,8 @@ import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 import {
     ISuperToken,
     ISuperfluidPool,
-    PoolConfig
+    PoolConfig,
+    PoolERC20Metadata
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
@@ -89,6 +90,10 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     /// @dev Error Selector : 0xc582137f
     error TOO_EARLY_TO_END_PROGRAM();
 
+    /// @notice Error thrown when attempting to start funding a program with a pool that has no units
+    /// @dev Error Selector : 0x93005752
+    error POOL_HAS_NO_UNITS();
+
     //      ____                          __        __    __        _____ __        __
     //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
     //     / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -163,12 +168,14 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
     /// @inheritdoc IEPProgramManager
     /// @dev Only the contract owner can perform this operation
-    function createProgram(uint256 programId, address programAdmin, address signer, ISuperToken token)
-        external
-        override
-        onlyOwner
-        returns (ISuperfluidPool distributionPool)
-    {
+    function createProgram(
+        uint256 programId,
+        address programAdmin,
+        address signer,
+        ISuperToken token,
+        string memory poolName,
+        string memory poolSymbol
+    ) external override onlyOwner returns (ISuperfluidPool distributionPool) {
         // Input validation
         if (programId == 0) revert INVALID_PARAMETER();
         if (programAdmin == address(0)) revert INVALID_PARAMETER();
@@ -182,8 +189,11 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         PoolConfig memory poolConfig =
             PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
 
+        PoolERC20Metadata memory poolERC20Metadata =
+            PoolERC20Metadata({ name: poolName, symbol: poolSymbol, decimals: 0 });
+
         // Create Superfluid GDA Pool
-        distributionPool = token.createPool(address(this), poolConfig);
+        distributionPool = token.createPoolWithCustomERC20Metadata(address(this), poolConfig, poolERC20Metadata);
 
         // Persist program details
         programs[programId] = EPProgram({
@@ -250,6 +260,12 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
      */
     function startFunding(uint256 programId, uint256 totalAmount) external onlyOwner {
         EPProgram memory program = programs[programId];
+
+        // Ensure program exists
+        if (address(program.distributionPool) == address(0)) revert IEPProgramManager.PROGRAM_NOT_FOUND();
+
+        // Check if program pool has units
+        if (program.distributionPool.getTotalUnits() == 0) revert POOL_HAS_NO_UNITS();
 
         // Calculate the funding and subsidy amount
         uint256 subsidyAmount = (totalAmount * subsidyFundingRate) / _BP_DENOMINATOR;

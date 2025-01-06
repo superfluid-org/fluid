@@ -52,11 +52,14 @@ contract EPProgramManager is IEPProgramManager {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IEPProgramManager
-    function createProgram(uint256 programId, address programAdmin, address signer, ISuperToken token)
-        external
-        virtual
-        returns (ISuperfluidPool distributionPool)
-    {
+    function createProgram(
+        uint256 programId,
+        address programAdmin,
+        address signer,
+        ISuperToken token,
+        string memory poolName,
+        string memory poolSymbol
+    ) external virtual returns (ISuperfluidPool distributionPool) {
         // Input validation
         if (programId == 0) revert INVALID_PARAMETER();
         if (programAdmin == address(0)) revert INVALID_PARAMETER();
