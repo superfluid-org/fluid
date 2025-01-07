@@ -107,7 +107,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     uint256 public constant PROGRAM_DURATION = 90 days;
 
     /// @notice Constant used to calculate the earliest date a program can be stopped
-    uint256 public constant EARLY_PROGRAM_END = 7 days;
+    uint256 public constant EARLY_PROGRAM_END = 3 days;
 
     /// @notice Basis points denominator (for percentage calculation)
     uint96 private constant _BP_DENOMINATOR = 10_000;
@@ -282,11 +282,12 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
             fundingStartDate: uint64(block.timestamp)
         });
 
-        /// FIXME calculate buffer using SuperTokenLibrary + rename that variable
-        uint256 earlyEndAmount = uint96(fundingFlowRate + subsidyFlowRate) * (EARLY_PROGRAM_END + 4 hours);
+        // Calculate the initial deposit to cover the CFA buffer and the early end compensation
+        uint256 buffer = program.token.getBufferAmountByFlowRate(fundingFlowRate + subsidyFlowRate);
+        uint256 initialDeposit = buffer + uint96(fundingFlowRate + subsidyFlowRate) * EARLY_PROGRAM_END;
 
         // Fetch funds from FLUID Treasury (requires prior approval from the Treasury)
-        program.token.transferFrom(fluidTreasury, address(this), earlyEndAmount);
+        program.token.transferFrom(fluidTreasury, address(this), initialDeposit);
 
         // Update the funding flow rate from the treasury
         _updateFundingFlowRateFromTreasury(program.token, fundingFlowRate + subsidyFlowRate);
