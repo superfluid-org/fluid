@@ -282,8 +282,14 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
             fundingStartDate: uint64(block.timestamp)
         });
 
+        /// FIXME calculate buffer using SuperTokenLibrary + rename that variable
+        uint256 earlyEndAmount = uint96(fundingFlowRate + subsidyFlowRate) * (EARLY_PROGRAM_END + 4 hours);
+
         // Fetch funds from FLUID Treasury (requires prior approval from the Treasury)
-        program.token.transferFrom(fluidTreasury, address(this), totalAmount);
+        program.token.transferFrom(fluidTreasury, address(this), earlyEndAmount);
+
+        // Update the funding flow rate from the treasury
+        _updateFundingFlowRateFromTreasury(program.token, fundingFlowRate + subsidyFlowRate);
 
         // Distribute flow to Program GDA pool
         program.token.distributeFlow(address(this), program.distributionPool, fundingFlowRate);
@@ -321,11 +327,14 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
             revert TOO_EARLY_TO_END_PROGRAM();
         }
 
+        // Delete the program details
+        delete _fluidProgramDetails[programId];
+
         uint256 earlyEndCompensation;
         uint256 subsidyEarlyEndCompensation;
 
         // if the program is stopped during its early end period, calculate the flow compensations
-        if (endDate > block.timestamp) {
+        if (block.timestamp < endDate) {
             earlyEndCompensation = (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate);
             subsidyEarlyEndCompensation = (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate);
         }
@@ -338,6 +347,11 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
             _decreaseSubsidyFlow(program.token, programDetails.subsidyFlowRate);
         }
 
+        // Update the funding flow rate from the treasury
+        _updateFundingFlowRateFromTreasury(
+            program.token, -(programDetails.fundingFlowRate + programDetails.subsidyFlowRate)
+        );
+
         if (earlyEndCompensation > 0) {
             // Distribute the early end compensation to the program pool
             program.token.distribute(address(this), program.distributionPool, earlyEndCompensation);
@@ -348,10 +362,30 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
             program.token.distribute(address(this), TAX_DISTRIBUTION_POOL, subsidyEarlyEndCompensation);
         }
 
-        // Delete the program details
-        delete _fluidProgramDetails[programId];
-
         emit ProgramStopped(programId, earlyEndCompensation, subsidyEarlyEndCompensation);
+    }
+
+    /**
+     * @notice Update GDA Pool units of the locker associated to the given user
+     * @dev Only the program admin can perform this operation
+     * @param programId The ID of the program to update units for
+     * @param stackPoints The amount of stack points to set for the user's locker
+     * @param user The address of the user whose locker will be updated
+     */
+    function manualPoolUpdate(uint256 programId, uint256 stackPoints, address user)
+        external
+        onlyProgramAdmin(programId)
+    {
+        EPProgram memory program = programs[programId];
+
+        // Get the locker address belonging to the given user
+        address locker = fluidLockerFactory.getLockerAddress(user);
+
+        // Ensure the locker exists
+        if (locker == address(0)) revert LOCKER_NOT_FOUND();
+
+        // Update the locker's units in the program GDA pool
+        program.distributionPool.updateMemberUnits(locker, uint128(stackPoints));
     }
 
     /**
@@ -450,6 +484,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
      * @param subsidyFlowRateToIncrease flow rate to add to the current global subsidy flow rate
      * @return newSubsidyFlowRate the new current global subsidy flow rate
      */
+    /// FIXME Merge with _decreaseSubsidyFlow
     function _increaseSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToIncrease)
         internal
         returns (int96 newSubsidyFlowRate)
@@ -465,11 +500,38 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     }
 
     /**
+     * @notice Update the funding flow rate from the treasury to this contract
+     * @param token The SuperToken used for the flow
+     * @param fundingFlowRateDelta The delta to apply to the current flow rate
+     * @return newFundingFlowRate The new flow rate after applying the delta
+     */
+    function _updateFundingFlowRateFromTreasury(ISuperToken token, int96 fundingFlowRateDelta)
+        internal
+        returns (int96 newFundingFlowRate)
+    {
+        // Fetch current flow between the treasury and this contract
+        int96 currentGlobalFundingFlowRate = token.getFlowRate(fluidTreasury, address(this));
+
+        // Calculate the new subsidy flow rate
+        newFundingFlowRate = currentGlobalFundingFlowRate + fundingFlowRateDelta;
+
+        // Update the distribution flow rate to the tax distribution pool
+        if (newFundingFlowRate >= 0) {
+            token.flowFrom(fluidTreasury, address(this), newFundingFlowRate);
+        } else {
+            // This case should never happen unless the treasury screws up
+            token.flowFrom(fluidTreasury, address(this), 0);
+        }
+    }
+
+    /**
      * @notice Delete or update the subsidy flow from this contract to the tax distribution pool
      * @param token token contract address
      * @param subsidyFlowRateToDecrease flow rate to deduce from the current global subsidy flow rate
      * @return newSubsidyFlowRate the new current global subsidy flow rate
      */
+
+    /// FIXME Merge with _increaseSubsidyFlow
     function _decreaseSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToDecrease)
         internal
         returns (int96 newSubsidyFlowRate)
