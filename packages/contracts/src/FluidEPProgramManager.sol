@@ -456,6 +456,26 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         details = _fluidProgramDetails[programId];
     }
 
+    /**
+     * @notice Calculate the required deposit and flow rate allowances for a program
+     * @param programId The ID of the program to calculate allowances for
+     * @param plannedFundingAmount The total amount planned to be distributed over the program duration
+     * @return depositAllowance The required deposit allowance to cover buffer and early end compensation
+     * @return flowRateAllowance The required ACL flow rate allowance to be granted
+     */
+    function calculateAllowances(uint256 programId, uint256 plannedFundingAmount)
+        external
+        view
+        returns (uint256 depositAllowance, int96 flowRateAllowance)
+    {
+        EPProgram memory program = programs[programId];
+
+        flowRateAllowance = int256(plannedFundingAmount / PROGRAM_DURATION).toInt96();
+
+        uint256 buffer = program.token.getBufferAmountByFlowRate(flowRateAllowance);
+        depositAllowance = buffer + uint96(flowRateAllowance) * EARLY_PROGRAM_END;
+    }
+
     //      ____      __                        __   ______                 __  _
     //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
