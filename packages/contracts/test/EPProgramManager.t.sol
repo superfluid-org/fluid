@@ -495,9 +495,13 @@ contract FluidEPProgramManagerTest is SFTest {
         ISuperfluidPool pool = _helperCreateProgram(_programId, ADMIN, vm.addr(signerPkey));
         _helperBobStaking();
 
-        vm.prank(FLUID_TREASURY);
-        _fluid.approve(address(_programManager), _fundingAmount);
+        (uint256 depositAllowance, int96 flowRateAllowance) =
+            _programManager.calculateAllowances(_programId, _fundingAmount);
 
+        vm.startPrank(FLUID_TREASURY);
+        _fluid.approve(address(_programManager), depositAllowance);
+        _fluid.setFlowPermissions(address(_programManager), true, true, true, flowRateAllowance);
+        vm.stopPrank();
         vm.prank(ADMIN);
         vm.expectRevert(FluidEPProgramManager.POOL_HAS_NO_UNITS.selector);
         _programManager.startFunding(_programId, _fundingAmount);
@@ -541,8 +545,13 @@ contract FluidEPProgramManagerTest is SFTest {
         _helperGrantUnitsToAlice(_programId, 1, signerPkey);
         _helperBobStaking();
 
-        vm.prank(FLUID_TREASURY);
-        _fluid.approve(address(_programManager), _fundingAmount);
+        (uint256 depositAllowance, int96 flowRateAllowance) =
+            _programManager.calculateAllowances(_programId, _fundingAmount);
+
+        vm.startPrank(FLUID_TREASURY);
+        _fluid.approve(address(_programManager), depositAllowance);
+        _fluid.setFlowPermissions(address(_programManager), true, true, true, flowRateAllowance);
+        vm.stopPrank();
 
         vm.prank(ADMIN);
         _programManager.startFunding(_programId, _fundingAmount);
@@ -622,8 +631,8 @@ contract FluidEPProgramManagerTest is SFTest {
 
     function testStopFundingWithoutSubsidy(uint256 invalidDuration, uint256 earlyEndDuration) external {
         // invalidDuration correspond to the time where stopping funding should not be possible (i.e. 83 days)
-        invalidDuration = bound(invalidDuration, 1, 82 days);
-        earlyEndDuration = bound(earlyEndDuration, 83 days, 89 days);
+        invalidDuration = bound(invalidDuration, 1, 86 days);
+        earlyEndDuration = bound(earlyEndDuration, 87 days, 89 days);
 
         uint256 fundingAmount = 100_000e18;
         uint96 subsidyRate = 0;
@@ -654,8 +663,8 @@ contract FluidEPProgramManagerTest is SFTest {
 
     function testStopFunding(uint256 invalidDuration, uint256 earlyEndDuration) external {
         // invalidDuration correspond to the time where stopping funding should not be possible (i.e. 83 days)
-        invalidDuration = bound(invalidDuration, 1, 82 days);
-        earlyEndDuration = bound(earlyEndDuration, 83 days, 89 days);
+        invalidDuration = bound(invalidDuration, 1, 86 days);
+        earlyEndDuration = bound(earlyEndDuration, 87 days, 89 days);
 
         uint256 fundingAmount = 100_000e18;
         uint96 subsidyRate = 500;
@@ -749,9 +758,13 @@ contract FluidEPProgramManagerTest is SFTest {
     }
 
     function _helperStartFunding(uint256 _programId, uint256 _fundingAmount) internal {
-        vm.prank(FLUID_TREASURY);
-        _fluid.approve(address(_programManager), _fundingAmount);
+        (uint256 depositAllowance, int96 flowRateAllowance) =
+            _programManager.calculateAllowances(_programId, _fundingAmount);
 
+        vm.startPrank(FLUID_TREASURY);
+        _fluid.approve(address(_programManager), depositAllowance);
+        _fluid.setFlowPermissions(address(_programManager), true, true, true, flowRateAllowance);
+        vm.stopPrank();
         vm.prank(ADMIN);
         _programManager.startFunding(_programId, _fundingAmount);
     }
