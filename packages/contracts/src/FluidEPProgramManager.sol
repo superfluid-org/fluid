@@ -37,11 +37,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     //  /_____/ |___/\___/_/ /_/\__/____/
 
     /// @notice Event emitted when a reward program is cancelled
-    event ProgramCancelled(
-        uint256 indexed programId,
-        uint256 indexed undistributedFundingAmount,
-        uint256 indexed undistributedSubsidyAmount
-    );
+    event ProgramCancelled(uint256 indexed programId, uint256 indexed returnedDeposit);
 
     /// @notice Event emitted when a reward program is funded
     event ProgramFunded(
@@ -221,17 +217,8 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         // Ensure program exists or has not already been terminated
         if (programDetails.fundingStartDate == 0) revert IEPProgramManager.INVALID_PARAMETER();
 
-        // Calculate the end date
-        uint256 endDate = programDetails.fundingStartDate + PROGRAM_DURATION;
-
-        // Calculate the undistributed amounts (if the end date has not passed)
-        uint256 undistributedFundingAmount;
-        uint256 undistributedSubsidyAmount;
-
-        if (endDate > block.timestamp) {
-            undistributedFundingAmount = (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate);
-            undistributedSubsidyAmount = (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate);
-        }
+        // Delete the program details
+        delete _fluidProgramDetails[programId];
 
         // Stop the stream to the program pool
         program.token.distributeFlow(address(this), program.distributionPool, 0);
@@ -241,15 +228,20 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
             _decreaseSubsidyFlow(program.token, programDetails.subsidyFlowRate);
         }
 
-        if (undistributedFundingAmount + undistributedSubsidyAmount > 0) {
-            // Transfer back the undistributed amounts to the treasury
-            program.token.transfer(fluidTreasury, undistributedFundingAmount + undistributedSubsidyAmount);
-        }
+        // Update the funding flow rate from the treasury
+        _updateFundingFlowRateFromTreasury(
+            program.token, -(programDetails.fundingFlowRate + programDetails.subsidyFlowRate)
+        );
 
-        // Delete the program details
-        delete _fluidProgramDetails[programId];
+        // Return the initial deposit to the treasury
+        uint256 buffer =
+            program.token.getBufferAmountByFlowRate(programDetails.fundingFlowRate + programDetails.subsidyFlowRate);
+        uint256 initialDeposit =
+            buffer + uint96(programDetails.fundingFlowRate + programDetails.subsidyFlowRate) * EARLY_PROGRAM_END;
 
-        emit ProgramCancelled(programId, undistributedFundingAmount, undistributedSubsidyAmount);
+        program.token.transfer(fluidTreasury, initialDeposit);
+
+        emit ProgramCancelled(programId, initialDeposit);
     }
 
     /**
