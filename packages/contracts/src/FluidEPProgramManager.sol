@@ -9,12 +9,16 @@ import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {
+    ISuperfluid,
     ISuperToken,
     ISuperfluidPool,
     PoolConfig,
-    PoolERC20Metadata
+    PoolERC20Metadata,
+    IConstantFlowAgreementV1,
+    BatchOperation
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+import { IUserDefinedMacro } from "@superfluid-finance/ethereum-contracts/contracts/utils/MacroForwarder.sol";
 
 /* FLUID Contracts & Interfaces */
 import { EPProgramManager, IEPProgramManager } from "./EPProgramManager.sol";
@@ -29,7 +33,7 @@ using SafeCast for int256;
  * @notice Contract responsible for administrating the GDA pool that distribute FLUID to lockers
  *
  */
-contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramManager {
+contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramManager, IUserDefinedMacro {
     //      ______                 __
     //     / ____/   _____  ____  / /______
     //    / __/ | | / / _ \/ __ \/ __/ ___/
@@ -433,6 +437,55 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         ERC1967Utils.upgradeToAndCall(newImplementation, data);
     }
 
+    // IUserDefinedMacro
+
+    /**
+     * @notice Returns the batch operations to be executed by the treasury using the MacroForwarder
+     * @inheritdoc IUserDefinedMacro
+     */
+    function buildBatchOperations(ISuperfluid host, bytes memory params, address /*msgSender*/) external override view
+        returns (ISuperfluid.Operation[] memory operations)
+    {
+        // parse params
+        (ISuperToken token, uint256 depositAllowance, int96 flowRateAllowance) = abi.decode(params, (ISuperToken, uint256, int96));
+        // construct batch operations
+        operations = new ISuperfluid.Operation[](2);
+
+        // approval for transfer
+        operations[0] = ISuperfluid.Operation({
+            operationType : BatchOperation.OPERATION_TYPE_ERC20_APPROVE, // type
+            target: address(token),
+            data: abi.encode(address(this), depositAllowance)
+        });
+
+        // flowrateAllowance for flow
+        {
+            IConstantFlowAgreementV1 cfa = IConstantFlowAgreementV1(address(host.getAgreementClass(
+                keccak256("org.superfluid-finance.agreements.ConstantFlowAgreement.v1")
+            )));
+            uint8 permissions = 1 | 1 << 1 | 1 << 2; // create/update/delete
+            bytes memory callData = abi.encodeCall(
+                cfa.increaseFlowRateAllowanceWithPermissions,
+                (token, address(this), permissions, flowRateAllowance, new bytes(0))
+            );
+            operations[1] = ISuperfluid.Operation({
+                operationType : BatchOperation.OPERATION_TYPE_SUPERFLUID_CALL_AGREEMENT, // type
+                target: address(cfa),
+                data: abi.encode(callData, new bytes(0))
+            });
+        }
+    }
+
+    /// @inheritdoc IUserDefinedMacro
+    function postCheck(ISuperfluid host, bytes memory params, address msgSender) external view { }
+
+    /// @notice convenience view function for encoding the params argument to be provided to MacroForwarder.runMacro()
+    function paramsGivePermission(uint256 programId, uint256 amount) external view returns (bytes memory) {
+        (uint256 depositAllowance, int96 flowRateAllowance) = calculateAllowances(programId, amount);
+        // getRequiredPermissions(token, amount);
+        return abi.encode(programs[programId].token, depositAllowance, flowRateAllowance);
+    }
+
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -456,7 +509,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
      * @return flowRateAllowance The required ACL flow rate allowance to be granted
      */
     function calculateAllowances(uint256 programId, uint256 plannedFundingAmount)
-        external
+        public
         view
         returns (uint256 depositAllowance, int96 flowRateAllowance)
     {

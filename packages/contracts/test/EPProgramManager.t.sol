@@ -12,6 +12,7 @@ import {
     ISuperfluidPool
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+import { MacroForwarder, IUserDefinedMacro } from "@superfluid-finance/ethereum-contracts/contracts/utils/MacroForwarder.sol";
 
 import { EPProgramManager, IEPProgramManager } from "../src/EPProgramManager.sol";
 import { FluidEPProgramManager } from "../src/FluidEPProgramManager.sol";
@@ -738,6 +739,30 @@ contract FluidEPProgramManagerTest is SFTest {
         assertEq(programPool.getTotalFlowRate(), 0, "Pool flow rate should be 0");
 
         /// TODO : add asserts
+    }
+
+    function testUserMacro(uint128 fundingAmount ) external {
+        uint256 programId = 1;
+        uint96 signerPkey = 69_420;
+        fundingAmount = 1e18;
+
+        _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
+        vm.startPrank(FLUID_TREASURY);
+        _sf.macroForwarder.runMacro(
+            _programManager,
+            _programManager.paramsGivePermission(programId, fundingAmount)
+        );
+        vm.stopPrank();
+
+        // verify startFunding has needed allowances
+        _helperGrantUnitsToAlice(programId, 1, signerPkey);
+        vm.prank(ADMIN);
+        _programManager.startFunding(programId, fundingAmount);
+
+        // verify stopFunding has needed allowances
+        vm.warp(block.timestamp + _programManager.PROGRAM_DURATION() - _programManager.EARLY_PROGRAM_END() + 1);
+        vm.prank(ADMIN);
+        _programManager.stopFunding(programId);
     }
 
     // function testStopFundingMultipleProgram() external { }
