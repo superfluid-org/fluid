@@ -386,6 +386,35 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     }
 
     /**
+     * @notice Update GDA Pool units of the locker associated to the given user
+     * @dev Only the program admin can perform this operation
+     * @param programId The ID of the program to update units for
+     * @param stackPoints The amounts of stack points to set for the user's locker
+     * @param users The addresses of the users whose lockers will be updated
+     */
+    function manualPoolUpdate(uint256 programId, uint256[] memory stackPoints, address[] memory users)
+        external
+        onlyProgramAdmin(programId)
+    {
+        // Input validation
+        if (users.length == 0) revert INVALID_PARAMETER();
+        if (users.length != stackPoints.length) revert INVALID_PARAMETER();
+
+        EPProgram memory program = programs[programId];
+
+        for (uint256 i; i < users.length; ++i) {
+            // Get the locker address belonging to the given user
+            address locker = fluidLockerFactory.getLockerAddress(users[i]);
+
+            // Ensure the locker exists
+            if (locker == address(0)) revert LOCKER_NOT_FOUND();
+
+            // Update the locker's units in the program GDA pool
+            program.distributionPool.updateMemberUnits(locker, uint128(stackPoints[i]));
+        }
+    }
+
+    /**
      * @notice Update the Locker Factory contract address
      * @dev Only the contract owner can perform this operation
      * @param lockerFactoryAddress Locker Factory contract address to be set
@@ -443,33 +472,37 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
      * @notice Returns the batch operations to be executed by the treasury using the MacroForwarder
      * @inheritdoc IUserDefinedMacro
      */
-    function buildBatchOperations(ISuperfluid host, bytes memory params, address /*msgSender*/) external override view
+    function buildBatchOperations(ISuperfluid host, bytes memory params, address /*msgSender*/ )
+        external
+        view
+        override
         returns (ISuperfluid.Operation[] memory operations)
     {
         // parse params
-        (ISuperToken token, uint256 depositAllowance, int96 flowRateAllowance) = abi.decode(params, (ISuperToken, uint256, int96));
+        (ISuperToken token, uint256 depositAllowance, int96 flowRateAllowance) =
+            abi.decode(params, (ISuperToken, uint256, int96));
         // construct batch operations
         operations = new ISuperfluid.Operation[](2);
 
         // approval for transfer
         operations[0] = ISuperfluid.Operation({
-            operationType : BatchOperation.OPERATION_TYPE_ERC20_APPROVE, // type
+            operationType: BatchOperation.OPERATION_TYPE_ERC20_APPROVE, // type
             target: address(token),
             data: abi.encode(address(this), depositAllowance)
         });
 
         // flowrateAllowance for flow
         {
-            IConstantFlowAgreementV1 cfa = IConstantFlowAgreementV1(address(host.getAgreementClass(
-                keccak256("org.superfluid-finance.agreements.ConstantFlowAgreement.v1")
-            )));
+            IConstantFlowAgreementV1 cfa = IConstantFlowAgreementV1(
+                address(host.getAgreementClass(keccak256("org.superfluid-finance.agreements.ConstantFlowAgreement.v1")))
+            );
             uint8 permissions = 1 | 1 << 1 | 1 << 2; // create/update/delete
             bytes memory callData = abi.encodeCall(
                 cfa.increaseFlowRateAllowanceWithPermissions,
                 (token, address(this), permissions, flowRateAllowance, new bytes(0))
             );
             operations[1] = ISuperfluid.Operation({
-                operationType : BatchOperation.OPERATION_TYPE_SUPERFLUID_CALL_AGREEMENT, // type
+                operationType: BatchOperation.OPERATION_TYPE_SUPERFLUID_CALL_AGREEMENT, // type
                 target: address(cfa),
                 data: abi.encode(callData, new bytes(0))
             });
