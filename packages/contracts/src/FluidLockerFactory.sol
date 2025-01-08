@@ -93,6 +93,11 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
     }
 
     /// @inheritdoc IFluidLockerFactory
+    function createLockerContract(address user) external notPaused returns (address lockerInstance) {
+        lockerInstance = _createLockerContract(user);
+    }
+
+    /// @inheritdoc IFluidLockerFactory
     function upgradeTo(address newImplementation, bytes calldata data) external onlyGovernor {
         ERC1967Utils.upgradeToAndCall(newImplementation, data);
     }
