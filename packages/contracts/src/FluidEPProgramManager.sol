@@ -229,7 +229,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
         if (programDetails.subsidyFlowRate > 0) {
             // Decrease the subsidy flow to the tax distribution pool
-            _decreaseSubsidyFlow(program.token, programDetails.subsidyFlowRate);
+            _updateSubsidyFlowRate(program.token, -programDetails.subsidyFlowRate);
         }
 
         // Update the funding flow rate from the treasury
@@ -293,7 +293,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
         if (subsidyFlowRate > 0) {
             // Create or update the subsidy flow to the Staking Reward Controller
-            _increaseSubsidyFlow(program.token, subsidyFlowRate);
+            _updateSubsidyFlowRate(program.token, subsidyFlowRate);
         }
 
         emit ProgramFunded(
@@ -341,7 +341,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
         if (programDetails.subsidyFlowRate > 0) {
             // Delete or update the subsidy flow to the Staking Reward Controller
-            _decreaseSubsidyFlow(program.token, programDetails.subsidyFlowRate);
+            _updateSubsidyFlowRate(program.token, -programDetails.subsidyFlowRate);
         }
 
         // Update the funding flow rate from the treasury
@@ -578,27 +578,6 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     }
 
     /**
-     * @notice Create or update the subsidy flow from this contract to the tax distribution pool
-     * @param token token contract address
-     * @param subsidyFlowRateToIncrease flow rate to add to the current global subsidy flow rate
-     * @return newSubsidyFlowRate the new current global subsidy flow rate
-     */
-    /// FIXME Merge with _decreaseSubsidyFlow
-    function _increaseSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToIncrease)
-        internal
-        returns (int96 newSubsidyFlowRate)
-    {
-        // Fetch current flow between this contract and the tax distribution pool
-        int96 currentSubsidyFlowRate = token.getFlowDistributionFlowRate(address(this), TAX_DISTRIBUTION_POOL);
-
-        // Calculate the new subsidy flow rate
-        newSubsidyFlowRate = currentSubsidyFlowRate + subsidyFlowRateToIncrease;
-
-        // Update the distribution flow rate to the tax distribution pool
-        token.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, newSubsidyFlowRate);
-    }
-
-    /**
      * @notice Update the funding flow rate from the treasury to this contract
      * @param token The SuperToken used for the flow
      * @param fundingFlowRateDelta The delta to apply to the current flow rate
@@ -611,10 +590,10 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         // Fetch current flow between the treasury and this contract
         int96 currentGlobalFundingFlowRate = token.getFlowRate(fluidTreasury, address(this));
 
-        // Calculate the new subsidy flow rate
+        // Calculate the new funding flow rate
         newFundingFlowRate = currentGlobalFundingFlowRate + fundingFlowRateDelta;
 
-        // Update the distribution flow rate to the tax distribution pool
+        // Update the CFA flow rate from the treasury to this contract
         if (newFundingFlowRate >= 0) {
             token.flowFrom(fluidTreasury, address(this), newFundingFlowRate);
         } else {
@@ -624,14 +603,12 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     }
 
     /**
-     * @notice Delete or update the subsidy flow from this contract to the tax distribution pool
-     * @param token token contract address
-     * @param subsidyFlowRateToDecrease flow rate to deduce from the current global subsidy flow rate
-     * @return newSubsidyFlowRate the new current global subsidy flow rate
+     * @notice Update the subsidy flow rate from this contract to the tax distribution pool
+     * @param token The SuperToken used for the flow
+     * @param subsidyFlowRateDelta The delta to apply to the current flow rate
+     * @return newSubsidyFlowRate The new flow rate after applying the delta
      */
-
-    /// FIXME Merge with _increaseSubsidyFlow
-    function _decreaseSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToDecrease)
+    function _updateSubsidyFlowRate(ISuperToken token, int96 subsidyFlowRateDelta)
         internal
         returns (int96 newSubsidyFlowRate)
     {
@@ -639,11 +616,14 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         int96 currentSubsidyFlowRate = token.getFlowDistributionFlowRate(address(this), TAX_DISTRIBUTION_POOL);
 
         // Calculate the new subsidy flow rate
-        newSubsidyFlowRate = currentSubsidyFlowRate <= subsidyFlowRateToDecrease
-            ? int96(0)
-            : currentSubsidyFlowRate - subsidyFlowRateToDecrease;
+        newSubsidyFlowRate = currentSubsidyFlowRate + subsidyFlowRateDelta;
 
         // Update the distribution flow rate to the tax distribution pool
-        token.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, newSubsidyFlowRate);
+        if (newSubsidyFlowRate >= 0) {
+            token.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, newSubsidyFlowRate);
+        } else {
+            // This case should never happen
+            token.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, 0);
+        }
     }
 }
