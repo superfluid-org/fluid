@@ -39,10 +39,17 @@ interface IFluidLockerFactory {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /**
-     * @notice Deploy a Locker and connected Fontaine for the caller
+     * @notice Deploy a Locker for the caller
      * @return lockerInstance Deployed Locker contract address
      */
     function createLockerContract() external returns (address lockerInstance);
+
+    /**
+     * @notice Deploy a Locker for the given user
+     * @param user User address to be associated with the Locker
+     * @return lockerInstance Deployed Locker contract address
+     */
+    function createLockerContract(address user) external returns (address lockerInstance);
 
     /**
      * @notice Upgrade this proxy logic

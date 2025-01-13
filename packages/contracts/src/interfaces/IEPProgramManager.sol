@@ -85,16 +85,23 @@ interface IEPProgramManager {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /**
-     * @notice Creates a new distribution program
-     * @param programId program identifier to be created
-     * @param programAdmin program admin address
-     * @param signer signer address
-     * @param token SuperToken to be distributed
-     * @return distributionPool deployed Superfluid Pool contract address
+     * @notice Creates a new distribution program with a GDA pool
+     * @param programId Program identifier to be created
+     * @param programAdmin Address that will have admin privileges over the program
+     * @param signer Address authorized to sign unit updates for this program
+     * @param token SuperToken that will be distributed through the program's pool
+     * @param poolName Name for the GDA pool's token
+     * @param poolSymbol Symbol for the GDA pool's token
+     * @return distributionPool The newly created Superfluid Pool contract
      */
-    function createProgram(uint256 programId, address programAdmin, address signer, ISuperToken token)
-        external
-        returns (ISuperfluidPool distributionPool);
+    function createProgram(
+        uint256 programId,
+        address programAdmin,
+        address signer,
+        ISuperToken token,
+        string memory poolName,
+        string memory poolSymbol
+    ) external returns (ISuperfluidPool distributionPool);
 
     /**
      * @notice Update program signer

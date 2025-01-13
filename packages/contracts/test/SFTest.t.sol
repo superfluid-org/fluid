@@ -136,7 +136,9 @@ contract SFTest is Test {
         returns (ISuperfluidPool pool)
     {
         vm.prank(ADMIN);
-        pool = _programManager.createProgram(pId, admin, signer, _fluidSuperToken);
+        pool = _programManager.createProgram(
+            pId, admin, signer, _fluidSuperToken, "FLUID Ecosystem Partner Test Program", "FLUID_Test_EPP"
+        );
     }
 
     function _helperCreatePrograms(uint256[] memory pIds, address admin, address signer)
@@ -147,7 +149,9 @@ contract SFTest is Test {
         pools = new ISuperfluidPool[](pIds.length);
 
         for (uint256 i; i < pIds.length; ++i) {
-            pools[i] = _programManager.createProgram(pIds[i], admin, signer, _fluidSuperToken);
+            pools[i] = _programManager.createProgram(
+                pIds[i], admin, signer, _fluidSuperToken, "FLUID Ecosystem Partner Test Program", "FLUID_Test_EPP"
+            );
         }
 
         vm.stopPrank();

@@ -9,11 +9,16 @@ import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {
+    ISuperfluid,
     ISuperToken,
     ISuperfluidPool,
-    PoolConfig
+    PoolConfig,
+    PoolERC20Metadata,
+    IConstantFlowAgreementV1,
+    BatchOperation
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+import { IUserDefinedMacro } from "@superfluid-finance/ethereum-contracts/contracts/utils/MacroForwarder.sol";
 
 /* FLUID Contracts & Interfaces */
 import { EPProgramManager, IEPProgramManager } from "./EPProgramManager.sol";
@@ -28,7 +33,7 @@ using SafeCast for int256;
  * @notice Contract responsible for administrating the GDA pool that distribute FLUID to lockers
  *
  */
-contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramManager {
+contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramManager, IUserDefinedMacro {
     //      ______                 __
     //     / ____/   _____  ____  / /______
     //    / __/ | | / / _ \/ __ \/ __/ ___/
@@ -36,11 +41,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     //  /_____/ |___/\___/_/ /_/\__/____/
 
     /// @notice Event emitted when a reward program is cancelled
-    event ProgramCancelled(
-        uint256 indexed programId,
-        uint256 indexed undistributedFundingAmount,
-        uint256 indexed undistributedSubsidyAmount
-    );
+    event ProgramCancelled(uint256 indexed programId, uint256 indexed returnedDeposit);
 
     /// @notice Event emitted when a reward program is funded
     event ProgramFunded(
@@ -89,6 +90,10 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     /// @dev Error Selector : 0xc582137f
     error TOO_EARLY_TO_END_PROGRAM();
 
+    /// @notice Error thrown when attempting to start funding a program with a pool that has no units
+    /// @dev Error Selector : 0x93005752
+    error POOL_HAS_NO_UNITS();
+
     //      ____                          __        __    __        _____ __        __
     //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
     //     / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -102,7 +107,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     uint256 public constant PROGRAM_DURATION = 90 days;
 
     /// @notice Constant used to calculate the earliest date a program can be stopped
-    uint256 public constant EARLY_PROGRAM_END = 7 days;
+    uint256 public constant EARLY_PROGRAM_END = 3 days;
 
     /// @notice Basis points denominator (for percentage calculation)
     uint96 private constant _BP_DENOMINATOR = 10_000;
@@ -163,12 +168,14 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
     /// @inheritdoc IEPProgramManager
     /// @dev Only the contract owner can perform this operation
-    function createProgram(uint256 programId, address programAdmin, address signer, ISuperToken token)
-        external
-        override
-        onlyOwner
-        returns (ISuperfluidPool distributionPool)
-    {
+    function createProgram(
+        uint256 programId,
+        address programAdmin,
+        address signer,
+        ISuperToken token,
+        string memory poolName,
+        string memory poolSymbol
+    ) external override onlyOwner returns (ISuperfluidPool distributionPool) {
         // Input validation
         if (programId == 0) revert INVALID_PARAMETER();
         if (programAdmin == address(0)) revert INVALID_PARAMETER();
@@ -182,8 +189,11 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         PoolConfig memory poolConfig =
             PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
 
+        PoolERC20Metadata memory poolERC20Metadata =
+            PoolERC20Metadata({ name: poolName, symbol: poolSymbol, decimals: 0 });
+
         // Create Superfluid GDA Pool
-        distributionPool = token.createPool(address(this), poolConfig);
+        distributionPool = token.createPoolWithCustomERC20Metadata(address(this), poolConfig, poolERC20Metadata);
 
         // Persist program details
         programs[programId] = EPProgram({
@@ -211,35 +221,31 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         // Ensure program exists or has not already been terminated
         if (programDetails.fundingStartDate == 0) revert IEPProgramManager.INVALID_PARAMETER();
 
-        // Calculate the end date
-        uint256 endDate = programDetails.fundingStartDate + PROGRAM_DURATION;
-
-        // Calculate the undistributed amounts (if the end date has not passed)
-        uint256 undistributedFundingAmount;
-        uint256 undistributedSubsidyAmount;
-
-        if (endDate > block.timestamp) {
-            undistributedFundingAmount = (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate);
-            undistributedSubsidyAmount = (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate);
-        }
+        // Delete the program details
+        delete _fluidProgramDetails[programId];
 
         // Stop the stream to the program pool
         program.token.distributeFlow(address(this), program.distributionPool, 0);
 
         if (programDetails.subsidyFlowRate > 0) {
             // Decrease the subsidy flow to the tax distribution pool
-            _decreaseSubsidyFlow(program.token, programDetails.subsidyFlowRate);
+            _updateSubsidyFlowRate(program.token, -programDetails.subsidyFlowRate);
         }
 
-        if (undistributedFundingAmount + undistributedSubsidyAmount > 0) {
-            // Transfer back the undistributed amounts to the treasury
-            program.token.transfer(fluidTreasury, undistributedFundingAmount + undistributedSubsidyAmount);
-        }
+        // Update the funding flow rate from the treasury
+        _updateFundingFlowRateFromTreasury(
+            program.token, -(programDetails.fundingFlowRate + programDetails.subsidyFlowRate)
+        );
 
-        // Delete the program details
-        delete _fluidProgramDetails[programId];
+        // Return the initial deposit to the treasury
+        uint256 buffer =
+            program.token.getBufferAmountByFlowRate(programDetails.fundingFlowRate + programDetails.subsidyFlowRate);
+        uint256 initialDeposit =
+            buffer + uint96(programDetails.fundingFlowRate + programDetails.subsidyFlowRate) * EARLY_PROGRAM_END;
 
-        emit ProgramCancelled(programId, undistributedFundingAmount, undistributedSubsidyAmount);
+        program.token.transfer(fluidTreasury, initialDeposit);
+
+        emit ProgramCancelled(programId, initialDeposit);
     }
 
     /**
@@ -250,6 +256,12 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
      */
     function startFunding(uint256 programId, uint256 totalAmount) external onlyOwner {
         EPProgram memory program = programs[programId];
+
+        // Ensure program exists
+        if (address(program.distributionPool) == address(0)) revert IEPProgramManager.PROGRAM_NOT_FOUND();
+
+        // Check if program pool has units
+        if (program.distributionPool.getTotalUnits() == 0) revert POOL_HAS_NO_UNITS();
 
         // Calculate the funding and subsidy amount
         uint256 subsidyAmount = (totalAmount * subsidyFundingRate) / _BP_DENOMINATOR;
@@ -266,15 +278,22 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
             fundingStartDate: uint64(block.timestamp)
         });
 
+        // Calculate the initial deposit to cover the CFA buffer and the early end compensation
+        uint256 buffer = program.token.getBufferAmountByFlowRate(fundingFlowRate + subsidyFlowRate);
+        uint256 initialDeposit = buffer + uint96(fundingFlowRate + subsidyFlowRate) * EARLY_PROGRAM_END;
+
         // Fetch funds from FLUID Treasury (requires prior approval from the Treasury)
-        program.token.transferFrom(fluidTreasury, address(this), totalAmount);
+        program.token.transferFrom(fluidTreasury, address(this), initialDeposit);
+
+        // Update the funding flow rate from the treasury
+        _updateFundingFlowRateFromTreasury(program.token, fundingFlowRate + subsidyFlowRate);
 
         // Distribute flow to Program GDA pool
         program.token.distributeFlow(address(this), program.distributionPool, fundingFlowRate);
 
         if (subsidyFlowRate > 0) {
             // Create or update the subsidy flow to the Staking Reward Controller
-            _increaseSubsidyFlow(program.token, subsidyFlowRate);
+            _updateSubsidyFlowRate(program.token, subsidyFlowRate);
         }
 
         emit ProgramFunded(
@@ -305,11 +324,14 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
             revert TOO_EARLY_TO_END_PROGRAM();
         }
 
+        // Delete the program details
+        delete _fluidProgramDetails[programId];
+
         uint256 earlyEndCompensation;
         uint256 subsidyEarlyEndCompensation;
 
         // if the program is stopped during its early end period, calculate the flow compensations
-        if (endDate > block.timestamp) {
+        if (block.timestamp < endDate) {
             earlyEndCompensation = (endDate - block.timestamp) * uint96(programDetails.fundingFlowRate);
             subsidyEarlyEndCompensation = (endDate - block.timestamp) * uint96(programDetails.subsidyFlowRate);
         }
@@ -319,8 +341,13 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
         if (programDetails.subsidyFlowRate > 0) {
             // Delete or update the subsidy flow to the Staking Reward Controller
-            _decreaseSubsidyFlow(program.token, programDetails.subsidyFlowRate);
+            _updateSubsidyFlowRate(program.token, -programDetails.subsidyFlowRate);
         }
+
+        // Update the funding flow rate from the treasury
+        _updateFundingFlowRateFromTreasury(
+            program.token, -(programDetails.fundingFlowRate + programDetails.subsidyFlowRate)
+        );
 
         if (earlyEndCompensation > 0) {
             // Distribute the early end compensation to the program pool
@@ -332,10 +359,59 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
             program.token.distribute(address(this), TAX_DISTRIBUTION_POOL, subsidyEarlyEndCompensation);
         }
 
-        // Delete the program details
-        delete _fluidProgramDetails[programId];
-
         emit ProgramStopped(programId, earlyEndCompensation, subsidyEarlyEndCompensation);
+    }
+
+    /**
+     * @notice Update GDA Pool units of the locker associated to the given user
+     * @dev Only the program admin can perform this operation
+     * @param programId The ID of the program to update units for
+     * @param stackPoints The amount of stack points to set for the user's locker
+     * @param user The address of the user whose locker will be updated
+     */
+    function manualPoolUpdate(uint256 programId, uint256 stackPoints, address user)
+        external
+        onlyProgramAdmin(programId)
+    {
+        EPProgram memory program = programs[programId];
+
+        // Get the locker address belonging to the given user
+        address locker = fluidLockerFactory.getLockerAddress(user);
+
+        // Ensure the locker exists
+        if (locker == address(0)) revert LOCKER_NOT_FOUND();
+
+        // Update the locker's units in the program GDA pool
+        program.distributionPool.updateMemberUnits(locker, uint128(stackPoints));
+    }
+
+    /**
+     * @notice Update GDA Pool units of the locker associated to the given user
+     * @dev Only the program admin can perform this operation
+     * @param programId The ID of the program to update units for
+     * @param stackPoints The amounts of stack points to set for the user's locker
+     * @param users The addresses of the users whose lockers will be updated
+     */
+    function manualPoolUpdate(uint256 programId, uint256[] memory stackPoints, address[] memory users)
+        external
+        onlyProgramAdmin(programId)
+    {
+        // Input validation
+        if (users.length == 0) revert INVALID_PARAMETER();
+        if (users.length != stackPoints.length) revert INVALID_PARAMETER();
+
+        EPProgram memory program = programs[programId];
+
+        for (uint256 i; i < users.length; ++i) {
+            // Get the locker address belonging to the given user
+            address locker = fluidLockerFactory.getLockerAddress(users[i]);
+
+            // Ensure the locker exists
+            if (locker == address(0)) revert LOCKER_NOT_FOUND();
+
+            // Update the locker's units in the program GDA pool
+            program.distributionPool.updateMemberUnits(locker, uint128(stackPoints[i]));
+        }
     }
 
     /**
@@ -390,6 +466,59 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         ERC1967Utils.upgradeToAndCall(newImplementation, data);
     }
 
+    // IUserDefinedMacro
+
+    /**
+     * @notice Returns the batch operations to be executed by the treasury using the MacroForwarder
+     * @inheritdoc IUserDefinedMacro
+     */
+    function buildBatchOperations(ISuperfluid host, bytes memory params, address /*msgSender*/ )
+        external
+        view
+        override
+        returns (ISuperfluid.Operation[] memory operations)
+    {
+        // parse params
+        (ISuperToken token, uint256 depositAllowance, int96 flowRateAllowance) =
+            abi.decode(params, (ISuperToken, uint256, int96));
+        // construct batch operations
+        operations = new ISuperfluid.Operation[](2);
+
+        // approval for transfer
+        operations[0] = ISuperfluid.Operation({
+            operationType: BatchOperation.OPERATION_TYPE_ERC20_APPROVE, // type
+            target: address(token),
+            data: abi.encode(address(this), depositAllowance)
+        });
+
+        // flowrateAllowance for flow
+        {
+            IConstantFlowAgreementV1 cfa = IConstantFlowAgreementV1(
+                address(host.getAgreementClass(keccak256("org.superfluid-finance.agreements.ConstantFlowAgreement.v1")))
+            );
+            uint8 permissions = 1 | 1 << 1 | 1 << 2; // create/update/delete
+            bytes memory callData = abi.encodeCall(
+                cfa.increaseFlowRateAllowanceWithPermissions,
+                (token, address(this), permissions, flowRateAllowance, new bytes(0))
+            );
+            operations[1] = ISuperfluid.Operation({
+                operationType: BatchOperation.OPERATION_TYPE_SUPERFLUID_CALL_AGREEMENT, // type
+                target: address(cfa),
+                data: abi.encode(callData, new bytes(0))
+            });
+        }
+    }
+
+    /// @inheritdoc IUserDefinedMacro
+    function postCheck(ISuperfluid host, bytes memory params, address msgSender) external view { }
+
+    /// @notice convenience view function for encoding the params argument to be provided to MacroForwarder.runMacro()
+    function paramsGivePermission(uint256 programId, uint256 amount) external view returns (bytes memory) {
+        (uint256 depositAllowance, int96 flowRateAllowance) = calculateAllowances(programId, amount);
+        // getRequiredPermissions(token, amount);
+        return abi.encode(programs[programId].token, depositAllowance, flowRateAllowance);
+    }
+
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -403,6 +532,26 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
      */
     function getProgramDetails(uint256 programId) external view returns (FluidProgramDetails memory details) {
         details = _fluidProgramDetails[programId];
+    }
+
+    /**
+     * @notice Calculate the required deposit and flow rate allowances for a program
+     * @param programId The ID of the program to calculate allowances for
+     * @param plannedFundingAmount The total amount planned to be distributed over the program duration
+     * @return depositAllowance The required deposit allowance to cover buffer and early end compensation
+     * @return flowRateAllowance The required ACL flow rate allowance to be granted
+     */
+    function calculateAllowances(uint256 programId, uint256 plannedFundingAmount)
+        public
+        view
+        returns (uint256 depositAllowance, int96 flowRateAllowance)
+    {
+        EPProgram memory program = programs[programId];
+
+        flowRateAllowance = int256(plannedFundingAmount / PROGRAM_DURATION).toInt96();
+
+        uint256 buffer = program.token.getBufferAmountByFlowRate(flowRateAllowance);
+        depositAllowance = buffer + uint96(flowRateAllowance) * EARLY_PROGRAM_END;
     }
 
     //      ____      __                        __   ______                 __  _
@@ -429,32 +578,37 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     }
 
     /**
-     * @notice Create or update the subsidy flow from this contract to the tax distribution pool
-     * @param token token contract address
-     * @param subsidyFlowRateToIncrease flow rate to add to the current global subsidy flow rate
-     * @return newSubsidyFlowRate the new current global subsidy flow rate
+     * @notice Update the funding flow rate from the treasury to this contract
+     * @param token The SuperToken used for the flow
+     * @param fundingFlowRateDelta The delta to apply to the current flow rate
+     * @return newFundingFlowRate The new flow rate after applying the delta
      */
-    function _increaseSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToIncrease)
+    function _updateFundingFlowRateFromTreasury(ISuperToken token, int96 fundingFlowRateDelta)
         internal
-        returns (int96 newSubsidyFlowRate)
+        returns (int96 newFundingFlowRate)
     {
-        // Fetch current flow between this contract and the tax distribution pool
-        int96 currentSubsidyFlowRate = token.getFlowDistributionFlowRate(address(this), TAX_DISTRIBUTION_POOL);
+        // Fetch current flow between the treasury and this contract
+        int96 currentGlobalFundingFlowRate = token.getFlowRate(fluidTreasury, address(this));
 
-        // Calculate the new subsidy flow rate
-        newSubsidyFlowRate = currentSubsidyFlowRate + subsidyFlowRateToIncrease;
+        // Calculate the new funding flow rate
+        newFundingFlowRate = currentGlobalFundingFlowRate + fundingFlowRateDelta;
 
-        // Update the distribution flow rate to the tax distribution pool
-        token.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, newSubsidyFlowRate);
+        // Update the CFA flow rate from the treasury to this contract
+        if (newFundingFlowRate >= 0) {
+            token.flowFrom(fluidTreasury, address(this), newFundingFlowRate);
+        } else {
+            // This case should never happen unless the treasury screws up
+            token.flowFrom(fluidTreasury, address(this), 0);
+        }
     }
 
     /**
-     * @notice Delete or update the subsidy flow from this contract to the tax distribution pool
-     * @param token token contract address
-     * @param subsidyFlowRateToDecrease flow rate to deduce from the current global subsidy flow rate
-     * @return newSubsidyFlowRate the new current global subsidy flow rate
+     * @notice Update the subsidy flow rate from this contract to the tax distribution pool
+     * @param token The SuperToken used for the flow
+     * @param subsidyFlowRateDelta The delta to apply to the current flow rate
+     * @return newSubsidyFlowRate The new flow rate after applying the delta
      */
-    function _decreaseSubsidyFlow(ISuperToken token, int96 subsidyFlowRateToDecrease)
+    function _updateSubsidyFlowRate(ISuperToken token, int96 subsidyFlowRateDelta)
         internal
         returns (int96 newSubsidyFlowRate)
     {
@@ -462,11 +616,14 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         int96 currentSubsidyFlowRate = token.getFlowDistributionFlowRate(address(this), TAX_DISTRIBUTION_POOL);
 
         // Calculate the new subsidy flow rate
-        newSubsidyFlowRate = currentSubsidyFlowRate <= subsidyFlowRateToDecrease
-            ? int96(0)
-            : currentSubsidyFlowRate - subsidyFlowRateToDecrease;
+        newSubsidyFlowRate = currentSubsidyFlowRate + subsidyFlowRateDelta;
 
         // Update the distribution flow rate to the tax distribution pool
-        token.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, newSubsidyFlowRate);
+        if (newSubsidyFlowRate >= 0) {
+            token.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, newSubsidyFlowRate);
+        } else {
+            // This case should never happen
+            token.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, 0);
+        }
     }
 }
