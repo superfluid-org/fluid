@@ -112,6 +112,81 @@
   },
   {
     "type": "function",
+    "name": "buildBatchOperations",
+    "inputs": [
+      {
+        "name": "host",
+        "type": "address",
+        "internalType": "contract ISuperfluid"
+      },
+      {
+        "name": "params",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "operations",
+        "type": "tuple[]",
+        "internalType": "struct ISuperfluid.Operation[]",
+        "components": [
+          {
+            "name": "operationType",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "target",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "data",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "calculateAllowances",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "plannedFundingAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "depositAllowance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "flowRateAllowance",
+        "type": "int96",
+        "internalType": "int96"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "cancelProgram",
     "inputs": [
       {
@@ -146,6 +221,16 @@
         "name": "token",
         "type": "address",
         "internalType": "contract ISuperToken"
+      },
+      {
+        "name": "poolName",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "poolSymbol",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "outputs": [
@@ -295,6 +380,52 @@
   },
   {
     "type": "function",
+    "name": "manualPoolUpdate",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stackPoints",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "users",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "manualPoolUpdate",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "stackPoints",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "owner",
     "inputs": [],
     "outputs": [
@@ -304,6 +435,53 @@
         "internalType": "address"
       }
     ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "paramsGivePermission",
+    "inputs": [
+      {
+        "name": "programId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "postCheck",
+    "inputs": [
+      {
+        "name": "host",
+        "type": "address",
+        "internalType": "contract ISuperfluid"
+      },
+      {
+        "name": "params",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "msgSender",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
     "stateMutability": "view"
   },
   {
@@ -583,13 +761,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "undistributedFundingAmount",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "undistributedSubsidyAmount",
+        "name": "returnedDeposit",
         "type": "uint256",
         "indexed": true,
         "internalType": "uint256"
@@ -766,6 +938,11 @@
   },
   {
     "type": "error",
+    "name": "CFA_INVALID_FLOW_RATE",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "ERC1967InvalidImplementation",
     "inputs": [
       {
@@ -842,6 +1019,11 @@
         "internalType": "address"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "POOL_HAS_NO_UNITS",
+    "inputs": []
   },
   {
     "type": "error",

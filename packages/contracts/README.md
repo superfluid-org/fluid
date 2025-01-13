@@ -20,23 +20,23 @@ Latest deployed contract address
 
 | Contract           | Address                                    | Explorer                                                                        |
 | ------------------ | ------------------------------------------ | ------------------------------------------------------------------------------- |
-| FluidToken (ERC20) | 0x50De94359BdCAE78674e6918519DF0220aEfD514 | https://sepolia.etherscan.io/address/0x50De94359BdCAE78674e6918519DF0220aEfD514 |
+| FluidToken (ERC20) | 0xe1F66A06c08911203e093303Eb9Ff07EdbFFe030 | https://sepolia.etherscan.io/address/0xe1F66A06c08911203e093303Eb9Ff07EdbFFe030 |
 
 ### BASE SEPOLIA :
 
 | Contract                        | Address                                    | Explorer                                                                        |
 | ------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
-| FluidToken (SuperToken)         | 0x8366107974417E0e611fAbc8C38BeCbE199d502a | https://sepolia.basescan.org/address/0x8366107974417E0e611fAbc8C38BeCbE199d502a |
-| FluidEPProgramManager (Logic)   | 0xf304464faAFD0F61d8048e410d75F9884696Fcc0 | https://sepolia.basescan.org/address/0xf304464faAFD0F61d8048e410d75F9884696Fcc0 |
-| FluidEPProgramManager (Proxy)   | 0x724639D7525Cb68b227E5C40399d73d9590E88Ca | https://sepolia.basescan.org/address/0x724639D7525Cb68b227E5C40399d73d9590E88Ca |
-| StakingRewardController (Logic) | 0x7dB7683D2BdB443189d9C439cB5961faD47C1789 | https://sepolia.basescan.org/address/0x7dB7683D2BdB443189d9C439cB5961faD47C1789 |
-| StakingRewardController (Proxy) | 0xAEe3b4d79917796821d3D0FE67554AD63c07242E | https://sepolia.basescan.org/address/0xAEe3b4d79917796821d3D0FE67554AD63c07242E |
-| FluidLocker (Logic)             | 0x29f88faC9464b2A356a286ED6bB52E554BD28B82 | https://sepolia.basescan.org/address/0x29f88faC9464b2A356a286ED6bB52E554BD28B82 |
-| FluidLocker (Beacon)            | 0x967DB599E3F13c1D3DBf5681dc28d9739736f7b5 | https://sepolia.basescan.org/address/0x967DB599E3F13c1D3DBf5681dc28d9739736f7b5 |
-| Fontaine (Logic)                | 0x2189FdFa41804D99a6D3BE6be01Ef0926ab54d9b | https://sepolia.basescan.org/address/0x2189FdFa41804D99a6D3BE6be01Ef0926ab54d9b |
-| Fontaine (Beacon)               | 0x1e9Ab15E663eA710241e786F5c2611E42011cfBC | https://sepolia.basescan.org/address/0x1e9Ab15E663eA710241e786F5c2611E42011cfBC |
-| FluidLockerFactory (Logic)      | 0x99B6822ce3E201F7D8B8A3e50DF3C689c90Afa79 | https://sepolia.basescan.org/address/0x99B6822ce3E201F7D8B8A3e50DF3C689c90Afa79 |
-| FluidLockerFactory (Proxy)      | 0xE7e0761ee3251EF9Ae0956b76cf42B4028Be1e8D | https://sepolia.basescan.org/address/0xE7e0761ee3251EF9Ae0956b76cf42B4028Be1e8D |
+| FluidToken (SuperToken)         | 0xFd62b398DD8a233ad37156690631fb9515059d6A | https://sepolia.basescan.org/address/0xFd62b398DD8a233ad37156690631fb9515059d6A |
+| FluidEPProgramManager (Logic)   | 0x151fAA8F7De5b32A32067000175DaAacA862B128 | https://sepolia.basescan.org/address/0x151fAA8F7De5b32A32067000175DaAacA862B128 |
+| FluidEPProgramManager (Proxy)   | 0xA8f867fA115f64F9728Fc4fd4Ce959f12442a86E | https://sepolia.basescan.org/address/0xA8f867fA115f64F9728Fc4fd4Ce959f12442a86E |
+| StakingRewardController (Logic) | 0xAe665c8154B15Bf4F7a3f813dB71D40624b7Dac7 | https://sepolia.basescan.org/address/0xAe665c8154B15Bf4F7a3f813dB71D40624b7Dac7 |
+| StakingRewardController (Proxy) | 0xC2569d417f3f255b30966D21EB31fFCb76b05150 | https://sepolia.basescan.org/address/0xC2569d417f3f255b30966D21EB31fFCb76b05150 |
+| FluidLocker (Logic)             | 0x77769118b297Eb03D01cf7D093E4D135470707B6 | https://sepolia.basescan.org/address/0x77769118b297Eb03D01cf7D093E4D135470707B6 |
+| FluidLocker (Beacon)            | 0xa67d2E26843793048990e3e8e0e7120Eb3cc8ad8 | https://sepolia.basescan.org/address/0xa67d2E26843793048990e3e8e0e7120Eb3cc8ad8 |
+| Fontaine (Logic)                | 0xf8dA8dF03A567FBc1A4e567bdA7C3883e6E674bB | https://sepolia.basescan.org/address/0xf8dA8dF03A567FBc1A4e567bdA7C3883e6E674bB |
+| Fontaine (Beacon)               | 0xC853A70737259e245582Dd03947b49BD39BB2044 | https://sepolia.basescan.org/address/0xC853A70737259e245582Dd03947b49BD39BB2044 |
+| FluidLockerFactory (Logic)      | 0xd24f152086b2cd2BB4617cadd76c58C6dEFa3b94 | https://sepolia.basescan.org/address/0xd24f152086b2cd2BB4617cadd76c58C6dEFa3b94 |
+| FluidLockerFactory (Proxy)      | 0x9ecF49AC7E0F42B4D272dC95Cbfe0119454B1988 | https://sepolia.basescan.org/address/0x9ecF49AC7E0F42B4D272dC95Cbfe0119454B1988 |
 
 ## Test Coverage :
 

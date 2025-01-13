@@ -62,6 +62,25 @@
   {
     "type": "function",
     "name": "createLockerContract",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "lockerInstance",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "createLockerContract",
     "inputs": [],
     "outputs": [
       {
