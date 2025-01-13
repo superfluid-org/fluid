@@ -7,11 +7,11 @@ import { ERC20Permit, Nonces } from "@openzeppelin-v5/contracts/token/ERC20/exte
 import { ERC20Votes } from "@openzeppelin-v5/contracts/token/ERC20/extensions/ERC20Votes.sol";
 
 /**
- * @title Fluid Token Contract
+ * @title $SUP Token Contract
  * @author Superfluid
- * @notice ERC20 $FLUID Token contract
+ * @notice ERC20 $SUP Token contract
  */
-contract FluidToken is ERC20, ERC20Permit, ERC20Votes {
+contract SupToken is ERC20, ERC20Permit, ERC20Votes {
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
     //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
@@ -19,11 +19,11 @@ contract FluidToken is ERC20, ERC20Permit, ERC20Votes {
     //  \____/\____/_/ /_/____/\__/_/   \__,_/\___/\__/\____/_/
 
     /**
-     * @notice FLUID Token contract constructor
+     * @notice $SUP Token contract constructor
      * @param name token name
      * @param symbol token symbol
      * @param treasury pre-minted supply recipient address
-     * @param totalSupply total finite supply of FLUID Tokens to be minted
+     * @param totalSupply total finite supply of SUP Tokens to be minted
      */
     constructor(string memory name, string memory symbol, address treasury, uint256 totalSupply)
         ERC20(name, symbol)

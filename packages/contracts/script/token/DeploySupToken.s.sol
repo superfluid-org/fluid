@@ -6,16 +6,16 @@ import { ISuperTokenFactory } from
     "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { BridgedSuperTokenProxy } from "src/token/BridgedSuperToken.sol";
 import { OPBridgedSuperToken } from "src/token/OPBridgedSuperToken.sol";
-import { FluidToken } from "src/token/FluidToken.sol";
+import { SupToken } from "src/token/SupToken.sol";
 
 /// @dev - TODO : Stealth Name and Symbol to be changed for Mainnet Deployment
-string constant tokenName = "FXXXX Token";
-string constant tokenSymbol = "FXXXX";
-string constant superTokenName = "FXXXX Super Token";
-string constant superTokenSymbol = "FXXXXx";
+string constant tokenName = "SXX Token";
+string constant tokenSymbol = "SXX";
+string constant superTokenName = "SXX Super Token";
+string constant superTokenSymbol = "SXXx";
 
 /// abstract base contract to avoid code duplication
-abstract contract DeployFluidTokenBase is Script {
+abstract contract DeploySupTokenBase is Script {
     address owner;
     uint256 initialSupply;
 
@@ -61,27 +61,27 @@ abstract contract DeployFluidTokenBase is Script {
 }
 
 /// deploys FLUID Token on ETH Mainnet
-contract DeployL1FluidToken is DeployFluidTokenBase {
+contract DeployL1SupToken is DeploySupTokenBase {
     function run() external {
         _showGitRevision();
-        _loadTokenParams("FLUID Token ERC20");
+        _loadTokenParams("$SUP Token ERC20");
 
         _startBroadcast();
 
         // since the token is permissionless and non-upgradable, the "owner" doesn't
         // own the contract, just the initial supply
-        FluidToken fluid = new FluidToken(tokenName, tokenSymbol, owner, initialSupply);
-        console.log("$FLUID Token contract deployed at", address(fluid));
+        SupToken sup = new SupToken(tokenName, tokenSymbol, owner, initialSupply);
+        console.log("$SUP Token contract deployed at", address(sup));
 
         _stopBroadcast();
     }
 }
 
 /// deploys and initializes an instance of OPBridgedSuperTokenProxy
-contract DeployOPFluidSuperToken is DeployFluidTokenBase {
+contract DeployOPSupSuperToken is DeploySupTokenBase {
     function run() external {
         _showGitRevision();
-        _loadTokenParams("FLUID OP Bridged Super Token");
+        _loadTokenParams("SUP OP Bridged Super Token");
 
         _startBroadcast();
 
@@ -94,7 +94,7 @@ contract DeployOPFluidSuperToken is DeployFluidTokenBase {
             ISuperTokenFactory(superTokenFactoryAddr), superTokenName, superTokenSymbol, owner, initialSupply
         );
         proxy.transferOwnership(owner);
-        console.log("OPBridgedSuperToken deployed at", address(proxy));
+        console.log("$SUP OPBridgedSuperToken deployed at", address(proxy));
         console.log("--- SuperTokenFactory: %s", superTokenFactoryAddr);
         console.log("--- NativeBridge: %s", nativeBridge);
         console.log("--- RemoteToken: %s", remoteToken);
@@ -104,19 +104,19 @@ contract DeployOPFluidSuperToken is DeployFluidTokenBase {
 }
 
 /// deploys and initializes an instance of BridgedSuperTokenProxy
-contract DeployL2FluidSuperToken is DeployFluidTokenBase {
+contract DeployL2SupSuperToken is DeploySupTokenBase {
     function run() external {
         _showGitRevision();
-        _loadTokenParams("FLUID Regular Bridged Super Token");
+        _loadTokenParams("SUP Regular Bridged Super Token");
 
         address superTokenFactoryAddr = vm.envAddress("SUPERTOKEN_FACTORY");
 
         _startBroadcast();
 
         BridgedSuperTokenProxy proxy = new BridgedSuperTokenProxy();
-        proxy.initialize(ISuperTokenFactory(superTokenFactoryAddr), "Fluid SuperToken", "FLUIDx", owner, initialSupply);
+        proxy.initialize(ISuperTokenFactory(superTokenFactoryAddr), "SUP SuperToken", "SUPx", owner, initialSupply);
         proxy.transferOwnership(owner);
-        console.log("BridgedSuperTokenProxy deployed at", address(proxy));
+        console.log("$SUP BridgedSuperTokenProxy deployed at", address(proxy));
         console.log("--- SuperTokenFactory: %s", superTokenFactoryAddr);
 
         _stopBroadcast();

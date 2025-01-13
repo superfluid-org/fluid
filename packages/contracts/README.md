@@ -71,10 +71,10 @@ Current test coverage is as follow :
 ```shell
 OWNER={DEPLOYER_ADDRESS} \
 INITIAL_SUPPLY=1000000000000000000000000000 \
-forge script script/DeployFluidToken.s.sol:DeployL1FluidToken --ffi --rpc-url {ETH_MAINNET_RPC_URL} --broadcast -vvv
+forge script script/token/DeploySupToken.s.sol:DeployL1SupToken --ffi --rpc-url ${ETH_MAINNET_RPC_URL} --broadcast -vvv --verify --etherscan-api-key ${ETHERSCAN_API_KEY}
 ```
 
-### Step 2 - Transfer 650M $FLUID to Foundation Multisig (L1)
+### Step 2 - Transfer 650M $SUP to Foundation Multisig (L1)
 
 > NOTE : `transfer(address,uint256) args : sender, amount`
 
