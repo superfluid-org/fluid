@@ -4,7 +4,7 @@ chains=(84532 11155111)
 
 # Loop over each chainID
 for chain in ${chains[@]}; do
-  input_files=("broadcast/Deploy.s.sol/$chain/run-latest.json" "broadcast/DeployFluidToken.s.sol/$chain/run-latest.json")
+  input_files=("broadcast/Deploy.s.sol/$chain/run-latest.json" "broadcast/DeploySupToken.s.sol/$chain/run-latest.json")
 
   output_folder="abi/"
 
