@@ -4,9 +4,9 @@ pragma solidity ^0.8.23;
 import "forge-std/Script.sol";
 import { ISuperTokenFactory } from
     "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
-import { BridgedSuperTokenProxy } from "../src/token/BridgedSuperToken.sol";
-import { OPBridgedSuperToken } from "../src/token/OPBridgedSuperToken.sol";
-import { FluidToken } from "../src/token/FluidToken.sol";
+import { BridgedSuperTokenProxy } from "src/token/BridgedSuperToken.sol";
+import { OPBridgedSuperToken } from "src/token/OPBridgedSuperToken.sol";
+import { FluidToken } from "src/token/FluidToken.sol";
 
 /// @dev - TODO : Stealth Name and Symbol to be changed for Mainnet Deployment
 string constant tokenName = "FXXXX Token";
