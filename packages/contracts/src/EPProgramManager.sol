@@ -116,10 +116,10 @@ contract EPProgramManager is IEPProgramManager {
     function batchUpdateUnits(
         uint256[] memory programIds,
         uint256[] memory newUnits,
-        uint256[] memory nonces,
-        bytes[] memory stackSignatures
+        uint256 nonce,
+        bytes memory stackSignature
     ) external {
-        batchUpdateUserUnits(msg.sender, programIds, newUnits, nonces, stackSignatures);
+        batchUpdateUserUnits(msg.sender, programIds, newUnits, nonce, stackSignature);
     }
 
     /// @inheritdoc IEPProgramManager
@@ -160,19 +160,46 @@ contract EPProgramManager is IEPProgramManager {
         address user,
         uint256[] memory programIds,
         uint256[] memory newUnits,
-        uint256[] memory nonces,
-        bytes[] memory stackSignatures
+        uint256 nonce,
+        bytes memory stackSignature
     ) public {
         uint256 length = programIds.length;
 
-        // Validate array sizes
+        // Input validation
         if (length == 0) revert INVALID_PARAMETER();
-        if (length != newUnits.length || length != nonces.length || length != stackSignatures.length) {
+        if (length != newUnits.length) {
             revert INVALID_PARAMETER();
+        }
+        if (user == address(0)) revert INVALID_PARAMETER();
+        if (stackSignature.length != _SIGNATURE_LENGTH) {
+            revert INVALID_SIGNATURE("signature length");
+        }
+
+        address signer = programs[programIds[0]].stackSigner;
+
+        // Verify signature
+        if (!_verifySignature(signer, user, newUnits, programIds, nonce, stackSignature)) {
+            revert INVALID_SIGNATURE("signer");
         }
 
         for (uint256 i; i < length; ++i) {
-            updateUserUnits(user, programIds[i], newUnits[i], nonces[i], stackSignatures[i]);
+            // Ensure all programs in the batch have the same signer
+            if (programs[programIds[0]].stackSigner != signer) {
+                revert INVALID_PARAMETER();
+            }
+
+            // Ensure all programs in the batch exist
+            if (address(programs[programIds[i]].distributionPool) == address(0)) {
+                revert PROGRAM_NOT_FOUND();
+            }
+
+            // Verify and update nonce
+            if (!_isNonceValid(programIds[i], user, nonce)) {
+                revert INVALID_SIGNATURE("nonce");
+            }
+            _lastValidNonces[programIds[i]][user] = nonce;
+
+            _poolUpdate(programs[programIds[i]], newUnits[i], user);
         }
     }
 
@@ -240,6 +267,29 @@ contract EPProgramManager is IEPProgramManager {
         bytes memory signature
     ) internal view returns (bool isValid) {
         bytes32 hash = ECDSA.toEthSignedMessageHash(keccak256(abi.encodePacked(user, newUnits, programId, nonce)));
+
+        isValid = ECDSA.recover(hash, signature) == signer;
+    }
+
+    /**
+     * @notice Verifies a signature for updating units
+     *  @param signer The expected signer address
+     *  @param user The user whose units are being updated
+     *  @param newUnits The array of new units value
+     *  @param programIds The array of program identifiers
+     *  @param nonce The nonce used in the signature
+     *  @param signature The signature to verify
+     *  @return isValid True if the signature is valid
+     */
+    function _verifySignature(
+        address signer,
+        address user,
+        uint256[] memory newUnits,
+        uint256[] memory programIds,
+        uint256 nonce,
+        bytes memory signature
+    ) internal view returns (bool isValid) {
+        bytes32 hash = ECDSA.toEthSignedMessageHash(keccak256(abi.encodePacked(user, newUnits, programIds, nonce)));
 
         isValid = ECDSA.recover(hash, signature) == signer;
     }

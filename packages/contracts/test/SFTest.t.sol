@@ -172,6 +172,21 @@ contract SFTest is Test {
         signature = abi.encodePacked(r, s, v);
     }
 
+    function _helperGenerateBatchSignature(
+        uint256 _signerPkey,
+        address _locker,
+        uint256[] memory _unitsToGrant,
+        uint256[] memory _programIds,
+        uint256 _nonce
+    ) internal pure returns (bytes memory signature) {
+        bytes32 message = keccak256(abi.encodePacked(_locker, _unitsToGrant, _programIds, _nonce));
+
+        bytes32 digest = message.toEthSignedMessageHash();
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerPkey, digest);
+        signature = abi.encodePacked(r, s, v);
+    }
+
     function _helperDistributeToProgramPool(uint256 programId, uint256 amount, uint256 period)
         internal
         returns (int96 actualDistributionFlowRate)

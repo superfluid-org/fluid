@@ -83,8 +83,9 @@ contract FluidLockerTest is SFTest {
 
         uint256[] memory programIds = new uint256[](3);
         uint256[] memory newUnits = new uint256[](3);
-        uint256[] memory nonces = new uint256[](3);
-        bytes[] memory signatures = new bytes[](3);
+
+        uint256 nonce;
+        bytes memory signature;
 
         uint256[] memory distributionAmounts = new uint256[](3);
         uint256[] memory distributionPeriods = new uint256[](3);
@@ -92,14 +93,17 @@ contract FluidLockerTest is SFTest {
         for (uint8 i = 0; i < 3; ++i) {
             programIds[i] = i + 1;
             newUnits[i] = units;
-            nonces[i] = _programManager.getNextValidNonce(programIds[i], ALICE);
-            signatures[i] = _helperGenerateSignature(signerPkey, ALICE, units, programIds[i], nonces[i]);
+            nonce = _programManager.getNextValidNonce(programIds[i], ALICE) > nonce
+                ? _programManager.getNextValidNonce(programIds[i], ALICE)
+                : nonce;
             distributionAmounts[i] = 1_000_000e18;
             distributionPeriods[i] = _MAX_UNLOCK_PERIOD;
         }
 
+        signature = _helperGenerateBatchSignature(signerPkey, ALICE, newUnits, programIds, nonce);
+
         vm.prank(ALICE);
-        aliceLocker.claim(programIds, newUnits, nonces, signatures);
+        aliceLocker.claim(programIds, newUnits, nonce, signature);
 
         int96[] memory distributionFlowrates =
             _helperDistributeToProgramPool(programIds, distributionAmounts, distributionPeriods);
@@ -477,8 +481,9 @@ contract FluidLockerTTETest is SFTest {
 
         uint256[] memory programIds = new uint256[](3);
         uint256[] memory newUnits = new uint256[](3);
-        uint256[] memory nonces = new uint256[](3);
-        bytes[] memory signatures = new bytes[](3);
+
+        uint256 nonce;
+        bytes memory signature;
 
         uint256[] memory distributionAmounts = new uint256[](3);
         uint256[] memory distributionPeriods = new uint256[](3);
@@ -486,14 +491,16 @@ contract FluidLockerTTETest is SFTest {
         for (uint8 i = 0; i < 3; ++i) {
             programIds[i] = i + 1;
             newUnits[i] = units;
-            nonces[i] = _programManager.getNextValidNonce(programIds[i], ALICE);
-            signatures[i] = _helperGenerateSignature(signerPkey, ALICE, units, programIds[i], nonces[i]);
+            nonce = _programManager.getNextValidNonce(programIds[i], ALICE) > nonce
+                ? _programManager.getNextValidNonce(programIds[i], ALICE)
+                : nonce;
             distributionAmounts[i] = 1_000_000e18;
             distributionPeriods[i] = _MAX_UNLOCK_PERIOD;
         }
+        signature = _helperGenerateBatchSignature(signerPkey, ALICE, newUnits, programIds, nonce);
 
         vm.prank(ALICE);
-        aliceLocker.claim(programIds, newUnits, nonces, signatures);
+        aliceLocker.claim(programIds, newUnits, nonce, signature);
 
         int96[] memory distributionFlowrates =
             _helperDistributeToProgramPool(programIds, distributionAmounts, distributionPeriods);

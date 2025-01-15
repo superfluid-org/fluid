@@ -12,7 +12,10 @@ import {
     ISuperfluidPool
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
-import { MacroForwarder, IUserDefinedMacro } from "@superfluid-finance/ethereum-contracts/contracts/utils/MacroForwarder.sol";
+import {
+    MacroForwarder,
+    IUserDefinedMacro
+} from "@superfluid-finance/ethereum-contracts/contracts/utils/MacroForwarder.sol";
 
 import { EPProgramManager, IEPProgramManager } from "../src/EPProgramManager.sol";
 import { FluidEPProgramManager } from "../src/FluidEPProgramManager.sol";
@@ -167,8 +170,10 @@ contract EPProgramManagerTest is SFTest {
 
         uint256[] memory programIds = new uint256[](_batchAmount);
         uint256[] memory newUnits = new uint256[](_batchAmount);
-        uint256[] memory nonces = new uint256[](_batchAmount);
-        bytes[] memory stackSignatures = new bytes[](_batchAmount);
+
+        uint256 nonce;
+        bytes memory stackSignature;
+
         ISuperfluidPool[] memory pools = new ISuperfluidPool[](_batchAmount);
 
         for (uint8 i = 0; i < _batchAmount; ++i) {
@@ -176,12 +181,14 @@ contract EPProgramManagerTest is SFTest {
             pools[i] = _helperCreateProgram(programIds[i], ADMIN, vm.addr(_signerPkey));
 
             newUnits[i] = _units;
-            nonces[i] = _programManagerBase.getNextValidNonce(programIds[i], _user);
-            stackSignatures[i] = _helperGenerateSignature(_signerPkey, _user, newUnits[i], programIds[i], nonces[i]);
+            nonce = _programManagerBase.getNextValidNonce(programIds[i], _user) > nonce
+                ? _programManagerBase.getNextValidNonce(programIds[i], _user)
+                : nonce;
         }
+        stackSignature = _helperGenerateBatchSignature(_signerPkey, _user, newUnits, programIds, nonce);
 
         vm.prank(_user);
-        _programManagerBase.batchUpdateUnits(programIds, newUnits, nonces, stackSignatures);
+        _programManagerBase.batchUpdateUnits(programIds, newUnits, nonce, stackSignature);
 
         for (uint8 i = 0; i < _batchAmount; ++i) {
             assertEq(newUnits[i], pools[i].getUnits(_user), "incorrect units amounts");
@@ -195,8 +202,9 @@ contract EPProgramManagerTest is SFTest {
 
         uint256[] memory programIds = new uint256[](2);
         uint256[] memory newUnits = new uint256[](2);
-        uint256[] memory nonces = new uint256[](2);
-        bytes[] memory stackSignatures = new bytes[](2);
+        uint256 nonce;
+        bytes memory stackSignature;
+
         ISuperfluidPool[] memory pools = new ISuperfluidPool[](2);
 
         for (uint8 i = 0; i < 2; ++i) {
@@ -204,32 +212,25 @@ contract EPProgramManagerTest is SFTest {
             pools[i] = _helperCreateProgram(programIds[i], ADMIN, vm.addr(_signerPkey));
 
             newUnits[i] = _units;
-            nonces[i] = _programManagerBase.getNextValidNonce(programIds[i], _user);
-            stackSignatures[i] = _helperGenerateSignature(_signerPkey, _user, newUnits[i], programIds[i], nonces[i]);
+            nonce = _programManagerBase.getNextValidNonce(programIds[i], _user) > nonce
+                ? _programManagerBase.getNextValidNonce(programIds[i], _user)
+                : nonce;
         }
+
+        stackSignature = _helperGenerateBatchSignature(_signerPkey, _user, newUnits, programIds, nonce);
 
         uint256[] memory invalidProgramIds = new uint256[](0);
 
         vm.prank(_user);
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManagerBase.batchUpdateUnits(invalidProgramIds, newUnits, nonces, stackSignatures);
+        _programManagerBase.batchUpdateUnits(invalidProgramIds, newUnits, nonce, stackSignature);
 
         uint256[] memory invalidNewUnits = new uint256[](1);
         invalidNewUnits[0] = newUnits[0];
 
         vm.prank(_user);
         vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManagerBase.batchUpdateUnits(programIds, invalidNewUnits, nonces, stackSignatures);
-
-        uint256[] memory invalidNonces = new uint256[](1);
-        invalidNonces[0] = nonces[0];
-
-        bytes[] memory invalidStackSignatures = new bytes[](1);
-        invalidStackSignatures[0] = stackSignatures[0];
-
-        vm.prank(_user);
-        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManagerBase.batchUpdateUnits(programIds, newUnits, nonces, invalidStackSignatures);
+        _programManagerBase.batchUpdateUnits(programIds, invalidNewUnits, nonce, stackSignature);
     }
 
     function _helperCreateProgram(uint256 pId, address admin, address signer)
@@ -460,8 +461,10 @@ contract FluidEPProgramManagerTest is SFTest {
 
         uint256[] memory programIds = new uint256[](_batchAmount);
         uint256[] memory newUnits = new uint256[](_batchAmount);
-        uint256[] memory nonces = new uint256[](_batchAmount);
-        bytes[] memory stackSignatures = new bytes[](_batchAmount);
+
+        uint256 nonce;
+        bytes memory stackSignature;
+
         ISuperfluidPool[] memory pools = new ISuperfluidPool[](_batchAmount);
 
         for (uint8 i = 0; i < _batchAmount; ++i) {
@@ -469,12 +472,14 @@ contract FluidEPProgramManagerTest is SFTest {
             pools[i] = _helperCreateProgram(programIds[i], ADMIN, vm.addr(_signerPkey));
 
             newUnits[i] = _units;
-            nonces[i] = _programManager.getNextValidNonce(programIds[i], ALICE);
-            stackSignatures[i] = _helperGenerateSignature(_signerPkey, ALICE, newUnits[i], programIds[i], nonces[i]);
+            nonce = _programManager.getNextValidNonce(programIds[i], ALICE) > nonce
+                ? _programManager.getNextValidNonce(programIds[i], ALICE)
+                : nonce;
         }
+        stackSignature = _helperGenerateBatchSignature(_signerPkey, ALICE, newUnits, programIds, nonce);
 
         vm.prank(ALICE);
-        _programManager.batchUpdateUnits(programIds, newUnits, nonces, stackSignatures);
+        _programManager.batchUpdateUnits(programIds, newUnits, nonce, stackSignature);
 
         for (uint8 i = 0; i < _batchAmount; ++i) {
             assertEq(newUnits[i], pools[i].getUnits(address(aliceLocker)), "incorrect units amounts");
@@ -741,17 +746,14 @@ contract FluidEPProgramManagerTest is SFTest {
         /// TODO : add asserts
     }
 
-    function testUserMacro(uint128 fundingAmount ) external {
+    function testUserMacro(uint128 fundingAmount) external {
         uint256 programId = 1;
         uint96 signerPkey = 69_420;
         fundingAmount = 1e18;
 
         _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
         vm.startPrank(FLUID_TREASURY);
-        _sf.macroForwarder.runMacro(
-            _programManager,
-            _programManager.paramsGivePermission(programId, fundingAmount)
-        );
+        _sf.macroForwarder.runMacro(_programManager, _programManager.paramsGivePermission(programId, fundingAmount));
         vm.stopPrank();
 
         // verify startFunding has needed allowances
