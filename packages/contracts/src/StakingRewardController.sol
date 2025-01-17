@@ -5,6 +5,7 @@ pragma solidity ^0.8.23;
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import { ERC1967Utils } from "@openzeppelin-v5/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {
@@ -18,6 +19,7 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 
 using SuperTokenV1Library for ISuperToken;
+using SafeCast for int256;
 
 /**
  * @title Staking Reward Controller Contract
@@ -38,6 +40,9 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     /// @notice Value used to convert staked amount into GDA pool units
     uint128 private constant _UNIT_DOWNSCALER = 1e16;
 
+    /// @notice Basis points denominator (for percentage calculation)
+    uint96 private constant _BP_DENOMINATOR = 10_000;
+
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -52,6 +57,9 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
 
     /// @notice Locker Factory contract address
     address public lockerFactory;
+
+    /// @notice Staking subsidy funding rate
+    uint96 public subsidyRate;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -97,6 +105,9 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     function updateStakerUnits(uint256 lockerStakedBalance) external onlyApprovedLocker {
         taxDistributionPool.updateMemberUnits(msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
 
+        // Update the subsidy release rate
+        _updateSubsidyReleaseRate();
+
         emit UpdatedStakersUnits(msg.sender, uint128(lockerStakedBalance) / _UNIT_DOWNSCALER);
     }
 
@@ -120,8 +131,36 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     }
 
     /// @inheritdoc IStakingRewardController
+    function setSubsidyRate(uint96 newSubsidyRate) external onlyOwner {
+        // Input validation
+        if (newSubsidyRate > _BP_DENOMINATOR) revert INVALID_PARAMETER();
+        subsidyRate = newSubsidyRate;
+    }
+
+    /// @inheritdoc IStakingRewardController
+    function withdraw(ISuperToken token, address recipient) external onlyOwner {
+        token.transfer(recipient, token.balanceOf(address(this)));
+    }
+
+    /// @inheritdoc IStakingRewardController
     function upgradeTo(address newImplementation, bytes calldata data) external onlyOwner {
         ERC1967Utils.upgradeToAndCall(newImplementation, data);
+    }
+
+    //      ____      __                        __   ______                 __  _
+    //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
+    //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    function _updateSubsidyReleaseRate() internal {
+        uint256 subsidyToDistributeYearly =
+            taxDistributionPool.getTotalUnits() * _UNIT_DOWNSCALER * subsidyRate / _BP_DENOMINATOR;
+
+        int96 newSubsidyReleaseFlowRate = int256(subsidyToDistributeYearly / (12 * 30 * 24 * 60 * 60)).toInt96();
+
+        // Update the subsidy release rate
+        FLUID.distributeFlow(address(this), taxDistributionPool, newSubsidyReleaseFlowRate);
     }
 
     //      __  ___          ___ _____

@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import { ISuperfluidPool } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+import {
+    ISuperfluidPool,
+    ISuperToken
+} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 
 /**
  * @title Staking Reward Controller Contract Interface
@@ -75,6 +78,21 @@ interface IStakingRewardController {
      * @param lockerAddress Locker contract address to be approved
      */
     function approveLocker(address lockerAddress) external;
+
+    /**
+     * @notice Update the Staking Subsidy Rate
+     * @dev Only the contract owner can perform this operation
+     * @param newSubsidyRate Subsidy rate to be set (expressed in basis points)
+     */
+    function setSubsidyRate(uint96 newSubsidyRate) external;
+
+    /**
+     * @notice Withdraw funds from this contract to the given recipient
+     * @dev Only the contract owner can perform this operation
+     * @param token token contract address
+     * @param recipient the recipient address
+     */
+    function withdraw(ISuperToken token, address recipient) external;
 
     /**
      * @notice Upgrade this proxy logic
