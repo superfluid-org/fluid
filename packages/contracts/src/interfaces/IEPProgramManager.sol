@@ -31,6 +31,9 @@ interface IEPProgramManager {
     /// @notice Event emitted when user's units are updated
     event UserUnitsUpdated(address user, uint256 programId, uint256 newUnits);
 
+    /// @notice Event emitted when user's units are updated in batch
+    event UserUnitsUpdated(address user, uint256[] programId, uint256[] newUnits);
+
     //      ____        __        __
     //     / __ \____ _/ /_____ _/ /___  ______  ___  _____
     //    / / / / __ `/ __/ __ `/ __/ / / / __ \/ _ \/ ___/

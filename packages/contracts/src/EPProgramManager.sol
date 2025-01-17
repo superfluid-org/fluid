@@ -201,6 +201,8 @@ contract EPProgramManager is IEPProgramManager {
 
             _poolUpdate(programs[programIds[i]], newUnits[i], user);
         }
+
+        emit UserUnitsUpdated(user, programIds, newUnits);
     }
 
     //   _    ___                 ______                 __  _
