@@ -184,7 +184,7 @@ contract EPProgramManager is IEPProgramManager {
 
         for (uint256 i; i < length; ++i) {
             // Ensure all programs in the batch have the same signer
-            if (programs[programIds[0]].stackSigner != signer) {
+            if (programs[programIds[i]].stackSigner != signer) {
                 revert INVALID_PARAMETER();
             }
 
