@@ -86,14 +86,14 @@ interface IFluidLocker {
      * @notice Batch update this locker units within the given programs identifier's GDA pools
      * @param programIds array of program identifiers corresponding to the unit update
      * @param totalProgramUnits array new total amount of units
-     * @param nonces array of nonce associated to the signatures provided by Stack
-     * @param stackSignatures array of stack signatures containing necessary info to update units
+     * @param nonce Single nonce used for all updates in the batch
+     * @param stackSignature Single signature containing necessary info to update all units in the batch
      */
     function claim(
         uint256[] memory programIds,
         uint256[] memory totalProgramUnits,
-        uint256[] memory nonces,
-        bytes[] memory stackSignatures
+        uint256 nonce,
+        bytes memory stackSignature
     ) external;
 
     /**

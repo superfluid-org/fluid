@@ -191,8 +191,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     function claim(
         uint256[] memory programIds,
         uint256[] memory totalProgramUnits,
-        uint256[] memory nonces,
-        bytes[] memory stackSignatures
+        uint256 nonce,
+        bytes memory stackSignature
     ) external nonReentrant {
         for (uint256 i = 0; i < programIds.length; ++i) {
             // Get the corresponding program pool
@@ -205,7 +205,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
 
         // Request program manager to update this locker's units
-        EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonces, stackSignatures);
+        EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonce, stackSignature);
 
         emit IFluidLocker.FluidStreamsClaimed(programIds, totalProgramUnits);
     }

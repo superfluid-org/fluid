@@ -139,8 +139,6 @@ contract FontaineTest is SFTest {
 
         assertEq(_fluid.getFlowRate(newFontaine, user), 0, "incorrect unlock flowrate");
 
-        uint256 currentFontaineBalance = _fluid.balanceOf(newFontaine);
-
         vm.warp(afterEndUnlockPeriod);
 
         vm.prank(user);

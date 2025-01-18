@@ -27,11 +27,11 @@ Latest deployed contract address
 | Contract                        | Address                                    | Explorer                                                                        |
 | ------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
 | FluidToken (SuperToken)         | 0xFd62b398DD8a233ad37156690631fb9515059d6A | https://sepolia.basescan.org/address/0xFd62b398DD8a233ad37156690631fb9515059d6A |
-| FluidEPProgramManager (Logic)   | 0x151fAA8F7De5b32A32067000175DaAacA862B128 | https://sepolia.basescan.org/address/0x151fAA8F7De5b32A32067000175DaAacA862B128 |
+| FluidEPProgramManager (Logic)   | 0xE1061135B65dc63CB6957399bd524828Cdaa580D | https://sepolia.basescan.org/address/0xE1061135B65dc63CB6957399bd524828Cdaa580D |
 | FluidEPProgramManager (Proxy)   | 0xA8f867fA115f64F9728Fc4fd4Ce959f12442a86E | https://sepolia.basescan.org/address/0xA8f867fA115f64F9728Fc4fd4Ce959f12442a86E |
 | StakingRewardController (Logic) | 0xAe665c8154B15Bf4F7a3f813dB71D40624b7Dac7 | https://sepolia.basescan.org/address/0xAe665c8154B15Bf4F7a3f813dB71D40624b7Dac7 |
 | StakingRewardController (Proxy) | 0xC2569d417f3f255b30966D21EB31fFCb76b05150 | https://sepolia.basescan.org/address/0xC2569d417f3f255b30966D21EB31fFCb76b05150 |
-| FluidLocker (Logic)             | 0x77769118b297Eb03D01cf7D093E4D135470707B6 | https://sepolia.basescan.org/address/0x77769118b297Eb03D01cf7D093E4D135470707B6 |
+| FluidLocker (Logic)             | 0x68268914dE6eB7077C941125815DB2057238078A | https://sepolia.basescan.org/address/0x68268914dE6eB7077C941125815DB2057238078A |
 | FluidLocker (Beacon)            | 0xa67d2E26843793048990e3e8e0e7120Eb3cc8ad8 | https://sepolia.basescan.org/address/0xa67d2E26843793048990e3e8e0e7120Eb3cc8ad8 |
 | Fontaine (Logic)                | 0xf8dA8dF03A567FBc1A4e567bdA7C3883e6E674bB | https://sepolia.basescan.org/address/0xf8dA8dF03A567FBc1A4e567bdA7C3883e6E674bB |
 | Fontaine (Beacon)               | 0xC853A70737259e245582Dd03947b49BD39BB2044 | https://sepolia.basescan.org/address/0xC853A70737259e245582Dd03947b49BD39BB2044 |

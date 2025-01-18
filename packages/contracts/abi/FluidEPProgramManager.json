@@ -64,14 +64,14 @@
         "internalType": "uint256[]"
       },
       {
-        "name": "nonces",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
-        "name": "stackSignatures",
-        "type": "bytes[]",
-        "internalType": "bytes[]"
+        "name": "stackSignature",
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [],
@@ -97,14 +97,14 @@
         "internalType": "uint256[]"
       },
       {
-        "name": "nonces",
-        "type": "uint256[]",
-        "internalType": "uint256[]"
+        "name": "nonce",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
-        "name": "stackSignatures",
-        "type": "bytes[]",
-        "internalType": "bytes[]"
+        "name": "stackSignature",
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [],
