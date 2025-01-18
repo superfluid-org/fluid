@@ -200,9 +200,9 @@ contract EPProgramManager is IEPProgramManager {
             _lastValidNonces[programIds[i]][user] = nonce;
 
             _poolUpdate(programs[programIds[i]], newUnits[i], user);
-        }
 
-        emit UserUnitsUpdated(user, programIds, newUnits);
+            emit UserUnitsUpdated(user, programIds[i], newUnits[i]);
+        }
     }
 
     //   _    ___                 ______                 __  _
