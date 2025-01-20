@@ -16,6 +16,22 @@ $ forge test
 
 Latest deployed contract address
 
+### BASE MAINNET - Preliminary Deployment :
+
+| Contract                        | Address                                    | Explorer                                                                |
+| ------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------- |
+| FluidToken (SuperToken)         | 0x1547A1FeBE691cE721FD3F60e94e444d60d6f716 | https://basescan.org/address/0x1547A1FeBE691cE721FD3F60e94e444d60d6f716 |
+| FluidEPProgramManager (Logic)   | 0x9F6edf6F5F1F23B8D34120B69f78c10F73A8A14C | https://basescan.org/address/0x9F6edf6F5F1F23B8D34120B69f78c10F73A8A14C |
+| FluidEPProgramManager (Proxy)   | 0x7797d88dD97AeD14183cbF790e5894AC89cF45A3 | https://basescan.org/address/0x7797d88dD97AeD14183cbF790e5894AC89cF45A3 |
+| StakingRewardController (Logic) | 0x64683CdA7125dC49Ed1824Af9d3d052711ae3AcA | https://basescan.org/address/0x64683CdA7125dC49Ed1824Af9d3d052711ae3AcA |
+| StakingRewardController (Proxy) | 0x56e6CCbe6d1Ff3B7f8962e203802F95413F9E59F | https://basescan.org/address/0x56e6CCbe6d1Ff3B7f8962e203802F95413F9E59F |
+| FluidLocker (Logic)             | 0x0260d4C6dcDa89a1F0EA3FB9abED6701b35A0E04 | https://basescan.org/address/0x0260d4C6dcDa89a1F0EA3FB9abED6701b35A0E04 |
+| FluidLocker (Beacon)            | 0xb9A1c7224546FD76C9A1E4F574ab000F19366Df1 | https://basescan.org/address/0xb9A1c7224546FD76C9A1E4F574ab000F19366Df1 |
+| Fontaine (Logic)                | 0xB1cF9bb4B0652d287f7b3E4cBB5E6eE8C5B32750 | https://basescan.org/address/0xB1cF9bb4B0652d287f7b3E4cBB5E6eE8C5B32750 |
+| Fontaine (Beacon)               | 0xaFa51013Aa99129DBc8c12Fd794D92aB52138612 | https://basescan.org/address/0xaFa51013Aa99129DBc8c12Fd794D92aB52138612 |
+| FluidLockerFactory (Logic)      | 0x45C1A4ae075Fc498873B1E57CB22E9885Ec1B912 | https://basescan.org/address/0x45C1A4ae075Fc498873B1E57CB22E9885Ec1B912 |
+| FluidLockerFactory (Proxy)      | 0xCaCb226C59e204149d323C569C495CBc1e8054FB | https://basescan.org/address/0xCaCb226C59e204149d323C569C495CBc1e8054FB |
+
 ### ETHEREUM SEPOLIA :
 
 | Contract           | Address                                    | Explorer                                                                        |
