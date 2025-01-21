@@ -9,9 +9,28 @@ import { IVestingSchedulerV2 } from
 
 using SuperTokenV1Library for ISuperToken;
 
+interface ISupVestingFactory {
+    function balanceOf(address vestingReceiver) external view returns (uint256);
+
+    function createSupVestingContract(
+        address recipient,
+        uint256 amount,
+        uint32 duration,
+        uint32 startDate,
+        uint32 cliffPeriod
+    ) external returns (address newSupVestingContract);
+
+    function setTreasury(address newTreasury) external;
+
+    function setAdmin(address newAdmin) external;
+
+    function admin() external view returns (address);
+    function treasury() external view returns (address);
+}
+
 contract SupVesting {
-    // Foundation Treasury address
-    address public immutable TREASURY;
+    // Factory Address
+    ISupVestingFactory public immutable FACTORY;
 
     // Recipient address
     address public immutable RECIPIENT;
@@ -25,10 +44,19 @@ contract SupVesting {
     // Error thrown when the caller is not the foundation treasury
     error FORBIDDEN();
 
+    /**
+     * @notice SupVesting contract constructor
+     * @param vestingScheduler The Superfluid vesting scheduler contract
+     * @param token The SUP token contract
+     * @param recipient The recipient of the vested tokens
+     * @param amount The total amount of tokens to vest
+     * @param duration The duration of the vesting schedule in seconds
+     * @param startDate The timestamp when vesting begins
+     * @param cliffPeriod The cliff period in seconds before any tokens vest
+     */
     constructor(
         IVestingSchedulerV2 vestingScheduler,
         ISuperToken token,
-        address treasury,
         address recipient,
         uint256 amount,
         uint32 duration,
@@ -36,10 +64,10 @@ contract SupVesting {
         uint32 cliffPeriod
     ) {
         // Persist the admin, recipient, and vesting scheduler addresses
-        TREASURY = treasury;
         RECIPIENT = recipient;
         VESTING_SCHEDULER = vestingScheduler;
         SUP = token;
+        FACTORY = ISupVestingFactory(msg.sender);
 
         // Grant flow and token allowances
         token.setMaxFlowPermissions(address(vestingScheduler));
@@ -51,16 +79,16 @@ contract SupVesting {
         );
     }
 
-    function cancelVesting() external onlyFoundation {
+    function emergencyWithdraw() external onlyFoundation {
         // Delete the vesting schedule
         VESTING_SCHEDULER.deleteVestingSchedule(SUP, RECIPIENT, bytes(""));
 
         // Transfer the remaining SUP tokens to the treasury
-        SUP.transfer(TREASURY, SUP.balanceOf(address(this)));
+        SUP.transfer(FACTORY.treasury(), SUP.balanceOf(address(this)));
     }
 
     modifier onlyFoundation() {
-        if (msg.sender != TREASURY) revert FORBIDDEN();
+        if (msg.sender != FACTORY.admin()) revert FORBIDDEN();
         _;
     }
 }

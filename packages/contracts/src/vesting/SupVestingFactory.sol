@@ -13,19 +13,33 @@ using SuperTokenV1Library for ISuperToken;
 contract SupVestingFactory {
     IVestingSchedulerV2 public immutable VESTING_SCHEDULER;
     ISuperToken public immutable SUP;
-    address public immutable TREASURY;
+    address public treasury;
+    address public admin;
+
+    string public name;
+    string public symbol;
 
     mapping(address recipient => address supVesting) public supVestings;
 
-    constructor(IVestingSchedulerV2 vestingScheduler, ISuperToken token, address treasury) {
+    // Error thrown when the caller is not the foundation treasury
+    error FORBIDDEN();
+
+    event Transfer(address indexed from, address indexed to, uint256 amount);
+
+    constructor(
+        IVestingSchedulerV2 vestingScheduler,
+        ISuperToken token,
+        address treasuryAddress,
+        address adminAddress
+    ) {
         // Persist immutable addresses
         VESTING_SCHEDULER = vestingScheduler;
         SUP = token;
-        TREASURY = treasury;
-    }
+        treasury = treasuryAddress;
+        admin = adminAddress;
 
-    function balanceOf(address vestingReceiver) public view returns (uint256) {
-        return SUP.balanceOf(supVestings[vestingReceiver]);
+        name = "Locked SUP Token";
+        symbol = "lockedSUP";
     }
 
     function createSupVestingContract(
@@ -33,12 +47,39 @@ contract SupVestingFactory {
         uint256 amount,
         uint32 duration,
         uint32 startDate,
-        uint32 cliffPeriod
+        uint32 cliffPeriod,
+        bool isPrefunded
     ) external returns (address newSupVestingContract) {
         newSupVestingContract = address(
-            new SupVesting(VESTING_SCHEDULER, SUP, TREASURY, recipient, amount, duration, startDate, cliffPeriod)
+            new SupVesting(VESTING_SCHEDULER, SUP, treasury, recipient, amount, duration, startDate, cliffPeriod)
         );
 
         supVestings[recipient] = newSupVestingContract;
+
+        /// FIXME : do we want this ? Prefunded or Not ?
+        if (isPrefunded) {
+            SUP.transferFrom(treasury, newSupVestingContract, amount);
+        }
+
+        emit Transfer(address(0), recipient, amount);
+    }
+
+    function setTreasury(address newTreasury) external onlyAdmin {
+        treasury = newTreasury;
+    }
+
+    function setAdmin(address newAdmin) external onlyAdmin {
+        admin = newAdmin;
+    }
+
+    function balanceOf(address vestingReceiver) public view returns (uint256) {
+        (,, uint256 deposit,) = SUP.getFlowInfo(supVestings[vestingReceiver], vestingReceiver);
+
+        return SUP.balanceOf(supVestings[vestingReceiver]) + deposit;
+    }
+
+    modifier onlyAdmin() {
+        if (msg.sender != admin) revert FORBIDDEN();
+        _;
     }
 }
