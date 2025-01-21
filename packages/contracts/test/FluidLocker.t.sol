@@ -31,7 +31,7 @@ contract FluidLockerTest is SFTest {
     uint256 public constant signerPkey = 0x69;
 
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
-    uint128 internal constant _MAX_UNLOCK_PERIOD = 540 days;
+    uint128 internal constant _MAX_UNLOCK_PERIOD = 365 days;
     uint256 private constant _BP_DENOMINATOR = 10_000;
     uint256 internal constant _SCALER = 1e18;
 
@@ -344,15 +344,15 @@ contract FluidLockerTest is SFTest {
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
 
         uint256 unlockPercentage = getUnlockingPercentage(unlockPeriod);
-        assertGe(unlockPercentage, 2910, "shouldnt be any smaller");
+        assertGe(unlockPercentage, 3107, "shouldnt be any smaller");
         assertLe(unlockPercentage, 10000, "shouldnt be any larger");
 
         // Test different periods
-        assertEq(getUnlockingPercentage(7 days), 2910, "should be 2910");
-        assertEq(getUnlockingPercentage(30 days), 3885, "should be 3885");
-        assertEq(getUnlockingPercentage(90 days), 5265, "should be 5265");
-        assertEq(getUnlockingPercentage(180 days), 6618, "should be 6618");
-        assertEq(getUnlockingPercentage(540 days), 10000, "should be 10000");
+        assertEq(getUnlockingPercentage(7 days), 3107, "should be 3107");
+        assertEq(getUnlockingPercentage(30 days), 4293, "should be 4293");
+        assertEq(getUnlockingPercentage(90 days), 5972, "should be 5972");
+        assertEq(getUnlockingPercentage(180 days), 7617, "should be 7617");
+        assertEq(getUnlockingPercentage(365 days), 10000, "should be 10000");
     }
 
     // Note: property based testing
@@ -416,7 +416,7 @@ contract FluidLockerTTETest is SFTest {
     uint256 private constant _BP_DENOMINATOR = 10_000;
     uint256 internal constant _SCALER = 1e18;
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
-    uint128 internal constant _MAX_UNLOCK_PERIOD = 540 days;
+    uint128 internal constant _MAX_UNLOCK_PERIOD = 365 days;
     uint256 internal constant _PERCENT_TO_BP = 100;
 
     ISuperfluidPool[] public programPools;
@@ -655,19 +655,19 @@ contract FluidLockerTTETest is SFTest {
     }
 
     // Note: golden (characteristic) test
-    function testGetUnlockingPercentageCharacteristic(uint128 unlockPeriod) public pure {
+    function testGetUnlockingPercentage(uint128 unlockPeriod) public pure {
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
 
         uint256 unlockPercentage = getUnlockingPercentage(unlockPeriod);
-        assertGe(unlockPercentage, 2910, "shouldnt be any smaller");
+        assertGe(unlockPercentage, 3107, "shouldnt be any smaller");
         assertLe(unlockPercentage, 10000, "shouldnt be any larger");
 
         // Test different periods
-        assertEq(getUnlockingPercentage(7 days), 2910, "should be 2910");
-        assertEq(getUnlockingPercentage(30 days), 3885, "should be 3885");
-        assertEq(getUnlockingPercentage(90 days), 5265, "should be 5265");
-        assertEq(getUnlockingPercentage(180 days), 6618, "should be 6618");
-        assertEq(getUnlockingPercentage(540 days), 10000, "should be 10000");
+        assertEq(getUnlockingPercentage(7 days), 3107, "should be 3107");
+        assertEq(getUnlockingPercentage(30 days), 4293, "should be 4293");
+        assertEq(getUnlockingPercentage(90 days), 5972, "should be 5972");
+        assertEq(getUnlockingPercentage(180 days), 7617, "should be 7617");
+        assertEq(getUnlockingPercentage(365 days), 10000, "should be 10000");
     }
 
     // Note: property based testing
@@ -690,30 +690,30 @@ contract FluidLockerTTETest is SFTest {
 
         // Test different periods
         (int96 unlockFlowRate, int96 taxFlowRate) = calculateVestUnlockFlowRates(amount, 7 days);
-        assertEq(unlockFlowRate, 481_150_793_650, "(7 days) unlock flow rate should be 481150793650");
-        assertEq(taxFlowRate, 1_172_288_359_789, "(7 days) tax flow rate should be 481150793650");
+        assertEq(unlockFlowRate, 513_723_544_973, "(7 days) unlock flow rate should be 513723544973");
+        assertEq(taxFlowRate, 1_139_715_608_466, "(7 days) tax flow rate should be 1139715608466");
 
         (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 30 days);
-        assertEq(unlockFlowRate, 149_884_259_258, "(30 days) unlock flow rate should be 481150793650");
-        assertEq(taxFlowRate, 235_918_209_877, "(30 days) tax flow rate should be 481150793650");
+        assertEq(unlockFlowRate, 165_624_999_999, "(30 days) unlock flow rate should be 165624999999");
+        assertEq(taxFlowRate, 220_177_469_136, "(30 days) tax flow rate should be 220177469136");
 
         (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 90 days);
-        assertEq(unlockFlowRate, 67_708_333_333, "(90 days) unlock flow rate should be 481150793650");
-        assertEq(taxFlowRate, 60_892_489_712, "(90 days) tax flow rate should be 481150793650");
+        assertEq(unlockFlowRate, 76_800_411_522, "(90 days) unlock flow rate should be 76800411522");
+        assertEq(taxFlowRate, 51_800_411_523, "(90 days) tax flow rate should be 51800411523");
 
         (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 180 days);
-        assertEq(unlockFlowRate, 42_554_012_345, "(180 days) unlock flow rate should be 481150793650");
-        assertEq(taxFlowRate, 21_746_399_177, "(180 days) tax flow rate should be 481150793650");
+        assertEq(unlockFlowRate, 48_977_623_456, "(180 days) unlock flow rate should be 48977623456");
+        assertEq(taxFlowRate, 15_322_788_066, "(180 days) tax flow rate should be 15322788066");
 
-        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 540 days);
-        assertEq(unlockFlowRate, 21_433_470_507, "(540 days) unlock flow rate should be 481150793650");
-        assertEq(taxFlowRate, 0, "(540 days) tax flow rate should be 481150793650");
+        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 365 days);
+        assertEq(unlockFlowRate, 31_709_791_983, "(365 days) unlock flow rate should be 31709791983");
+        assertEq(taxFlowRate, 0, "(365 days) tax flow rate should be 0");
     }
 
     // Property : lower time-preference shall result in higher flowrate
     function testCalculateVestUnlockFlowRatesStrictMonotonicity(uint128 t1, uint128 t2) public pure {
         uint256 amount = 1 ether;
-        uint256 minDistance = 80 minutes;
+        uint256 minDistance = 180 minutes;
 
         t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD - minDistance));
         t2 = uint128(bound(t2, t1 + minDistance, _MAX_UNLOCK_PERIOD));
