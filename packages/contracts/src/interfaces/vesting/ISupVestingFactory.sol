@@ -28,6 +28,9 @@ interface ISupVestingFactory {
     /// @notice Error thrown when the caller is not the foundation treasury
     error FORBIDDEN();
 
+    /// @notice Error thrown when a recipient already has a vesting contract
+    error RECIPIENT_ALREADY_HAS_VESTING_CONTRACT();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/

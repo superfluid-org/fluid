@@ -37,11 +37,17 @@ contract SupVestingFactory is ISupVestingFactory {
     //   ___/ / /_/ /_/ / /_/  __(__  )
     //  /____/\__/\__,_/\__/\___/____/
 
-    /// @notice Name of the Locked SUP Token
+    /// @notice Name of the vdSUP Token
     string public name;
 
-    /// @notice Symbol of the Locked SUP Token
+    /// @notice Symbol of the vdSUP Token
     string public symbol;
+
+    /// @notice Decimals of the vdSUP Token
+    uint256 public decimals;
+
+    /// @notice Total supply of the vdSUP Token
+    uint256 public totalSupply;
 
     /// @notice Foundation treasury address
     address public treasury;
@@ -76,8 +82,9 @@ contract SupVestingFactory is ISupVestingFactory {
         SUP = token;
         treasury = treasuryAddress;
         admin = adminAddress;
-        name = "Locked SUP Token";
-        symbol = "lockedSUP";
+        name = "Vesting Distributed SUP Token";
+        symbol = "vdSUP";
+        decimals = 18;
     }
 
     //      ______     __                        __   ______                 __  _
@@ -94,7 +101,12 @@ contract SupVestingFactory is ISupVestingFactory {
         uint32 startDate,
         uint32 cliffPeriod,
         bool isPrefunded
-    ) external returns (address newSupVestingContract) {
+    ) external onlyAdmin returns (address newSupVestingContract) {
+        // Ensure the recipient address does not already have a vesting contract
+        if (supVestings[recipient] != address(0)) revert RECIPIENT_ALREADY_HAS_VESTING_CONTRACT();
+
+        totalSupply += amount;
+
         // Deploy the new SUP Token Vesting contract
         newSupVestingContract =
             address(new SupVesting(VESTING_SCHEDULER, SUP, recipient, amount, duration, startDate, cliffPeriod));
