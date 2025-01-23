@@ -87,7 +87,12 @@ contract SupVesting is ISupVesting {
     /// @inheritdoc ISupVesting
     function emergencyWithdraw() external onlyAdmin {
         // Delete the vesting schedule
-        VESTING_SCHEDULER.deleteVestingSchedule(SUP, RECIPIENT, bytes(""));
+        if (SUP.getFlowRate(address(this), RECIPIENT) > 0) {
+            VESTING_SCHEDULER.updateVestingSchedule(SUP, RECIPIENT, uint32(block.timestamp + 1 seconds), bytes(""));
+            VESTING_SCHEDULER.executeEndVesting(SUP, address(this), RECIPIENT);
+        } else {
+            VESTING_SCHEDULER.deleteVestingSchedule(SUP, RECIPIENT, bytes(""));
+        }
 
         // Fetch the remaining balance of the vesting contract
         uint256 remainingBalance = SUP.balanceOf(address(this));
