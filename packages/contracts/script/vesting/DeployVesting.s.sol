@@ -58,7 +58,7 @@ contract DeployVestingScript is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         address supVestingFactory = _deployVestingFactory(vestingScheduler, supToken, treasury, governor);
-        address dummySupVesting = _deployDummyVesting(vestingScheduler, supToken, governor);
+        _deployDummyVesting(vestingScheduler, supToken, governor);
         console2.log("SupVestingFactory deployed at: ", supVestingFactory);
     }
 
