@@ -24,6 +24,9 @@ contract SupVestingFactoryTest is SFTest {
         supVestingFactory = new SupVestingFactory(
             IVestingSchedulerV2(address(vestingScheduler)), ISuperToken(_fluidSuperToken), FLUID_TREASURY, ADMIN
         );
+
+        // Move time forward to avoid vesting scheduler errors (time based input validation constraints)
+        vm.warp(block.timestamp + 420 days);
     }
 
     function testCreateSupVestingContractPrefunded(
@@ -32,8 +35,6 @@ contract SupVestingFactoryTest is SFTest {
         uint256 amount,
         bool isPrefunded
     ) public {
-        vm.warp(block.timestamp + 365 days);
-
         vm.assume(nonAdmin != address(ADMIN));
         vm.assume(recipient != address(0));
         amount = bound(amount, 1_000 ether, 1_000_000 ether);
@@ -59,6 +60,11 @@ contract SupVestingFactoryTest is SFTest {
         );
 
         address newSupVestingContract = supVestingFactory.supVestings(recipient);
+
+        if (!isPrefunded) {
+            vm.prank(FLUID_TREASURY);
+            _fluidSuperToken.transfer(newSupVestingContract, amount);
+        }
 
         assertNotEq(newSupVestingContract, address(0), "New sup vesting contract should be created");
         assertEq(supVestingFactory.balanceOf(recipient), amount, "Balance should be updated");
