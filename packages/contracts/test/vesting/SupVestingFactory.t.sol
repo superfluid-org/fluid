@@ -29,7 +29,7 @@ contract SupVestingFactoryTest is SFTest {
         vm.warp(block.timestamp + 420 days);
     }
 
-    function testCreateSupVestingContractPrefunded(
+    function testCreateSupVestingContract(
         address nonAdmin,
         address recipient,
         uint256 amount,

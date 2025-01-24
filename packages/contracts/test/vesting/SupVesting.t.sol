@@ -66,12 +66,13 @@ contract SupVestingTest is SFTest {
         IVestingSchedulerV2.VestingSchedule memory aliceVS =
             vestingScheduler.getVestingSchedule(address(_fluidSuperToken), address(supVesting), ALICE);
 
-        // Move time to after vesting can be concluded
-        vm.warp(aliceVS.endDate - 12 hours);
+        // Move time to after vesting can be concluded (1 seconds before the stream gets in critical state)
+        vm.warp(aliceVS.endDate - 4 hours - 1 seconds);
 
         vestingScheduler.executeEndVesting(_fluidSuperToken, address(supVesting), ALICE);
 
         assertEq(_fluidSuperToken.balanceOf(ALICE), VESTING_AMOUNT, "Alice should have the full amount");
+        assertEq(_fluidSuperToken.balanceOf(address(supVesting)), 0, "SupVesting contract should be empty");
     }
 
     function testEmergencyWithdrawBeforeVestingStart(address nonAdmin) public {
