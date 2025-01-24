@@ -157,7 +157,7 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
         uint256 subsidyToDistributeYearly =
             taxDistributionPool.getTotalUnits() * _UNIT_DOWNSCALER * subsidyRate / _BP_DENOMINATOR;
 
-        int96 newSubsidyReleaseFlowRate = int256(subsidyToDistributeYearly / (12 * 30 * 24 * 60 * 60)).toInt96();
+        int96 newSubsidyReleaseFlowRate = int256(subsidyToDistributeYearly / 365 days).toInt96();
 
         // Update the subsidy release rate
         FLUID.distributeFlow(address(this), taxDistributionPool, newSubsidyReleaseFlowRate);
