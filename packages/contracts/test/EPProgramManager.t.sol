@@ -12,7 +12,10 @@ import {
     ISuperfluidPool
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
-import { MacroForwarder, IUserDefinedMacro } from "@superfluid-finance/ethereum-contracts/contracts/utils/MacroForwarder.sol";
+import {
+    MacroForwarder,
+    IUserDefinedMacro
+} from "@superfluid-finance/ethereum-contracts/contracts/utils/MacroForwarder.sol";
 
 import { EPProgramManager, IEPProgramManager } from "../src/EPProgramManager.sol";
 import { FluidEPProgramManager } from "../src/FluidEPProgramManager.sol";
@@ -284,21 +287,6 @@ contract FluidEPProgramManagerTest is SFTest {
         _programManager.setLockerFactory(address(0));
     }
 
-    function testSetSubsidyRate(uint96 _validSubsidyRate, uint96 _invalidSubsidyRate) external {
-        _validSubsidyRate = uint96(bound(_validSubsidyRate, 0, 10_000));
-        _invalidSubsidyRate = uint96(bound(_invalidSubsidyRate, 10_001, 100_000));
-
-        vm.startPrank(ADMIN);
-        _programManager.setSubsidyRate(_validSubsidyRate);
-
-        assertEq(_programManager.subsidyFundingRate(), _validSubsidyRate, "Subsidy Rate should be updated");
-
-        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
-        _programManager.setSubsidyRate(_invalidSubsidyRate);
-
-        vm.stopPrank();
-    }
-
     function testEmergencyWithdraw(uint256 _fundingAmount) external {
         _fundingAmount = bound(_fundingAmount, 1, 1_000_000e18);
 
@@ -530,157 +518,20 @@ contract FluidEPProgramManagerTest is SFTest {
         );
     }
 
-    function testStartFundingWithSubsidy(uint256 _programId, uint256 _fundingAmount, uint96 _subsidyRate) external {
-        vm.assume(_programId > 0);
-        _fundingAmount = bound(_fundingAmount, 100_000e18, 100_000_000e18);
-
-        // Subsidy rate fuzzed between 1% and 99%
-        _subsidyRate = uint96(bound(_subsidyRate, 100, 9_900));
-
-        uint96 signerPkey = 69_420;
-
-        vm.prank(ADMIN);
-        _programManager.setSubsidyRate(_subsidyRate);
-
-        ISuperfluidPool pool = _helperCreateProgram(_programId, ADMIN, vm.addr(signerPkey));
-        _helperGrantUnitsToAlice(_programId, 1, signerPkey);
-        _helperBobStaking();
-
-        (uint256 depositAllowance, int96 flowRateAllowance) =
-            _programManager.calculateAllowances(_programId, _fundingAmount);
-
-        vm.startPrank(FLUID_TREASURY);
-        _fluid.approve(address(_programManager), depositAllowance);
-        _fluid.setFlowPermissions(address(_programManager), true, true, true, flowRateAllowance);
-        vm.stopPrank();
-
-        vm.prank(ADMIN);
-        _programManager.startFunding(_programId, _fundingAmount);
-
-        uint256 subsidyAmount = (_fundingAmount * _subsidyRate) / 10_000;
-        uint256 fundingAmount = _fundingAmount - subsidyAmount;
-
-        // Calculate the funding and subsidy flow rates
-        int96 requestedSubsidyFlowRate = int256(subsidyAmount / PROGRAM_DURATION).toInt96();
-        int96 requestedProgramFlowRate = int256(fundingAmount / PROGRAM_DURATION).toInt96();
-
-        (, int96 totalProgramDistributionFlowRate) =
-            _fluid.estimateFlowDistributionActualFlowRate(address(_programManager), pool, requestedProgramFlowRate);
-
-        (, int96 totalSubsidyDistributionFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(_programManager), _programManager.TAX_DISTRIBUTION_POOL(), requestedSubsidyFlowRate
-        );
-
-        assertEq(
-            pool.getMemberFlowRate(address(aliceLocker)),
-            totalProgramDistributionFlowRate,
-            "program distribution flow rate is incorrect"
-        );
-
-        assertEq(
-            _stakingRewardController.taxDistributionPool().getMemberFlowRate(address(bobLocker)),
-            totalSubsidyDistributionFlowRate,
-            "subsidy distribution flow to staker is incorrect"
-        );
-    }
-
-    function testStartFundingMultipleProgram(uint256 fundingAmount, uint96 subsidyRate) external {
-        fundingAmount = bound(fundingAmount, 10_000e18, 10_000_000e18);
-        subsidyRate = uint96(bound(subsidyRate, 100, 9_900));
-        uint96 signerPkey = 69_420;
-
-        vm.prank(ADMIN);
-        _programManager.setSubsidyRate(subsidyRate);
-
-        _helperCreateProgram(1, ADMIN, vm.addr(signerPkey));
-        _helperCreateProgram(2, ADMIN, vm.addr(signerPkey));
-        _helperGrantUnitsToAlice(1, 1, signerPkey);
-        _helperGrantUnitsToAlice(2, 1, signerPkey);
-        _helperBobStaking();
-        _helperStartFunding(1, fundingAmount);
-
-        // Calculate the funding and subsidy amount
-        uint256 subsidyAmount = (fundingAmount * subsidyRate) / 10_000;
-
-        // Calculate the funding and subsidy flow rates
-        int96 requestedSubsidyFlowRate = int256(subsidyAmount / PROGRAM_DURATION).toInt96();
-
-        (, int96 requestedSubsidyFlowRateBeforeNewFunding) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(_programManager), _programManager.TAX_DISTRIBUTION_POOL(), requestedSubsidyFlowRate
-        );
-
-        int96 actualSubsidyFlowRateBeforeNewFunding =
-            _fluid.getFlowDistributionFlowRate(address(_programManager), _programManager.TAX_DISTRIBUTION_POOL());
-
-        assertEq(
-            actualSubsidyFlowRateBeforeNewFunding,
-            requestedSubsidyFlowRateBeforeNewFunding,
-            "incorrect subsidy flow before new funding"
-        );
-
-        _helperStartFunding(2, fundingAmount);
-
-        int96 actualSubsidyFlowRateAfterNewFunding =
-            _fluid.getFlowDistributionFlowRate(address(_programManager), _programManager.TAX_DISTRIBUTION_POOL());
-
-        assertEq(
-            actualSubsidyFlowRateAfterNewFunding,
-            requestedSubsidyFlowRateBeforeNewFunding * 2,
-            "incorrect subsidy flow after new funding"
-        );
-    }
-
     function testStopFundingWithoutSubsidy(uint256 invalidDuration, uint256 earlyEndDuration) external {
         // invalidDuration correspond to the time where stopping funding should not be possible (i.e. 83 days)
         invalidDuration = bound(invalidDuration, 1, 86 days);
         earlyEndDuration = bound(earlyEndDuration, 87 days, 89 days);
 
         uint256 fundingAmount = 100_000e18;
-        uint96 subsidyRate = 0;
         uint256 programId = 1;
         uint96 signerPkey = 69_420;
-
-        vm.prank(ADMIN);
-        _programManager.setSubsidyRate(subsidyRate);
-
-        _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
-        uint256 beforeEarlyEnd = block.timestamp + invalidDuration;
-        uint256 earlyEnd = block.timestamp + earlyEndDuration;
-
-        _helperGrantUnitsToAlice(programId, 1, signerPkey);
-        _helperBobStaking();
-        _helperStartFunding(programId, fundingAmount);
-
-        vm.warp(beforeEarlyEnd);
-        vm.expectRevert(FluidEPProgramManager.TOO_EARLY_TO_END_PROGRAM.selector);
-        _programManager.stopFunding(programId);
-
-        vm.warp(earlyEnd);
-
-        _programManager.stopFunding(programId);
-
-        /// TODO : add asserts
-    }
-
-    function testStopFunding(uint256 invalidDuration, uint256 earlyEndDuration) external {
-        // invalidDuration correspond to the time where stopping funding should not be possible (i.e. 83 days)
-        invalidDuration = bound(invalidDuration, 1, 86 days);
-        earlyEndDuration = bound(earlyEndDuration, 87 days, 89 days);
-
-        uint256 fundingAmount = 100_000e18;
-        uint96 subsidyRate = 500;
-        uint256 programId = 1;
-        uint96 signerPkey = 69_420;
-
-        vm.prank(ADMIN);
-        _programManager.setSubsidyRate(subsidyRate);
 
         ISuperfluidPool programPool = _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
         uint256 beforeEarlyEnd = block.timestamp + invalidDuration;
         uint256 earlyEnd = block.timestamp + earlyEndDuration;
 
         _helperGrantUnitsToAlice(programId, 1, signerPkey);
-        _helperBobStaking();
         _helperStartFunding(programId, fundingAmount);
 
         vm.warp(beforeEarlyEnd);
@@ -688,16 +539,9 @@ contract FluidEPProgramManagerTest is SFTest {
         _programManager.stopFunding(programId);
 
         vm.warp(earlyEnd);
-        _programManager.stopFunding(programId);
 
-        vm.expectRevert(IEPProgramManager.INVALID_PARAMETER.selector);
         _programManager.stopFunding(programId);
-
-        assertEq(
-            _programManager.TAX_DISTRIBUTION_POOL().getTotalFlowRate(), 0, "Tax Distribution Pool flow Rate should be 0"
-        );
         assertEq(programPool.getTotalFlowRate(), 0, "Program Pool flow rate should be 0");
-        /// TODO : add asserts
     }
 
     function testCancelProgram(uint256 cancelAfter, address nonAdmin) external {
@@ -705,18 +549,13 @@ contract FluidEPProgramManagerTest is SFTest {
         cancelAfter = bound(cancelAfter, 1, 89 days);
 
         uint256 fundingAmount = 100_000e18;
-        uint96 subsidyRate = 500;
         uint256 programId = 1;
         uint96 signerPkey = 69_420;
-
-        vm.prank(ADMIN);
-        _programManager.setSubsidyRate(subsidyRate);
 
         ISuperfluidPool programPool = _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
         uint256 cancelDate = block.timestamp + cancelAfter;
 
         _helperGrantUnitsToAlice(programId, 1, signerPkey);
-        _helperBobStaking();
         _helperStartFunding(programId, fundingAmount);
 
         vm.warp(cancelDate);
@@ -732,26 +571,17 @@ contract FluidEPProgramManagerTest is SFTest {
         _programManager.cancelProgram(programId);
         vm.stopPrank();
 
-        assertEq(
-            _fluid.balanceOf(address(_stakingRewardController)), 0, "Staking Reward Controller balance should be 0"
-        );
-
         assertEq(programPool.getTotalFlowRate(), 0, "Pool flow rate should be 0");
-
-        /// TODO : add asserts
     }
 
-    function testUserMacro(uint128 fundingAmount ) external {
+    function testUserMacro(uint128 fundingAmount) external {
         uint256 programId = 1;
         uint96 signerPkey = 69_420;
         fundingAmount = 1e18;
 
         _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
         vm.startPrank(FLUID_TREASURY);
-        _sf.macroForwarder.runMacro(
-            _programManager,
-            _programManager.paramsGivePermission(programId, fundingAmount)
-        );
+        _sf.macroForwarder.runMacro(_programManager, _programManager.paramsGivePermission(programId, fundingAmount));
         vm.stopPrank();
 
         // verify startFunding has needed allowances
@@ -817,16 +647,10 @@ contract FluidEPProgramManagerLayoutTest is FluidEPProgramManager {
         // slot = 2 - offset = 0
 
         assembly {
-            slot := subsidyFundingRate.slot
-            offset := subsidyFundingRate.offset
-        }
-        require(slot == 3 && offset == 0, "subsidyFundingRate changed location");
-
-        assembly {
             slot := fluidLockerFactory.slot
             offset := fluidLockerFactory.offset
         }
-        require(slot == 3 && offset == 12, "fluidLockerFactory changed location");
+        require(slot == 3 && offset == 0, "fluidLockerFactory changed location");
 
         assembly {
             slot := fluidTreasury.slot
