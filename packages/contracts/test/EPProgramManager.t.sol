@@ -490,8 +490,8 @@ contract FluidEPProgramManagerTest is SFTest {
 
     function testStartFundingWithoutSubsidy(uint256 _programId, uint256 _fundingAmount, uint32 _duration) external {
         vm.assume(_programId > 0);
-        _duration = uint32(bound(_duration, 10 days, 365 days));
-        _fundingAmount = bound(_fundingAmount, 100_000e18, 100_000_000e18);
+        _duration = uint32(bound(_duration, 12 hours, 10 * 365 days));
+        _fundingAmount = bound(_fundingAmount, 1e18, 100_000_000e18);
 
         uint96 signerPkey = 69_420;
 
@@ -546,11 +546,11 @@ contract FluidEPProgramManagerTest is SFTest {
         uint32 _duration
     ) external {
         vm.assume(_programId > 0);
-        _duration = uint32(bound(_duration, 10 days, 365 days));
-        _fundingAmount = bound(_fundingAmount, 100_000e18, 100_000_000e18);
+        _duration = uint32(bound(_duration, 12 hours, 10 * 365 days));
+        _fundingAmount = bound(_fundingAmount, 1e18, 100_000_000e18);
 
-        // Subsidy rate fuzzed between 1% and 99%
-        _subsidyRate = uint96(bound(_subsidyRate, 100, 9_900));
+        // Subsidy rate fuzzed between 0.01% and 100%
+        _subsidyRate = uint96(bound(_subsidyRate, 1, 10_000));
 
         uint96 signerPkey = 69_420;
 
@@ -608,7 +608,7 @@ contract FluidEPProgramManagerTest is SFTest {
         _duration1 = uint32(bound(_duration1, 10 days, 365 days));
         _duration2 = uint32(bound(_duration2, 10 days, 365 days));
 
-        fundingAmount = bound(fundingAmount, 10_000e18, 10_000_000e18);
+        fundingAmount = bound(fundingAmount, 1e18, 100_000_000e18);
         subsidyRate = uint96(bound(subsidyRate, 100, 9_900));
         uint96 signerPkey = 69_420;
 
@@ -666,7 +666,7 @@ contract FluidEPProgramManagerTest is SFTest {
     {
         // invalidDuration correspond to the time where stopping funding should not be possible
 
-        _programDuration = uint32(bound(_programDuration, 10 days, 365 days));
+        _programDuration = uint32(bound(_programDuration, 3 days + 1 seconds, 10 * 365 days));
         invalidDuration = bound(invalidDuration, 0, _programDuration - 3 days - 1 seconds);
         earlyEndDuration = bound(earlyEndDuration, _programDuration - 3 days, _programDuration);
 
@@ -699,7 +699,7 @@ contract FluidEPProgramManagerTest is SFTest {
 
     function testStopFunding(uint32 _programDuration, uint256 invalidDuration, uint256 earlyEndDuration) external {
         // invalidDuration correspond to the time where stopping funding should not be possible
-        _programDuration = uint32(bound(_programDuration, 10 days, 365 days));
+        _programDuration = uint32(bound(_programDuration, 3 days + 1 seconds, 10 * 365 days));
         invalidDuration = bound(invalidDuration, 0, _programDuration - 3 days - 1 seconds);
         earlyEndDuration = bound(earlyEndDuration, _programDuration - 3 days, _programDuration);
 
@@ -738,7 +738,7 @@ contract FluidEPProgramManagerTest is SFTest {
 
     function testCancelProgram(uint256 cancelAfter, address nonAdmin, uint32 _duration) external {
         vm.assume(nonAdmin != ADMIN);
-        _duration = uint32(bound(_duration, 1 days, 365 days));
+        _duration = uint32(bound(_duration, 12 hours, 10 * 365 days));
         cancelAfter = bound(cancelAfter, 0, _duration - 1 seconds);
 
         uint256 fundingAmount = 100_000e18;
@@ -778,26 +778,26 @@ contract FluidEPProgramManagerTest is SFTest {
         /// TODO : add asserts
     }
 
-    function testUserMacro(uint128 fundingAmount, uint32 _duration) external {
+    function testUserMacro(uint256 _fundingAmount, uint32 _duration) external {
         uint256 programId = 1;
         uint96 signerPkey = 69_420;
-        fundingAmount = 1e18;
-        _duration = uint32(bound(_duration, 10 days, 365 days));
+        _fundingAmount = bound(_fundingAmount, 1e18, 100_000_000e18);
+        _duration = uint32(bound(_duration, 12 hours, 10 * 365 days));
 
         _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
         vm.startPrank(FLUID_TREASURY);
         _sf.macroForwarder.runMacro(
-            _programManager, _programManager.paramsGivePermission(programId, fundingAmount, _duration)
+            _programManager, _programManager.paramsGivePermission(programId, _fundingAmount, _duration)
         );
         vm.stopPrank();
 
         // verify startFunding has needed allowances
         _helperGrantUnitsToAlice(programId, 1, signerPkey);
         vm.prank(ADMIN);
-        _programManager.startFunding(programId, fundingAmount, _duration);
+        _programManager.startFunding(programId, _fundingAmount, _duration);
 
         // verify stopFunding has needed allowances
-        vm.warp(block.timestamp + _duration - _programManager.EARLY_PROGRAM_END() + 1);
+        vm.warp(block.timestamp + _duration - 1);
         vm.prank(ADMIN);
         _programManager.stopFunding(programId);
     }

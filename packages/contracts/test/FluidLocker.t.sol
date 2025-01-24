@@ -181,7 +181,7 @@ contract FluidLockerTest is SFTest {
     }
 
     function testLock(uint256 amount) external virtual {
-        amount = bound(amount, 1e18, 1e24);
+        amount = bound(amount, 1, 1e24);
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect balance before operation");
 
         vm.startPrank(FLUID_TREASURY);
@@ -516,7 +516,7 @@ contract FluidLockerTTETest is SFTest {
     }
 
     function testLock(uint256 amount) external {
-        amount = bound(amount, 1e18, 1e24);
+        amount = bound(amount, 1, 1e24);
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect balance before operation");
 
         vm.startPrank(FLUID_TREASURY);
