@@ -23,7 +23,7 @@ using SafeCast for int256;
 
 contract FontaineTest is SFTest {
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
-    uint128 internal constant _MAX_UNLOCK_PERIOD = 540 days;
+    uint128 internal constant _MAX_UNLOCK_PERIOD = 365 days;
     uint256 internal constant _BP_DENOMINATOR = 10_000;
     uint256 internal constant _SCALER = 1e18;
 
@@ -165,7 +165,7 @@ contract FontaineTest is SFTest {
         int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
 
         uint256 unlockingPercentageBP =
-            (2_000 + ((8_000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(540 days * _SCALER)));
+            (2_000 + ((8_000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(365 days * _SCALER)));
 
         unlockFlowRate = (globalFlowRate * int256(unlockingPercentageBP)).toInt96() / int256(_BP_DENOMINATOR).toInt96();
         taxFlowRate = globalFlowRate - unlockFlowRate;
