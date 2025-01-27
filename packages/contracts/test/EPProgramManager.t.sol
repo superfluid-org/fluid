@@ -473,7 +473,7 @@ contract FluidEPProgramManagerTest is SFTest {
         }
     }
 
-    function testStartFundingWithoutSubsidy(uint256 _programId, uint256 _fundingAmount, uint32 _duration) external {
+    function testStartFunding(uint256 _programId, uint256 _fundingAmount, uint32 _duration) external {
         vm.assume(_programId > 0);
         _duration = uint32(bound(_duration, 12 hours, 10 * 365 days));
         _fundingAmount = bound(_fundingAmount, 1e18, 100_000_000e18);
@@ -516,169 +516,6 @@ contract FluidEPProgramManagerTest is SFTest {
             totalDistributionFlowRate,
             "program distribution flow rate is incorrect"
         );
-
-        assertEq(
-            _stakingRewardController.taxDistributionPool().getMemberFlowRate(address(bobLocker)),
-            0,
-            "subsidy distribution flow to staker should be 0"
-        );
-    }
-
-    function testStartFundingWithSubsidy(
-        uint256 _programId,
-        uint256 _fundingAmount,
-        uint96 _subsidyRate,
-        uint32 _duration
-    ) external {
-        vm.assume(_programId > 0);
-        _duration = uint32(bound(_duration, 12 hours, 10 * 365 days));
-        _fundingAmount = bound(_fundingAmount, 1e18, 100_000_000e18);
-
-        // Subsidy rate fuzzed between 0.01% and 100%
-        _subsidyRate = uint96(bound(_subsidyRate, 1, 10_000));
-
-        uint96 signerPkey = 69_420;
-
-        vm.prank(ADMIN);
-        _programManager.setSubsidyRate(_subsidyRate);
-
-        ISuperfluidPool pool = _helperCreateProgram(_programId, ADMIN, vm.addr(signerPkey));
-        _helperGrantUnitsToAlice(_programId, 1, signerPkey);
-        _helperBobStaking();
-
-        (uint256 depositAllowance, int96 flowRateAllowance) =
-            _programManager.calculateAllowances(_programId, _fundingAmount, _duration);
-
-        vm.startPrank(FLUID_TREASURY);
-        _fluid.approve(address(_programManager), depositAllowance);
-        _fluid.setFlowPermissions(address(_programManager), true, true, true, flowRateAllowance);
-        vm.stopPrank();
-
-        vm.prank(ADMIN);
-        _programManager.startFunding(_programId, _fundingAmount, _duration);
-
-        uint256 subsidyAmount = (_fundingAmount * _subsidyRate) / 10_000;
-        uint256 fundingAmount = _fundingAmount - subsidyAmount;
-
-        // Calculate the funding and subsidy flow rates
-        int96 requestedSubsidyFlowRate = int256(subsidyAmount / _duration).toInt96();
-        int96 requestedProgramFlowRate = int256(fundingAmount / _duration).toInt96();
-
-        (, int96 totalProgramDistributionFlowRate) =
-            _fluid.estimateFlowDistributionActualFlowRate(address(_programManager), pool, requestedProgramFlowRate);
-
-        (, int96 totalSubsidyDistributionFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(_programManager), _programManager.TAX_DISTRIBUTION_POOL(), requestedSubsidyFlowRate
-        );
-
-        assertEq(
-            pool.getMemberFlowRate(address(aliceLocker)),
-            totalProgramDistributionFlowRate,
-            "program distribution flow rate is incorrect"
-        );
-
-        assertEq(
-            _stakingRewardController.taxDistributionPool().getMemberFlowRate(address(bobLocker)),
-            totalSubsidyDistributionFlowRate,
-            "subsidy distribution flow to staker is incorrect"
-        );
-    }
-
-    function testStartFundingMultipleProgram(
-        uint256 fundingAmount,
-        uint96 subsidyRate,
-        uint32 _duration1,
-        uint32 _duration2
-    ) external {
-        _duration1 = uint32(bound(_duration1, 10 days, 365 days));
-        _duration2 = uint32(bound(_duration2, 10 days, 365 days));
-
-        fundingAmount = bound(fundingAmount, 1e18, 100_000_000e18);
-        subsidyRate = uint96(bound(subsidyRate, 100, 9_900));
-        uint96 signerPkey = 69_420;
-
-        vm.prank(ADMIN);
-        _programManager.setSubsidyRate(subsidyRate);
-
-        _helperCreateProgram(1, ADMIN, vm.addr(signerPkey));
-        _helperCreateProgram(2, ADMIN, vm.addr(signerPkey));
-        _helperGrantUnitsToAlice(1, 1, signerPkey);
-        _helperGrantUnitsToAlice(2, 1, signerPkey);
-        _helperBobStaking();
-        _helperStartFunding(1, fundingAmount, _duration1);
-
-        // Calculate the funding and subsidy amount
-        uint256 subsidyAmount = (fundingAmount * subsidyRate) / 10_000;
-
-        // Calculate the funding and subsidy flow rates
-        int96 requestedSubsidyFlowRate1 = int256(subsidyAmount / _duration1).toInt96();
-
-        (, int96 requestedSubsidyFlowRateBeforeNewFunding) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(_programManager), _programManager.TAX_DISTRIBUTION_POOL(), requestedSubsidyFlowRate1
-        );
-
-        int96 actualSubsidyFlowRateBeforeNewFunding =
-            _fluid.getFlowDistributionFlowRate(address(_programManager), _programManager.TAX_DISTRIBUTION_POOL());
-
-        assertEq(
-            actualSubsidyFlowRateBeforeNewFunding,
-            requestedSubsidyFlowRateBeforeNewFunding,
-            "incorrect subsidy flow before new funding"
-        );
-
-        _helperStartFunding(2, fundingAmount, _duration2);
-
-        int96 requestedSubsidyFlowRate2 = int256(subsidyAmount / _duration2).toInt96();
-
-        (, int96 requestedSubsidyFlowRateAfterNewFunding) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(_programManager),
-            _programManager.TAX_DISTRIBUTION_POOL(),
-            actualSubsidyFlowRateBeforeNewFunding + requestedSubsidyFlowRate2
-        );
-
-        int96 actualSubsidyFlowRateAfterNewFunding =
-            _fluid.getFlowDistributionFlowRate(address(_programManager), _programManager.TAX_DISTRIBUTION_POOL());
-
-        assertEq(
-            actualSubsidyFlowRateAfterNewFunding,
-            requestedSubsidyFlowRateAfterNewFunding,
-            "incorrect subsidy flow after new funding"
-        );
-    }
-
-    function testStopFundingWithoutSubsidy(uint32 _programDuration, uint256 invalidDuration, uint256 earlyEndDuration)
-        external
-    {
-        // invalidDuration correspond to the time where stopping funding should not be possible
-
-        _programDuration = uint32(bound(_programDuration, 3 days + 1 seconds, 10 * 365 days));
-        invalidDuration = bound(invalidDuration, 0, _programDuration - 3 days - 1 seconds);
-        earlyEndDuration = bound(earlyEndDuration, _programDuration - 3 days, _programDuration);
-
-        uint256 fundingAmount = 100_000e18;
-        uint256 programId = 1;
-        uint96 signerPkey = 69_420;
-
-        vm.prank(ADMIN);
-        _programManager.setSubsidyRate(subsidyRate);
-
-        _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
-        uint256 beforeEarlyEnd = block.timestamp + invalidDuration;
-        uint256 earlyEnd = block.timestamp + earlyEndDuration;
-
-        _helperGrantUnitsToAlice(programId, 1, signerPkey);
-        _helperBobStaking();
-        _helperStartFunding(programId, fundingAmount, _programDuration);
-
-        vm.warp(beforeEarlyEnd);
-        vm.expectRevert(FluidEPProgramManager.TOO_EARLY_TO_END_PROGRAM.selector);
-        _programManager.stopFunding(programId);
-
-        vm.warp(earlyEnd);
-
-        _programManager.stopFunding(programId);
-
-        /// TODO : add asserts
     }
 
     function testStopFunding(uint32 _programDuration, uint256 invalidDuration, uint256 earlyEndDuration) external {
@@ -688,12 +525,8 @@ contract FluidEPProgramManagerTest is SFTest {
         earlyEndDuration = bound(earlyEndDuration, _programDuration - 3 days, _programDuration);
 
         uint256 fundingAmount = 100_000e18;
-        uint96 subsidyRate = 500;
         uint256 programId = 1;
         uint96 signerPkey = 69_420;
-
-        vm.prank(ADMIN);
-        _programManager.setSubsidyRate(subsidyRate);
 
         ISuperfluidPool programPool = _helperCreateProgram(programId, ADMIN, vm.addr(signerPkey));
         uint256 beforeEarlyEnd = block.timestamp + invalidDuration;
@@ -710,6 +543,7 @@ contract FluidEPProgramManagerTest is SFTest {
         vm.warp(earlyEnd);
 
         _programManager.stopFunding(programId);
+
         assertEq(programPool.getTotalFlowRate(), 0, "Program Pool flow rate should be 0");
     }
 
