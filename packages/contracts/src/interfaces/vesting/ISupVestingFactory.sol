@@ -13,7 +13,7 @@ interface ISupVestingFactory {
     //   / /___ | |/ /  __/ / / / /_(__  )
     //  /_____/ |___/\___/_/ /_/\__/____/
 
-    /// @notice Event emitted when a new SUP token vesting contract is created and tokens are transferred to it
+    /// @notice Event emitted when a new SUP token vesting contract is created
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     /// @notice Event emitted when a new SUP token vesting contract is created
