@@ -45,7 +45,7 @@ function calculateVestUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeri
 
 function getUnlockingPercentage(uint128 unlockPeriod) pure returns (uint256 unlockingPercentageBP) {
     unlockingPercentageBP = (
-        2_000 + ((8_000 * Math.sqrt(unlockPeriod * UNLOCKING_PCT_SCALER)) / Math.sqrt(540 days * UNLOCKING_PCT_SCALER))
+        2_000 + ((8_000 * Math.sqrt(unlockPeriod * UNLOCKING_PCT_SCALER)) / Math.sqrt(365 days * UNLOCKING_PCT_SCALER))
     );
 }
 
@@ -86,8 +86,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Minimum unlock period allowed (1 week)
     uint128 private constant _MIN_UNLOCK_PERIOD = 7 days;
 
-    /// @notice Maximum unlock period allowed (18 months)
-    uint128 private constant _MAX_UNLOCK_PERIOD = 540 days;
+    /// @notice Maximum unlock period allowed (12 months)
+    uint128 private constant _MAX_UNLOCK_PERIOD = 365 days;
 
     /// @notice Instant unlock penalty percentage (expressed in basis points)
     uint256 private constant _INSTANT_UNLOCK_PENALTY_BP = 8_000;
@@ -191,8 +191,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     function claim(
         uint256[] memory programIds,
         uint256[] memory totalProgramUnits,
-        uint256[] memory nonces,
-        bytes[] memory stackSignatures
+        uint256 nonce,
+        bytes memory stackSignature
     ) external nonReentrant {
         for (uint256 i = 0; i < programIds.length; ++i) {
             // Get the corresponding program pool
@@ -205,7 +205,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
 
         // Request program manager to update this locker's units
-        EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonces, stackSignatures);
+        EP_PROGRAM_MANAGER.batchUpdateUserUnits(lockerOwner, programIds, totalProgramUnits, nonce, stackSignature);
 
         emit IFluidLocker.FluidStreamsClaimed(programIds, totalProgramUnits);
     }

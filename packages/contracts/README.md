@@ -1,20 +1,22 @@
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
 ## Address Registry :
 
 Latest deployed contract address
+
+### BASE MAINNET - Preliminary Deployment :
+
+| Contract                        | Address                                    | Explorer                                                                |
+| ------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------- |
+| FluidToken (SuperToken)         | 0x1547A1FeBE691cE721FD3F60e94e444d60d6f716 | https://basescan.org/address/0x1547A1FeBE691cE721FD3F60e94e444d60d6f716 |
+| FluidEPProgramManager (Logic)   | 0x9F6edf6F5F1F23B8D34120B69f78c10F73A8A14C | https://basescan.org/address/0x9F6edf6F5F1F23B8D34120B69f78c10F73A8A14C |
+| FluidEPProgramManager (Proxy)   | 0x7797d88dD97AeD14183cbF790e5894AC89cF45A3 | https://basescan.org/address/0x7797d88dD97AeD14183cbF790e5894AC89cF45A3 |
+| StakingRewardController (Logic) | 0x64683CdA7125dC49Ed1824Af9d3d052711ae3AcA | https://basescan.org/address/0x64683CdA7125dC49Ed1824Af9d3d052711ae3AcA |
+| StakingRewardController (Proxy) | 0x56e6CCbe6d1Ff3B7f8962e203802F95413F9E59F | https://basescan.org/address/0x56e6CCbe6d1Ff3B7f8962e203802F95413F9E59F |
+| FluidLocker (Logic)             | 0x0260d4C6dcDa89a1F0EA3FB9abED6701b35A0E04 | https://basescan.org/address/0x0260d4C6dcDa89a1F0EA3FB9abED6701b35A0E04 |
+| FluidLocker (Beacon)            | 0xb9A1c7224546FD76C9A1E4F574ab000F19366Df1 | https://basescan.org/address/0xb9A1c7224546FD76C9A1E4F574ab000F19366Df1 |
+| Fontaine (Logic)                | 0xB1cF9bb4B0652d287f7b3E4cBB5E6eE8C5B32750 | https://basescan.org/address/0xB1cF9bb4B0652d287f7b3E4cBB5E6eE8C5B32750 |
+| Fontaine (Beacon)               | 0xaFa51013Aa99129DBc8c12Fd794D92aB52138612 | https://basescan.org/address/0xaFa51013Aa99129DBc8c12Fd794D92aB52138612 |
+| FluidLockerFactory (Logic)      | 0x45C1A4ae075Fc498873B1E57CB22E9885Ec1B912 | https://basescan.org/address/0x45C1A4ae075Fc498873B1E57CB22E9885Ec1B912 |
+| FluidLockerFactory (Proxy)      | 0xCaCb226C59e204149d323C569C495CBc1e8054FB | https://basescan.org/address/0xCaCb226C59e204149d323C569C495CBc1e8054FB |
 
 ### ETHEREUM SEPOLIA :
 
@@ -27,16 +29,16 @@ Latest deployed contract address
 | Contract                        | Address                                    | Explorer                                                                        |
 | ------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------- |
 | FluidToken (SuperToken)         | 0xFd62b398DD8a233ad37156690631fb9515059d6A | https://sepolia.basescan.org/address/0xFd62b398DD8a233ad37156690631fb9515059d6A |
-| FluidEPProgramManager (Logic)   | 0x151fAA8F7De5b32A32067000175DaAacA862B128 | https://sepolia.basescan.org/address/0x151fAA8F7De5b32A32067000175DaAacA862B128 |
-| FluidEPProgramManager (Proxy)   | 0xA8f867fA115f64F9728Fc4fd4Ce959f12442a86E | https://sepolia.basescan.org/address/0xA8f867fA115f64F9728Fc4fd4Ce959f12442a86E |
-| StakingRewardController (Logic) | 0xAe665c8154B15Bf4F7a3f813dB71D40624b7Dac7 | https://sepolia.basescan.org/address/0xAe665c8154B15Bf4F7a3f813dB71D40624b7Dac7 |
-| StakingRewardController (Proxy) | 0xC2569d417f3f255b30966D21EB31fFCb76b05150 | https://sepolia.basescan.org/address/0xC2569d417f3f255b30966D21EB31fFCb76b05150 |
-| FluidLocker (Logic)             | 0x77769118b297Eb03D01cf7D093E4D135470707B6 | https://sepolia.basescan.org/address/0x77769118b297Eb03D01cf7D093E4D135470707B6 |
-| FluidLocker (Beacon)            | 0xa67d2E26843793048990e3e8e0e7120Eb3cc8ad8 | https://sepolia.basescan.org/address/0xa67d2E26843793048990e3e8e0e7120Eb3cc8ad8 |
-| Fontaine (Logic)                | 0xf8dA8dF03A567FBc1A4e567bdA7C3883e6E674bB | https://sepolia.basescan.org/address/0xf8dA8dF03A567FBc1A4e567bdA7C3883e6E674bB |
-| Fontaine (Beacon)               | 0xC853A70737259e245582Dd03947b49BD39BB2044 | https://sepolia.basescan.org/address/0xC853A70737259e245582Dd03947b49BD39BB2044 |
-| FluidLockerFactory (Logic)      | 0xd24f152086b2cd2BB4617cadd76c58C6dEFa3b94 | https://sepolia.basescan.org/address/0xd24f152086b2cd2BB4617cadd76c58C6dEFa3b94 |
-| FluidLockerFactory (Proxy)      | 0x9ecF49AC7E0F42B4D272dC95Cbfe0119454B1988 | https://sepolia.basescan.org/address/0x9ecF49AC7E0F42B4D272dC95Cbfe0119454B1988 |
+| FluidEPProgramManager (Logic)   | 0x52ca22b0cC23b0f6977A71bC27215a168545BDE4 | https://sepolia.basescan.org/address/0x52ca22b0cC23b0f6977A71bC27215a168545BDE4 |
+| FluidEPProgramManager (Proxy)   | 0x71a1975A1009e48E0BF2f621B6835db5Ea1f7706 | https://sepolia.basescan.org/address/0x71a1975A1009e48E0BF2f621B6835db5Ea1f7706 |
+| StakingRewardController (Logic) | 0x28F0BC53b52208c8286A4C663680C2eD99d18982 | https://sepolia.basescan.org/address/0x28F0BC53b52208c8286A4C663680C2eD99d18982 |
+| StakingRewardController (Proxy) | 0x9FC0Bb109F3e733Bd84B30F8D89685b0304fC018 | https://sepolia.basescan.org/address/0x9FC0Bb109F3e733Bd84B30F8D89685b0304fC018 |
+| FluidLocker (Logic)             | 0x51095e6543b80ADa11766D8bD63dE1F4Ce7209fC | https://sepolia.basescan.org/address/0x51095e6543b80ADa11766D8bD63dE1F4Ce7209fC |
+| FluidLocker (Beacon)            | 0xf2880c6D68080393C1784f978417a96ab4f37c38 | https://sepolia.basescan.org/address/0xf2880c6D68080393C1784f978417a96ab4f37c38 |
+| Fontaine (Logic)                | 0x360FD6B9395c0f3A5FFd0Cc8bc00E5c4C159591c | https://sepolia.basescan.org/address/0x360FD6B9395c0f3A5FFd0Cc8bc00E5c4C159591c |
+| Fontaine (Beacon)               | 0xeBfA246A0BAd08A2A3ffB137ed75601AA41867dE | https://sepolia.basescan.org/address/0xeBfA246A0BAd08A2A3ffB137ed75601AA41867dE |
+| FluidLockerFactory (Logic)      | 0x4Fd60B2F8486459a3aa5a7F73178CCE7AA1A58BD | https://sepolia.basescan.org/address/0x4Fd60B2F8486459a3aa5a7F73178CCE7AA1A58BD |
+| FluidLockerFactory (Proxy)      | 0x897D343D24Ac5b84838B976Cf37036EDEfe3E967 | https://sepolia.basescan.org/address/0x897D343D24Ac5b84838B976Cf37036EDEfe3E967 |
 
 ## Test Coverage :
 
@@ -141,3 +143,52 @@ STACK_SIGNER_ADDRESS : Signer address to be verified in order to grant units
 PAUSE_FACTORY_LOCKER_CREATION : Whether the Factory allows Lockers to be created or not
 FLUID_UNLOCK_STATUS : Whether the Lockers allow the SuperToken to be withdrawn or not
 ```
+
+## SUP Vesting Operational Guidelines
+
+### Pre-requisite
+
+- Have an ADMIN account created
+- Have the TREASURY multisig create and setup
+- Have all the insiders data ready and validated :
+  - insider address
+  - amount for each insider
+  - vesting parameter (`startDate` / `duration`)
+
+### Step 1 :
+
+- Deploy the `SupVestingFactory` contract
+
+- Note 1 : In `DeployVesting.s.sol` script, we deploy a dummy `SupVesting` contract for verification purpose (??)
+  This might not be need if we perform a preliminary mainnet deployment (to test in prod)
+
+- Note 2 : Once the `SupVestingFactory` contract is deployed, the SNAPSHOT STRATEGY parameters must be updated.
+
+```shell
+/*
+SUP_ADDRESS={SUP_ADDRESS} \
+VESTING_SCHEDULER_ADDRESS={VESTING_SCHEDULER_ADDRESS} \
+ADMIN_ADDRESS={ADMIN_ADDRESS} \
+TREASURY_ADDRESS={TREASURY_ADDRESS} \
+forge script script/vesting/DeployVesting.s.sol:DeployVestingScript --ffi --rpc-url $BASE_MAINNET_RPC_URL --broadcast --verify -vvv --etherscan-api-key $BASESCAN_API_KEY
+*/
+```
+
+### Step 2 :
+
+- Approve the `SupVestingFactory` contract address to spend $SUP tokens from the Treasury Multisig
+- Note : Approved Amount = sum of all insiders' amount
+
+### Step 3 :
+
+- Execute script to create SupVesting contract for each insiders.
+- Note : Currently, the `SupVestingFactory` contract allows prefunding of the `SupVesting` contracts.
+  We must remain consistent and either prefund or not prefund every `SupVesting` contracts.
+
+### Step 4 :
+
+- Add each `SupVesting` contract address to the automation whitelist (offchain)
+
+### Step 5 :
+
+- Update `SupVestingFactory` admin account (`SupVestingFactory::setAdmin`) to TREASURY multisig
