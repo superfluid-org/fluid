@@ -265,7 +265,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
         emit ProgramFunded(
             programId,
-            fundingAmount,
+            totalAmount,
             block.timestamp + programDuration - EARLY_PROGRAM_END,
             block.timestamp + programDuration
         );
