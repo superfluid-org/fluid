@@ -69,11 +69,13 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
      * @param fundingFlowRate flow rate between this contract and the program pool
      * @param subsidyFlowRate flow rate between the Staking Reward Controller contract and the tax distribution pool
      * @param fundingStartDate timestamp at which the program is funded
+     * @param duration program duration
      */
     struct FluidProgramDetails {
         int96 fundingFlowRate;
         int96 subsidyFlowRate;
-        uint64 fundingStartDate;
+        uint32 fundingStartDate;
+        uint32 duration;
     }
 
     //     ______           __                     ______
@@ -102,9 +104,6 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
 
     /// @notice Staking Reward Controller contract interface
     ISuperfluidPool public immutable TAX_DISTRIBUTION_POOL;
-
-    /// @notice Program Duration used to calculate flow rates
-    uint256 public constant PROGRAM_DURATION = 90 days;
 
     /// @notice Constant used to calculate the earliest date a program can be stopped
     uint256 public constant EARLY_PROGRAM_END = 3 days;
@@ -253,8 +252,9 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
      * @dev Only the contract owner can perform this operation
      * @param programId program identifier to start funding
      * @param totalAmount total amount to be distributed (including staking subsidy)
+     * @param programDuration program duration
      */
-    function startFunding(uint256 programId, uint256 totalAmount) external onlyOwner {
+    function startFunding(uint256 programId, uint256 totalAmount, uint32 programDuration) external onlyOwner {
         EPProgram memory program = programs[programId];
 
         // Ensure program exists
@@ -268,14 +268,15 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         uint256 fundingAmount = totalAmount - subsidyAmount;
 
         // Calculate the funding and subsidy flow rates
-        int96 subsidyFlowRate = int256(subsidyAmount / PROGRAM_DURATION).toInt96();
-        int96 fundingFlowRate = int256(fundingAmount / PROGRAM_DURATION).toInt96();
+        int96 subsidyFlowRate = int256(subsidyAmount / programDuration).toInt96();
+        int96 fundingFlowRate = int256(fundingAmount / programDuration).toInt96();
 
         // Persist program details
         _fluidProgramDetails[programId] = FluidProgramDetails({
             fundingFlowRate: fundingFlowRate,
             subsidyFlowRate: subsidyFlowRate,
-            fundingStartDate: uint64(block.timestamp)
+            fundingStartDate: uint32(block.timestamp),
+            duration: programDuration
         });
 
         // Calculate the initial deposit to cover the CFA buffer and the early end compensation
@@ -300,8 +301,8 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
             programId,
             fundingAmount,
             subsidyAmount,
-            block.timestamp + PROGRAM_DURATION - EARLY_PROGRAM_END,
-            block.timestamp + PROGRAM_DURATION
+            block.timestamp + programDuration - EARLY_PROGRAM_END,
+            block.timestamp + programDuration
         );
     }
 
@@ -317,7 +318,7 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
         // Ensure program exists or has not already been terminated
         if (programDetails.fundingStartDate == 0) revert IEPProgramManager.INVALID_PARAMETER();
 
-        uint256 endDate = programDetails.fundingStartDate + PROGRAM_DURATION;
+        uint256 endDate = programDetails.fundingStartDate + programDetails.duration;
 
         // Ensure time window is valid to stop the funding
         if (block.timestamp < endDate - EARLY_PROGRAM_END) {
@@ -513,8 +514,13 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
     function postCheck(ISuperfluid host, bytes memory params, address msgSender) external view { }
 
     /// @notice convenience view function for encoding the params argument to be provided to MacroForwarder.runMacro()
-    function paramsGivePermission(uint256 programId, uint256 amount) external view returns (bytes memory) {
-        (uint256 depositAllowance, int96 flowRateAllowance) = calculateAllowances(programId, amount);
+    function paramsGivePermission(uint256 programId, uint256 amount, uint32 duration)
+        external
+        view
+        returns (bytes memory)
+    {
+        (uint256 depositAllowance, int96 flowRateAllowance) = calculateAllowances(programId, amount, duration);
+
         // getRequiredPermissions(token, amount);
         return abi.encode(programs[programId].token, depositAllowance, flowRateAllowance);
     }
@@ -538,17 +544,18 @@ contract FluidEPProgramManager is Initializable, OwnableUpgradeable, EPProgramMa
      * @notice Calculate the required deposit and flow rate allowances for a program
      * @param programId The ID of the program to calculate allowances for
      * @param plannedFundingAmount The total amount planned to be distributed over the program duration
+     * @param plannedProgramDuration Program Planned Duration (in seconds)
      * @return depositAllowance The required deposit allowance to cover buffer and early end compensation
      * @return flowRateAllowance The required ACL flow rate allowance to be granted
      */
-    function calculateAllowances(uint256 programId, uint256 plannedFundingAmount)
+    function calculateAllowances(uint256 programId, uint256 plannedFundingAmount, uint32 plannedProgramDuration)
         public
         view
         returns (uint256 depositAllowance, int96 flowRateAllowance)
     {
         EPProgram memory program = programs[programId];
 
-        flowRateAllowance = int256(plannedFundingAmount / PROGRAM_DURATION).toInt96();
+        flowRateAllowance = int256(plannedFundingAmount / plannedProgramDuration).toInt96();
 
         uint256 buffer = program.token.getBufferAmountByFlowRate(flowRateAllowance);
         depositAllowance = buffer + uint96(flowRateAllowance) * EARLY_PROGRAM_END;

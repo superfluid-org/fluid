@@ -38,7 +38,7 @@ contract FontaineTest is SFTest {
 
     function testInitialize(uint128 unlockPeriod, uint256 unlockAmount) external {
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
-        unlockAmount = bound(unlockAmount, 1_000e18, 100_000e18);
+        unlockAmount = bound(unlockAmount, 1e18, 100_000_000e18);
 
         _helperBobStaking();
         (int96 taxFlowRate, int96 unlockFlowRate) = _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
@@ -75,7 +75,7 @@ contract FontaineTest is SFTest {
         uint128 tooEarlyDelay
     ) external {
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
-        unlockAmount = bound(unlockAmount, 1_000e18, 100_000e18);
+        unlockAmount = bound(unlockAmount, 1e18, 100_000_000e18);
         terminationDelay = uint128(bound(terminationDelay, 4 hours, 1 days));
         tooEarlyDelay = uint128(bound(tooEarlyDelay, 25 hours, unlockPeriod));
 
