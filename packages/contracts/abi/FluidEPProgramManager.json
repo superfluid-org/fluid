@@ -25,19 +25,6 @@
   },
   {
     "type": "function",
-    "name": "PROGRAM_DURATION",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "TAX_DISTRIBUTION_POOL",
     "inputs": [],
     "outputs": [
@@ -169,6 +156,11 @@
         "name": "plannedFundingAmount",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "plannedProgramDuration",
+        "type": "uint32",
+        "internalType": "uint32"
       }
     ],
     "outputs": [
@@ -333,8 +325,13 @@
           },
           {
             "name": "fundingStartDate",
-            "type": "uint64",
-            "internalType": "uint64"
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "duration",
+            "type": "uint32",
+            "internalType": "uint32"
           }
         ]
       }
@@ -450,6 +447,11 @@
         "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "duration",
+        "type": "uint32",
+        "internalType": "uint32"
       }
     ],
     "outputs": [
@@ -577,6 +579,11 @@
         "name": "totalAmount",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "programDuration",
+        "type": "uint32",
+        "internalType": "uint32"
       }
     ],
     "outputs": [],
