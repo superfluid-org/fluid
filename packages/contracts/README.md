@@ -1,17 +1,3 @@
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
 ## Address Registry :
 
 Latest deployed contract address
@@ -157,3 +143,52 @@ STACK_SIGNER_ADDRESS : Signer address to be verified in order to grant units
 PAUSE_FACTORY_LOCKER_CREATION : Whether the Factory allows Lockers to be created or not
 FLUID_UNLOCK_STATUS : Whether the Lockers allow the SuperToken to be withdrawn or not
 ```
+
+## SUP Vesting Operational Guidelines
+
+### Pre-requisite
+
+- Have an ADMIN account created
+- Have the TREASURY multisig create and setup
+- Have all the insiders data ready and validated :
+  - insider address
+  - amount for each insider
+  - vesting parameter (`startDate` / `duration`)
+
+### Step 1 :
+
+- Deploy the `SupVestingFactory` contract
+
+- Note 1 : In `DeployVesting.s.sol` script, we deploy a dummy `SupVesting` contract for verification purpose (??)
+  This might not be need if we perform a preliminary mainnet deployment (to test in prod)
+
+- Note 2 : Once the `SupVestingFactory` contract is deployed, the SNAPSHOT STRATEGY parameters must be updated.
+
+```shell
+/*
+SUP_ADDRESS={SUP_ADDRESS} \
+VESTING_SCHEDULER_ADDRESS={VESTING_SCHEDULER_ADDRESS} \
+ADMIN_ADDRESS={ADMIN_ADDRESS} \
+TREASURY_ADDRESS={TREASURY_ADDRESS} \
+forge script script/vesting/DeployVesting.s.sol:DeployVestingScript --ffi --rpc-url $BASE_MAINNET_RPC_URL --broadcast --verify -vvv --etherscan-api-key $BASESCAN_API_KEY
+*/
+```
+
+### Step 2 :
+
+- Approve the `SupVestingFactory` contract address to spend $SUP tokens from the Treasury Multisig
+- Note : Approved Amount = sum of all insiders' amount
+
+### Step 3 :
+
+- Execute script to create SupVesting contract for each insiders.
+- Note : Currently, the `SupVestingFactory` contract allows prefunding of the `SupVesting` contracts.
+  We must remain consistent and either prefund or not prefund every `SupVesting` contracts.
+
+### Step 4 :
+
+- Add each `SupVesting` contract address to the automation whitelist (offchain)
+
+### Step 5 :
+
+- Update `SupVestingFactory` admin account (`SupVestingFactory::setAdmin`) to TREASURY multisig
