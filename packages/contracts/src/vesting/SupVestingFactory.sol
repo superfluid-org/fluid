@@ -31,23 +31,23 @@ contract SupVestingFactory is ISupVestingFactory {
     /// @notice SUP Token contract address
     ISuperToken public immutable SUP;
 
+    /// @notice Minimum cliff period for a vesting contract
+    uint256 public constant MIN_CLIFF_PERIOD = 3 days;
+
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
     //   ___/ / /_/ /_/ / /_/  __(__  )
     //  /____/\__/\__,_/\__/\___/____/
 
-    /// @notice Name of the vdSUP Token
+    /// @notice Name of the lockedSUP Token
     string public name;
 
-    /// @notice Symbol of the vdSUP Token
+    /// @notice Symbol of the lockedSUP Token
     string public symbol;
 
-    /// @notice Decimals of the vdSUP Token
+    /// @notice Decimals of the lockedSUP Token
     uint256 public decimals;
-
-    /// @notice Total supply of the vdSUP Token
-    uint256 public totalSupply;
 
     /// @notice Foundation treasury address
     address public treasury;
@@ -57,6 +57,9 @@ contract SupVestingFactory is ISupVestingFactory {
 
     /// @notice Mapping of recipient addresses to their corresponding SUP Token Vesting contracts
     mapping(address recipient => address supVesting) public supVestings;
+
+    /// @notice List of recipient addresses
+    address[] public recipients;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -82,8 +85,8 @@ contract SupVestingFactory is ISupVestingFactory {
         SUP = token;
         treasury = treasuryAddress;
         admin = adminAddress;
-        name = "Vesting Distributed SUP Token";
-        symbol = "vdSUP";
+        name = "Locked SUP Token";
+        symbol = "lockedSUP";
         decimals = 18;
     }
 
@@ -99,13 +102,14 @@ contract SupVestingFactory is ISupVestingFactory {
         uint256 amount,
         uint32 duration,
         uint32 startDate,
-        uint32 cliffPeriod,
-        bool isPrefunded
+        uint32 cliffPeriod
     ) external onlyAdmin returns (address newSupVestingContract) {
+        if (cliffPeriod < MIN_CLIFF_PERIOD) revert FORBIDDEN();
+
         // Ensure the recipient address does not already have a vesting contract
         if (supVestings[recipient] != address(0)) revert RECIPIENT_ALREADY_HAS_VESTING_CONTRACT();
 
-        totalSupply += amount;
+        recipients.push(recipient);
 
         // Deploy the new SUP Token Vesting contract
         newSupVestingContract =
@@ -114,10 +118,8 @@ contract SupVestingFactory is ISupVestingFactory {
         // Maps the recipient address to the new SUP Token Vesting contract
         supVestings[recipient] = newSupVestingContract;
 
-        // If the vesting contract is prefunded, transfer the tokens from the treasury to the new vesting contract
-        if (isPrefunded) {
-            SUP.transferFrom(treasury, newSupVestingContract, amount);
-        }
+        // Transfer the tokens from the treasury to the new vesting contract
+        SUP.transferFrom(treasury, newSupVestingContract, amount);
 
         // Emit the events
         emit Transfer(address(0), recipient, amount);
@@ -125,14 +127,14 @@ contract SupVestingFactory is ISupVestingFactory {
     }
 
     /// @inheritdoc ISupVestingFactory
-    function setTreasury(address newTreasury) external onlyAdmin {
+    function setTreasury(address newTreasury) external onlyTreasury {
         // Ensure the new treasury address is not the zero address
         if (newTreasury == address(0)) revert FORBIDDEN();
         treasury = newTreasury;
     }
 
     /// @inheritdoc ISupVestingFactory
-    function setAdmin(address newAdmin) external onlyAdmin {
+    function setAdmin(address newAdmin) external onlyTreasuryOrAdmin {
         // Ensure the new admin address is not the zero address
         if (newAdmin == address(0)) revert FORBIDDEN();
         admin = newAdmin;
@@ -145,11 +147,19 @@ contract SupVestingFactory is ISupVestingFactory {
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc ISupVestingFactory
-    function balanceOf(address vestingReceiver) external view returns (uint256 unvestedBalance) {
+    function balanceOf(address vestingReceiver) public view returns (uint256 unvestedBalance) {
         // Get the flow buffer amount
         (,, uint256 deposit,) = SUP.getFlowInfo(supVestings[vestingReceiver], vestingReceiver);
 
         unvestedBalance = SUP.balanceOf(supVestings[vestingReceiver]) + deposit;
+    }
+
+    function totalSupply() external view returns (uint256 supply) {
+        uint256 length = recipients.length;
+
+        for (uint256 i; i < length; i++) {
+            supply += balanceOf(recipients[i]);
+        }
     }
 
     //      __  ___          ___ _____
@@ -159,10 +169,26 @@ contract SupVestingFactory is ISupVestingFactory {
     //  /_/  /_/\____/\__,_/_/_/ /_/\___/_/  /____/
 
     /**
+     * @notice Modifier to restrict access to treasury or admin only
+     */
+    modifier onlyTreasuryOrAdmin() {
+        if (msg.sender != treasury && msg.sender != admin) revert FORBIDDEN();
+        _;
+    }
+
+    /**
      * @notice Modifier to restrict access to admin only
      */
     modifier onlyAdmin() {
         if (msg.sender != admin) revert FORBIDDEN();
+        _;
+    }
+
+    /**
+     * @notice Modifier to restrict access to treasury only
+     */
+    modifier onlyTreasury() {
+        if (msg.sender != treasury) revert FORBIDDEN();
         _;
     }
 }

@@ -44,7 +44,6 @@ interface ISupVestingFactory {
      * @param duration The duration of the vesting period in seconds
      * @param startDate The timestamp when vesting begins
      * @param cliffPeriod The cliff period in seconds before any tokens can be claimed
-     * @param isPrefunded Whether the vesting contract should be prefunded with tokens from treasury
      * @return newSupVestingContract The address of the newly created vesting contract
      */
     function createSupVestingContract(
@@ -52,8 +51,7 @@ interface ISupVestingFactory {
         uint256 amount,
         uint32 duration,
         uint32 startDate,
-        uint32 cliffPeriod,
-        bool isPrefunded
+        uint32 cliffPeriod
     ) external returns (address newSupVestingContract);
 
     /**
