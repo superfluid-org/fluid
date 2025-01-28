@@ -153,7 +153,7 @@ FLUID_UNLOCK_STATUS : Whether the Lockers allow the SuperToken to be withdrawn o
 - Have all the insiders data ready and validated :
   - insider address
   - amount for each insider
-  - vesting parameter (`startDate` / `duration`)
+  - vesting parameter (`startDate` / `duration` / `cliffPeriod`)
 
 ### Step 1 :
 
