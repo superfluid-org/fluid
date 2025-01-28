@@ -22,8 +22,8 @@ contract SupVestingTest is SFTest {
     VestingSchedulerV2 public vestingScheduler;
 
     uint256 public constant VESTING_AMOUNT = 100_000 ether;
-    uint32 public constant VESTING_DURATION = 365 days;
-    uint32 public constant CLIFF_PERIOD = 0;
+    uint32 public constant VESTING_DURATION = 1095 days;
+    uint32 public constant CLIFF_PERIOD = 365 days;
 
     function setUp() public virtual override {
         super.setUp();
@@ -41,7 +41,7 @@ contract SupVestingTest is SFTest {
 
         vm.prank(ADMIN);
         supVestingFactory.createSupVestingContract(
-            ALICE, VESTING_AMOUNT, VESTING_DURATION, uint32(block.timestamp + 365 days), CLIFF_PERIOD, true
+            ALICE, VESTING_AMOUNT, VESTING_DURATION, uint32(block.timestamp), CLIFF_PERIOD
         );
 
         supVesting = SupVesting(address(supVestingFactory.supVestings(ALICE)));
@@ -105,7 +105,7 @@ contract SupVestingTest is SFTest {
         supVesting.emergencyWithdraw();
 
         // Move time to after vesting can be started
-        vm.warp(block.timestamp + 366 days);
+        vm.warp(block.timestamp + CLIFF_PERIOD + 1 days);
 
         // Execute the vesting start
         vestingScheduler.executeCliffAndFlow(_fluidSuperToken, address(supVesting), ALICE);
@@ -117,7 +117,6 @@ contract SupVestingTest is SFTest {
 
         assertEq(vestingFlowRate, expectedFlowRate, "Flow rate mismatch");
 
-        // Move time to after vesting can be started
         vm.warp(block.timestamp + 5 days);
 
         uint256 treasuryBalanceBefore = _fluidSuperToken.balanceOf(FLUID_TREASURY);

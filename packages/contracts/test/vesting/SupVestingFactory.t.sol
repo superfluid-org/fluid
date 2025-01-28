@@ -14,8 +14,8 @@ contract SupVestingFactoryTest is SFTest {
     SupVestingFactory public supVestingFactory;
     VestingSchedulerV2 public vestingScheduler;
 
-    uint32 public constant VESTING_DURATION = 365 days;
-    uint32 public constant CLIFF_PERIOD = 0;
+    uint32 public constant VESTING_DURATION = 1095 days;
+    uint32 public constant CLIFF_PERIOD = 365 days;
 
     function setUp() public virtual override {
         super.setUp();
@@ -29,42 +29,26 @@ contract SupVestingFactoryTest is SFTest {
         vm.warp(block.timestamp + 420 days);
     }
 
-    function testCreateSupVestingContract(
-        address nonAdmin,
-        address recipient,
-        uint256 amount,
-        bool isPrefunded
-    ) public {
+    function testCreateSupVestingContract(address nonAdmin, address recipient, uint256 amount) public {
         vm.assume(nonAdmin != address(ADMIN));
         vm.assume(recipient != address(0));
         amount = bound(amount, 1_000 ether, 1_000_000 ether);
 
-        uint32 startDate = uint32(block.timestamp + 1 days);
+        uint32 startDate = uint32(block.timestamp);
 
-        if (isPrefunded) {
-            vm.prank(FLUID_TREASURY);
-            _fluidSuperToken.approve(address(supVestingFactory), amount);
-        }
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.approve(address(supVestingFactory), amount);
 
         vm.prank(nonAdmin);
         vm.expectRevert(ISupVestingFactory.FORBIDDEN.selector);
-        supVestingFactory.createSupVestingContract(
-            recipient, amount, VESTING_DURATION, startDate, CLIFF_PERIOD, isPrefunded
-        );
+        supVestingFactory.createSupVestingContract(recipient, amount, VESTING_DURATION, startDate, CLIFF_PERIOD);
 
         uint256 supplyBefore = supVestingFactory.totalSupply();
 
         vm.prank(ADMIN);
-        supVestingFactory.createSupVestingContract(
-            recipient, amount, VESTING_DURATION, startDate, CLIFF_PERIOD, isPrefunded
-        );
+        supVestingFactory.createSupVestingContract(recipient, amount, VESTING_DURATION, startDate, CLIFF_PERIOD);
 
         address newSupVestingContract = supVestingFactory.supVestings(recipient);
-
-        if (!isPrefunded) {
-            vm.prank(FLUID_TREASURY);
-            _fluidSuperToken.transfer(newSupVestingContract, amount);
-        }
 
         assertNotEq(newSupVestingContract, address(0), "New sup vesting contract should be created");
         assertEq(supVestingFactory.balanceOf(recipient), amount, "Balance should be updated");
@@ -72,19 +56,19 @@ contract SupVestingFactoryTest is SFTest {
 
         vm.prank(ADMIN);
         vm.expectRevert(ISupVestingFactory.RECIPIENT_ALREADY_HAS_VESTING_CONTRACT.selector);
-        supVestingFactory.createSupVestingContract(recipient, amount, VESTING_DURATION, startDate, CLIFF_PERIOD, true);
+        supVestingFactory.createSupVestingContract(recipient, amount, VESTING_DURATION, startDate, CLIFF_PERIOD);
     }
 
-    function testSetTreasury(address newTreasury, address nonAdmin) public {
-        vm.assume(nonAdmin != address(ADMIN));
-        vm.assume(newTreasury != address(0));
+    function testSetTreasury(address newTreasury, address nonTreasury) public {
+        vm.assume(nonTreasury != address(FLUID_TREASURY));
         vm.assume(newTreasury != address(FLUID_TREASURY));
+        vm.assume(newTreasury != address(0));
 
-        vm.prank(nonAdmin);
+        vm.prank(nonTreasury);
         vm.expectRevert(ISupVestingFactory.FORBIDDEN.selector);
         supVestingFactory.setTreasury(newTreasury);
 
-        vm.startPrank(ADMIN);
+        vm.startPrank(FLUID_TREASURY);
         vm.expectRevert(ISupVestingFactory.FORBIDDEN.selector);
         supVestingFactory.setTreasury(address(0));
 
