@@ -100,11 +100,12 @@ contract SupVestingFactory is ISupVestingFactory {
     function createSupVestingContract(
         address recipient,
         uint256 amount,
-        uint32 duration,
-        uint32 startDate,
-        uint32 cliffPeriod
+        uint32 cliffDate,
+        int96 flowRate,
+        uint256 cliffAmount,
+        uint32 endDate
     ) external onlyAdmin returns (address newSupVestingContract) {
-        if (cliffPeriod < MIN_CLIFF_PERIOD) revert FORBIDDEN();
+        if (cliffDate < block.timestamp + MIN_CLIFF_PERIOD) revert FORBIDDEN();
 
         // Ensure the recipient address does not already have a vesting contract
         if (supVestings[recipient] != address(0)) revert RECIPIENT_ALREADY_HAS_VESTING_CONTRACT();
@@ -113,7 +114,7 @@ contract SupVestingFactory is ISupVestingFactory {
 
         // Deploy the new SUP Token Vesting contract
         newSupVestingContract =
-            address(new SupVesting(VESTING_SCHEDULER, SUP, recipient, amount, duration, startDate, cliffPeriod));
+            address(new SupVesting(VESTING_SCHEDULER, SUP, recipient, cliffDate, flowRate, cliffAmount, endDate));
 
         // Maps the recipient address to the new SUP Token Vesting contract
         supVestings[recipient] = newSupVestingContract;
