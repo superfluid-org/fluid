@@ -56,7 +56,7 @@ contract SupVestingTest is SupVestingTestInit {
 
         vm.prank(ADMIN);
         supVestingFactory.createSupVestingContract(
-            ALICE, VESTING_AMOUNT, cliffDate, flowRate, CLIFF_AMOUNT, uint32(cliffDate + VESTING_DURATION)
+            ALICE, VESTING_AMOUNT, cliffDate, uint32(cliffDate + VESTING_DURATION)
         );
 
         supVesting = SupVesting(address(supVestingFactory.supVestings(ALICE)));
@@ -146,25 +146,26 @@ contract SupVestingTest is SupVestingTestInit {
     }
 }
 
+/// @notice This test is meant to be updated with all the real data for each insider
 contract SupVestingTestRealData is SupVestingTestInit {
+    uint32 public constant TWO_YEARS_IN_SECONDS = 63072000;
+
     uint256 public constant CURRENT_DATE = 1740783600; // March 1st 2025 (CET)
     uint32 public constant CLIFF_DATE = 1772319600; // March 1st 2026 (CET)
-    uint32 public constant END_DATE = 1835391600; // Feb 29th 2028 (CET)
+    uint32 public constant END_DATE = CLIFF_DATE + TWO_YEARS_IN_SECONDS; // Feb 29th 2028 00:00:00 (CET)
 
     uint256 public constant TOTAL_MAX_VESTING_AMOUNT = 250_000_000 ether;
 
     uint256[7] public amounts;
-
-    uint256[7] public cliffAmounts;
-
-    int96[7] public flowRates;
+    uint256[7] public expectedCliffAmounts;
+    int96[7] public expectedFlowRates;
 
     function setUp() public virtual override {
         super.setUp();
 
         amounts = [100_000 ether, 50_000 ether, 25_000 ether, 17_500 ether, 14_000 ether, 12_710 ether, 9_850 ether];
 
-        cliffAmounts = [
+        expectedCliffAmounts = [
             33333333333333347008000,
             16666666666666673504000,
             8333333333333368288000,
@@ -174,7 +175,7 @@ contract SupVestingTestRealData is SupVestingTestInit {
             3283333333333358080000
         ];
 
-        flowRates = [
+        expectedFlowRates = [
             int96(1056993066125486),
             int96(528496533062743),
             int96(264248266531371),
@@ -204,9 +205,7 @@ contract SupVestingTestRealData is SupVestingTestInit {
         vm.startPrank(ADMIN);
 
         for (uint256 i = 0; i < amounts.length; i++) {
-            supVestingFactory.createSupVestingContract(
-                vm.addr(i + 69_420), amounts[i], CLIFF_DATE, flowRates[i], cliffAmounts[i], END_DATE
-            );
+            supVestingFactory.createSupVestingContract(vm.addr(i + 69_420), amounts[i], CLIFF_DATE, END_DATE);
         }
 
         vm.stopPrank();
@@ -223,10 +222,10 @@ contract SupVestingTestRealData is SupVestingTestInit {
 
             assertEq(
                 _fluidSuperToken.balanceOf(recipient),
-                cliffAmounts[i],
+                expectedCliffAmounts[i],
                 "recipient should have received the exact cliff amount"
             );
-            assertEq(_fluidSuperToken.getFlowRate(sv, recipient), flowRates[i], "Recipient Flow rate mismatch");
+            assertEq(_fluidSuperToken.getFlowRate(sv, recipient), expectedFlowRates[i], "Recipient Flow rate mismatch");
         }
 
         vm.stopPrank();

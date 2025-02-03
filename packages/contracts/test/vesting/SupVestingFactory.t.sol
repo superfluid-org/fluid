@@ -49,24 +49,14 @@ contract SupVestingFactoryTest is SFTest {
         vm.prank(nonAdmin);
         vm.expectRevert(ISupVestingFactory.FORBIDDEN.selector);
         supVestingFactory.createSupVestingContract(
-            recipient,
-            amount,
-            cliffDate,
-            flowRate,
-            cliffAmount,
-            uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            recipient, amount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
         );
 
         uint256 supplyBefore = supVestingFactory.totalSupply();
 
         vm.prank(ADMIN);
         supVestingFactory.createSupVestingContract(
-            recipient,
-            amount,
-            cliffDate,
-            flowRate,
-            cliffAmount,
-            uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            recipient, amount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
         );
 
         address newSupVestingContract = supVestingFactory.supVestings(recipient);
@@ -78,12 +68,7 @@ contract SupVestingFactoryTest is SFTest {
         vm.prank(ADMIN);
         vm.expectRevert(ISupVestingFactory.RECIPIENT_ALREADY_HAS_VESTING_CONTRACT.selector);
         supVestingFactory.createSupVestingContract(
-            recipient,
-            amount,
-            cliffDate,
-            flowRate,
-            cliffAmount,
-            uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            recipient, amount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
         );
     }
 
