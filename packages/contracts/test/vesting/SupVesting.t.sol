@@ -16,20 +16,9 @@ import { IVestingSchedulerV2 } from
 using SuperTokenV1Library for SuperToken;
 using SafeCast for int256;
 
-contract SupVestingTest is SFTest {
+contract SupVestingTestInit is SFTest {
     SupVestingFactory public supVestingFactory;
-    SupVesting public supVesting;
     VestingSchedulerV2 public vestingScheduler;
-
-    uint256 public constant VESTING_AMOUNT = 1000 ether;
-    uint256 public constant CLIFF_AMOUNT = 333 ether;
-
-    uint32 public constant VESTING_DURATION = 730 days;
-    uint32 public constant CLIFF_PERIOD = 365 days;
-
-    uint32 public cliffDate;
-    int96 public flowRate;
-    uint256 public remainder;
 
     function setUp() public virtual override {
         super.setUp();
@@ -38,6 +27,23 @@ contract SupVestingTest is SFTest {
         supVestingFactory = new SupVestingFactory(
             IVestingSchedulerV2(address(vestingScheduler)), ISuperToken(_fluidSuperToken), FLUID_TREASURY, ADMIN
         );
+    }
+}
+
+contract SupVestingTest is SupVestingTestInit {
+    SupVesting public supVesting;
+
+    uint256 public constant VESTING_AMOUNT = 115340 ether;
+    uint256 public constant CLIFF_AMOUNT = 38446666666666717280000;
+
+    uint32 public constant VESTING_DURATION = 730 days;
+    uint32 public constant CLIFF_PERIOD = 365 days;
+
+    uint32 public cliffDate;
+    int96 public flowRate;
+
+    function setUp() public virtual override {
+        super.setUp();
 
         // Move time forward to avoid vesting scheduler errors (time based input validation constraints)
         vm.warp(block.timestamp + 420 days);
@@ -47,8 +53,6 @@ contract SupVestingTest is SFTest {
 
         cliffDate = uint32(block.timestamp + CLIFF_PERIOD);
         flowRate = int256((VESTING_AMOUNT - CLIFF_AMOUNT) / uint256(VESTING_DURATION)).toInt96();
-
-        remainder = VESTING_AMOUNT - CLIFF_AMOUNT - (SafeCast.toUint256(flowRate) * VESTING_DURATION);
 
         vm.prank(ADMIN);
         supVestingFactory.createSupVestingContract(
@@ -76,8 +80,8 @@ contract SupVestingTest is SFTest {
 
         vestingScheduler.executeEndVesting(_fluidSuperToken, address(supVesting), ALICE);
 
-        // assertEq(_fluidSuperToken.balanceOf(ALICE), VESTING_AMOUNT, "Alice should have the full amount");
-        assertEq(_fluidSuperToken.balanceOf(address(supVesting)), remainder, "SupVesting contract should be empty");
+        assertEq(_fluidSuperToken.balanceOf(ALICE), VESTING_AMOUNT, "Alice should have the full amount");
+        assertEq(_fluidSuperToken.balanceOf(address(supVesting)), 0, "SupVesting contract should be empty");
     }
 
     function testEmergencyWithdrawBeforeVestingStart(address nonAdmin) public {
@@ -139,5 +143,112 @@ contract SupVestingTest is SFTest {
         );
 
         assertEq(_fluidSuperToken.balanceOf(address(supVesting)), 0, "Balance should be 0");
+    }
+}
+
+contract SupVestingTestRealData is SupVestingTestInit {
+    uint256 public constant CURRENT_DATE = 1740783600; // March 1st 2025 (CET)
+    uint32 public constant CLIFF_DATE = 1772319600; // March 1st 2026 (CET)
+    uint32 public constant END_DATE = 1835391600; // Feb 29th 2028 (CET)
+
+    uint256 public constant TOTAL_MAX_VESTING_AMOUNT = 250_000_000 ether;
+
+    uint256[7] public amounts;
+
+    uint256[7] public cliffAmounts;
+
+    int96[7] public flowRates;
+
+    function setUp() public virtual override {
+        super.setUp();
+
+        amounts = [100_000 ether, 50_000 ether, 25_000 ether, 17_500 ether, 14_000 ether, 12_710 ether, 9_850 ether];
+
+        cliffAmounts = [
+            33333333333333347008000,
+            16666666666666673504000,
+            8333333333333368288000,
+            5833333333333338880000,
+            4666666666666671104000,
+            4236666666666685472000,
+            3283333333333358080000
+        ];
+
+        flowRates = [
+            int96(1056993066125486),
+            int96(528496533062743),
+            int96(264248266531371),
+            int96(184973786571960),
+            int96(147979029257568),
+            int96(134343818704549),
+            int96(104113817013360)
+        ];
+
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.approve(address(supVestingFactory), TOTAL_MAX_VESTING_AMOUNT);
+    }
+
+    function testVestings(uint256 creationDate) public {
+        creationDate = bound(creationDate, CURRENT_DATE, CLIFF_DATE - 3 days);
+        vm.warp(creationDate);
+        _helperCreateVestings();
+
+        vm.warp(CLIFF_DATE);
+        _helperExecuteCliffAndFlow();
+
+        vm.warp(END_DATE - 24 hours);
+        _helperExecuteEndVestings();
+    }
+
+    function _helperCreateVestings() internal {
+        vm.startPrank(ADMIN);
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            supVestingFactory.createSupVestingContract(
+                vm.addr(i + 69_420), amounts[i], CLIFF_DATE, flowRates[i], cliffAmounts[i], END_DATE
+            );
+        }
+
+        vm.stopPrank();
+    }
+
+    function _helperExecuteCliffAndFlow() internal {
+        vm.startPrank(ADMIN);
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            address recipient = vm.addr(i + 69_420);
+            address sv = address(supVestingFactory.supVestings(recipient));
+
+            vestingScheduler.executeCliffAndFlow(_fluidSuperToken, sv, recipient);
+
+            assertEq(
+                _fluidSuperToken.balanceOf(recipient),
+                cliffAmounts[i],
+                "recipient should have received the exact cliff amount"
+            );
+            assertEq(_fluidSuperToken.getFlowRate(sv, recipient), flowRates[i], "Recipient Flow rate mismatch");
+        }
+
+        vm.stopPrank();
+    }
+
+    function _helperExecuteEndVestings() internal {
+        vm.startPrank(ADMIN);
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            address recipient = vm.addr(i + 69_420);
+            address sv = address(supVestingFactory.supVestings(recipient));
+
+            console2.log("amounts[i]", amounts[i]);
+            vestingScheduler.executeEndVesting(_fluidSuperToken, sv, recipient);
+
+            assertEq(
+                _fluidSuperToken.balanceOf(recipient), amounts[i], "Recipient should have received the full amount"
+            );
+            assertEq(_fluidSuperToken.balanceOf(sv), 0, "SupVesting contract should be empty");
+            assertEq(_fluidSuperToken.getFlowRate(sv, recipient), 0, "Recipient Flow rate should be 0");
+        }
+
+        vm.stopPrank();
     }
 }
