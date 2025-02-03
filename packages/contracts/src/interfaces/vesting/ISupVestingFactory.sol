@@ -42,19 +42,12 @@ interface ISupVestingFactory {
      * @param recipient The address that will receive the vested tokens
      * @param amount The total amount of SUP tokens to be vested
      * @param cliffDate The timestamp when the cliff period ends and the flow can start
-     * @param flowRate The rate at which tokens are streamed after the cliff period
-     * @param cliffAmount The amount of tokens released at the cliff date
      * @param endDate The timestamp when the vesting schedule ends
      * @return newSupVestingContract The address of the newly created vesting contract
      */
-    function createSupVestingContract(
-        address recipient,
-        uint256 amount,
-        uint32 cliffDate,
-        int96 flowRate,
-        uint256 cliffAmount,
-        uint32 endDate
-    ) external returns (address newSupVestingContract);
+    function createSupVestingContract(address recipient, uint256 amount, uint32 cliffDate, uint32 endDate)
+        external
+        returns (address newSupVestingContract);
 
     /**
      * @notice Updates the treasury address

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 /* Superfluid Protocol Contracts & Interfaces */
 import { ISuperToken } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
@@ -12,6 +14,7 @@ import { ISupVestingFactory } from "../interfaces/vesting/ISupVestingFactory.sol
 import { SupVesting } from "./SupVesting.sol";
 
 using SuperTokenV1Library for ISuperToken;
+using SafeCast for int256;
 
 /**
  * @title SUP Token Vesting Factory Contract
@@ -97,20 +100,26 @@ contract SupVestingFactory is ISupVestingFactory {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc ISupVestingFactory
-    function createSupVestingContract(
-        address recipient,
-        uint256 amount,
-        uint32 cliffDate,
-        int96 flowRate,
-        uint256 cliffAmount,
-        uint32 endDate
-    ) external onlyAdmin returns (address newSupVestingContract) {
+    function createSupVestingContract(address recipient, uint256 amount, uint32 cliffDate, uint32 endDate)
+        external
+        onlyAdmin
+        returns (address newSupVestingContract)
+    {
         if (cliffDate < block.timestamp + MIN_CLIFF_PERIOD) revert FORBIDDEN();
 
         // Ensure the recipient address does not already have a vesting contract
         if (supVestings[recipient] != address(0)) revert RECIPIENT_ALREADY_HAS_VESTING_CONTRACT();
 
         recipients.push(recipient);
+
+        uint256 vestingDuration = endDate - cliffDate;
+
+        uint256 cliffAmount = amount / 3;
+        uint256 vestingAmount = amount - cliffAmount;
+        int96 flowRate = int256(vestingAmount / vestingDuration).toInt96();
+
+        // Add the remainder to the cliff amount
+        cliffAmount += vestingAmount - (uint96(flowRate) * vestingDuration);
 
         // Deploy the new SUP Token Vesting contract
         newSupVestingContract =
