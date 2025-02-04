@@ -7,6 +7,7 @@ import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 import { Initializable } from "@openzeppelin-v5/contracts/proxy/utils/Initializable.sol";
 import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import { IERC20 } from "@openzeppelin-v5/contracts/token/ERC20/IERC20.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {
@@ -14,6 +15,13 @@ import {
     ISuperToken
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
+
+/* Uniswap V3 Contracts, Interfaces & Libraries */
+import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { TransferHelper } from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import { LiquidityAmounts } from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 /* FLUID Interfaces */
 import { IEPProgramManager } from "./interfaces/IEPProgramManager.sol";
@@ -94,6 +102,16 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @notice Scaler used for unlock percentage calculation
     uint256 private constant _PERCENT_TO_BP = 100;
+
+    ////////////////////////////
+    //       NEW STATES       //
+    ////////////////////////////
+
+    /// @notice WETH contract address
+    IERC20 public immutable WETH;
+
+    /// @notice Uniswap V3 Nonfungible Position Manager interface
+    INonfungiblePositionManager public immutable nonfungiblePositionManager;
 
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
@@ -291,6 +309,12 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         emit FluidUnstaked();
     }
+
+    function provideLiquidity(uint256 wethAmount) external nonReentrant onlyLockerOwner {
+        WETH.transferFrom(msg.sender, address(this), wethAmount);
+    }
+
+    function withdrawLiquidity(uint256 amount) external nonReentrant onlyLockerOwner { }
 
     /// @inheritdoc IFluidLocker
     function connectToPool(uint256 programId) external nonReentrant onlyLockerOwner {

@@ -17,3 +17,9 @@
 [submodule "packages/contracts/lib/openzeppelin-contracts-upgradeable"]
 	path = packages/contracts/lib/openzeppelin-contracts-upgradeable
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable
+[submodule "packages/contracts/lib/uniswap-v3-periphery"]
+	path = packages/contracts/lib/uniswap-v3-periphery
+	url = https://github.com/Uniswap/v3-periphery
+[submodule "packages/contracts/lib/uniswap-v3-core"]
+	path = packages/contracts/lib/uniswap-v3-core
+	url = https://github.com/Uniswap/v3-core
