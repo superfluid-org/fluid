@@ -84,6 +84,39 @@ contract SupVestingTest is SupVestingTestInit {
         assertEq(_fluidSuperToken.balanceOf(address(supVesting)), 0, "SupVesting contract should be empty");
     }
 
+    function testVestingFuzz(uint256 _amount, uint32 _cliffDate, uint32 _endDate) public {
+        address recipient = vm.addr(69_420);
+        _amount = bound(_amount, 1 ether, 1_000_000 ether);
+        _endDate = uint32(bound(_endDate, block.timestamp + 365 days, block.timestamp + (365 days * 10)));
+        _cliffDate = uint32(bound(_cliffDate, block.timestamp + 3 days, _endDate - 7 days));
+
+        vm.prank(ADMIN);
+        address recipientSupVesting =
+            supVestingFactory.createSupVestingContract(recipient, _amount, _cliffDate, _endDate);
+
+        (uint256 expectedCliff, int96 expectedFlowRate) =
+            _helperCalculateExpectedCliffAndFlow(_amount, _endDate - _cliffDate);
+
+        // Move time to after vesting can be started
+        vm.warp(_cliffDate);
+
+        // Execute the vesting start
+        vestingScheduler.executeCliffAndFlow(_fluidSuperToken, recipientSupVesting, recipient);
+
+        assertEq(
+            _fluidSuperToken.balanceOf(recipient), expectedCliff, "Recipient should have received the cliff amount"
+        );
+        assertEq(_fluidSuperToken.getFlowRate(recipientSupVesting, recipient), expectedFlowRate, "Flow rate mismatch");
+
+        // Move time to after vesting can be concluded (1 seconds before the stream gets in critical state)
+        vm.warp(_endDate - 5 hours);
+
+        vestingScheduler.executeEndVesting(_fluidSuperToken, recipientSupVesting, recipient);
+
+        assertEq(_fluidSuperToken.balanceOf(recipient), _amount, "Recipient should have the full amount");
+        assertEq(_fluidSuperToken.balanceOf(recipientSupVesting), 0, "SupVesting contract should be empty");
+    }
+
     function testEmergencyWithdrawBeforeVestingStart(address nonAdmin) public {
         vm.assume(nonAdmin != address(ADMIN));
 
@@ -148,42 +181,20 @@ contract SupVestingTest is SupVestingTestInit {
 
 /// @notice This test is meant to be updated with all the real data for each insider
 contract SupVestingTestRealData is SupVestingTestInit {
-    uint32 public constant TWO_YEARS_IN_SECONDS = 63072000;
+    uint32 public constant TWO_YEARS_IN_SECONDS = 63158400;
 
     uint256 public constant CURRENT_DATE = 1740783600; // March 1st 2025 (CET)
     uint32 public constant CLIFF_DATE = 1772319600; // March 1st 2026 (CET)
-    uint32 public constant END_DATE = CLIFF_DATE + TWO_YEARS_IN_SECONDS; // Feb 29th 2028 00:00:00 (CET)
+    uint32 public constant END_DATE = CLIFF_DATE + TWO_YEARS_IN_SECONDS; // March 1st 2028 00:00:00 (CET)
 
     uint256 public constant TOTAL_MAX_VESTING_AMOUNT = 250_000_000 ether;
 
     uint256[7] public amounts;
-    uint256[7] public expectedCliffAmounts;
-    int96[7] public expectedFlowRates;
 
     function setUp() public virtual override {
         super.setUp();
 
         amounts = [100_000 ether, 50_000 ether, 25_000 ether, 17_500 ether, 14_000 ether, 12_710 ether, 9_850 ether];
-
-        expectedCliffAmounts = [
-            33333333333333347008000,
-            16666666666666673504000,
-            8333333333333368288000,
-            5833333333333338880000,
-            4666666666666671104000,
-            4236666666666685472000,
-            3283333333333358080000
-        ];
-
-        expectedFlowRates = [
-            int96(1056993066125486),
-            int96(528496533062743),
-            int96(264248266531371),
-            int96(184973786571960),
-            int96(147979029257568),
-            int96(134343818704549),
-            int96(104113817013360)
-        ];
 
         vm.prank(FLUID_TREASURY);
         _fluidSuperToken.approve(address(supVestingFactory), TOTAL_MAX_VESTING_AMOUNT);
@@ -214,18 +225,23 @@ contract SupVestingTestRealData is SupVestingTestInit {
     function _helperExecuteCliffAndFlow() internal {
         vm.startPrank(ADMIN);
 
+        uint256 vestingDuration = END_DATE - CLIFF_DATE;
+
         for (uint256 i = 0; i < amounts.length; i++) {
             address recipient = vm.addr(i + 69_420);
             address sv = address(supVestingFactory.supVestings(recipient));
 
             vestingScheduler.executeCliffAndFlow(_fluidSuperToken, sv, recipient);
 
+            (uint256 expectedCliffAmount, int96 expectedFlowRate) =
+                _helperCalculateExpectedCliffAndFlow(amounts[i], vestingDuration);
+
             assertEq(
                 _fluidSuperToken.balanceOf(recipient),
-                expectedCliffAmounts[i],
+                expectedCliffAmount,
                 "recipient should have received the exact cliff amount"
             );
-            assertEq(_fluidSuperToken.getFlowRate(sv, recipient), expectedFlowRates[i], "Recipient Flow rate mismatch");
+            assertEq(_fluidSuperToken.getFlowRate(sv, recipient), expectedFlowRate, "Recipient Flow rate mismatch");
         }
 
         vm.stopPrank();
@@ -250,4 +266,13 @@ contract SupVestingTestRealData is SupVestingTestInit {
 
         vm.stopPrank();
     }
+}
+
+function _helperCalculateExpectedCliffAndFlow(uint256 amount, uint256 vestingDuration)
+    pure
+    returns (uint256 expectedCliffAmount, int96 expectedFlowRate)
+{
+    expectedCliffAmount = amount / 3;
+    expectedFlowRate = int256((amount - expectedCliffAmount) / vestingDuration).toInt96();
+    expectedCliffAmount += (amount - expectedCliffAmount) - (uint96(expectedFlowRate) * vestingDuration);
 }
