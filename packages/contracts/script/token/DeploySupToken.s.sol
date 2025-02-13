@@ -5,7 +5,7 @@ import "forge-std/Script.sol";
 import { ISuperTokenFactory } from
     "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { BridgedSuperTokenProxy } from "src/token/BridgedSuperToken.sol";
-import { OPBridgedSuperToken } from "src/token/OPBridgedSuperToken.sol";
+import { SupTokenL2 } from "src/token/SupTokenL2.sol";
 import { SupToken } from "src/token/SupToken.sol";
 
 /// @dev - TODO : Stealth Name and Symbol to be changed for Mainnet Deployment
@@ -89,7 +89,7 @@ contract DeployOPSupSuperToken is DeploySupTokenBase {
         address nativeBridge = vm.envAddress("NATIVE_BRIDGE");
         address remoteToken = vm.envAddress("REMOTE_TOKEN");
 
-        OPBridgedSuperToken proxy = new OPBridgedSuperToken(nativeBridge, remoteToken);
+        SupTokenL2 proxy = new SupTokenL2(nativeBridge, remoteToken);
         proxy.initialize(
             ISuperTokenFactory(superTokenFactoryAddr), superTokenName, superTokenSymbol, owner, initialSupply
         );
