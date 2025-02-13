@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.23;
 
-import {
-    OPBridgedSuperToken,
-    IOPBridgedSuperToken,
-    IBridgedSuperToken,
-    IOptimismMintableERC20
-} from "../../src/token/OPBridgedSuperToken.sol";
+import { IOPBridgedSuperToken } from "src/interfaces/token/IOPBridgedSuperToken.sol";
+import { IOptimismMintableERC20 } from "src/interfaces/token/IOptimismMintableERC20.sol";
+import { IBridgedSuperToken } from "src/interfaces/token/IBridgedSuperToken.sol";
+import { OPBridgedSuperToken } from "src/token/OPBridgedSuperToken.sol";
+
 import { BridgedSuperTokenTest } from "./BridgedSuperTokenTest.t.sol";
 
 contract OPBridgedSuperTokenTest is BridgedSuperTokenTest {
