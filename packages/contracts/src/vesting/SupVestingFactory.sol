@@ -100,12 +100,15 @@ contract SupVestingFactory is ISupVestingFactory {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc ISupVestingFactory
-    function createSupVestingContract(address recipient, uint256 amount, uint32 cliffDate, uint32 endDate)
-        external
-        onlyAdmin
-        returns (address newSupVestingContract)
-    {
+    function createSupVestingContract(
+        address recipient,
+        uint256 amount,
+        uint256 cliffAmount,
+        uint32 cliffDate,
+        uint32 endDate
+    ) external onlyAdmin returns (address newSupVestingContract) {
         if (cliffDate < block.timestamp + MIN_CLIFF_PERIOD) revert FORBIDDEN();
+        if (cliffAmount >= amount) revert FORBIDDEN();
 
         // Ensure the recipient address does not already have a vesting contract
         if (supVestings[recipient] != address(0)) revert RECIPIENT_ALREADY_HAS_VESTING_CONTRACT();
@@ -114,7 +117,6 @@ contract SupVestingFactory is ISupVestingFactory {
 
         uint256 vestingDuration = endDate - cliffDate;
 
-        uint256 cliffAmount = amount / 3;
         uint256 vestingAmount = amount - cliffAmount;
         int96 flowRate = int256(vestingAmount / vestingDuration).toInt96();
 
