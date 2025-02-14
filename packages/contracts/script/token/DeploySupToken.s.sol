@@ -11,8 +11,8 @@ import { SupToken } from "src/token/SupToken.sol";
 /// @dev - TODO : Stealth Name and Symbol to be changed for Mainnet Deployment
 string constant tokenName = "SXX Token";
 string constant tokenSymbol = "SXX";
-string constant superTokenName = "SXX Super Token";
-string constant superTokenSymbol = "SXXx";
+string constant superTokenName = "Superfluid Token";
+string constant superTokenSymbol = "SUP";
 
 /// abstract base contract to avoid code duplication
 abstract contract DeploySupTokenBase is Script {
