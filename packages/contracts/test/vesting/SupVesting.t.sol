@@ -56,7 +56,7 @@ contract SupVestingTest is SupVestingTestInit {
 
         vm.prank(ADMIN);
         supVestingFactory.createSupVestingContract(
-            ALICE, VESTING_AMOUNT, cliffDate, uint32(cliffDate + VESTING_DURATION)
+            ALICE, VESTING_AMOUNT, CLIFF_AMOUNT, cliffDate, uint32(cliffDate + VESTING_DURATION)
         );
 
         supVesting = SupVesting(address(supVestingFactory.supVestings(ALICE)));
@@ -92,7 +92,7 @@ contract SupVestingTest is SupVestingTestInit {
 
         vm.prank(ADMIN);
         address recipientSupVesting =
-            supVestingFactory.createSupVestingContract(recipient, _amount, _cliffDate, _endDate);
+            supVestingFactory.createSupVestingContract(recipient, _amount, _amount / 3, _cliffDate, _endDate);
 
         (uint256 expectedCliff, int96 expectedFlowRate) =
             _helperCalculateExpectedCliffAndFlow(_amount, _endDate - _cliffDate);
@@ -216,7 +216,9 @@ contract SupVestingTestRealData is SupVestingTestInit {
         vm.startPrank(ADMIN);
 
         for (uint256 i = 0; i < amounts.length; i++) {
-            supVestingFactory.createSupVestingContract(vm.addr(i + 69_420), amounts[i], CLIFF_DATE, END_DATE);
+            supVestingFactory.createSupVestingContract(
+                vm.addr(i + 69_420), amounts[i], amounts[i] / 3, CLIFF_DATE, END_DATE
+            );
         }
 
         vm.stopPrank();

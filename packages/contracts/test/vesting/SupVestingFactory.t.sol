@@ -34,14 +34,15 @@ contract SupVestingFactoryTest is SFTest {
         vm.warp(block.timestamp + 420 days);
     }
 
-    function testCreateSupVestingContract(address nonAdmin, address recipient, uint256 amount) public {
+    function testCreateSupVestingContract(address nonAdmin, address recipient, uint256 amount, uint256 cliffAmount)
+        public
+    {
         vm.assume(nonAdmin != address(ADMIN));
         vm.assume(recipient != address(0));
-        amount = bound(amount, 10 ether, 1_000_000 ether);
+        amount = bound(amount, 1 ether, 1_000_000 ether);
+        cliffAmount = bound(cliffAmount, 1, amount - 0.1 ether);
 
-        uint256 cliffAmount = amount / 3;
         uint32 cliffDate = uint32(block.timestamp + CLIFF_PERIOD);
-        int96 flowRate = int256((amount - cliffAmount) / uint256(VESTING_DURATION)).toInt96();
 
         vm.prank(FLUID_TREASURY);
         _fluidSuperToken.approve(address(supVestingFactory), amount);
@@ -49,14 +50,14 @@ contract SupVestingFactoryTest is SFTest {
         vm.prank(nonAdmin);
         vm.expectRevert(ISupVestingFactory.FORBIDDEN.selector);
         supVestingFactory.createSupVestingContract(
-            recipient, amount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            recipient, amount, cliffAmount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
         );
 
         uint256 supplyBefore = supVestingFactory.totalSupply();
 
         vm.prank(ADMIN);
         supVestingFactory.createSupVestingContract(
-            recipient, amount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            recipient, amount, cliffAmount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
         );
 
         address newSupVestingContract = supVestingFactory.supVestings(recipient);
@@ -68,7 +69,7 @@ contract SupVestingFactoryTest is SFTest {
         vm.prank(ADMIN);
         vm.expectRevert(ISupVestingFactory.RECIPIENT_ALREADY_HAS_VESTING_CONTRACT.selector);
         supVestingFactory.createSupVestingContract(
-            recipient, amount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            recipient, amount, cliffAmount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
         );
     }
 
@@ -92,15 +93,17 @@ contract SupVestingFactoryTest is SFTest {
     }
 
     function testSetAdmin(address newAdmin, address nonAdmin) public {
-        vm.assume(nonAdmin != address(ADMIN));
+        address currentAdmin = supVestingFactory.admin();
+        vm.assume(nonAdmin != currentAdmin);
+        vm.assume(nonAdmin != supVestingFactory.treasury());
+        vm.assume(newAdmin != currentAdmin);
         vm.assume(newAdmin != address(0));
-        vm.assume(newAdmin != address(ADMIN));
 
         vm.prank(nonAdmin);
         vm.expectRevert(ISupVestingFactory.FORBIDDEN.selector);
         supVestingFactory.setAdmin(newAdmin);
 
-        vm.startPrank(ADMIN);
+        vm.startPrank(currentAdmin);
         vm.expectRevert(ISupVestingFactory.FORBIDDEN.selector);
         supVestingFactory.setAdmin(address(0));
 
