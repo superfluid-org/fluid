@@ -75,8 +75,8 @@ contract SupVestingTest is SupVestingTestInit {
         IVestingSchedulerV2.VestingSchedule memory aliceVS =
             vestingScheduler.getVestingSchedule(address(_fluidSuperToken), address(supVesting), ALICE);
 
-        // Move time to after vesting can be concluded (1 seconds before the stream gets in critical state)
-        vm.warp(aliceVS.endDate - 5 hours - 1 seconds);
+        // Move time to after vesting can be concluded (before the stream gets critical / buffer starts being consumed)
+        vm.warp(aliceVS.endDate - 5 hours);
 
         vestingScheduler.executeEndVesting(_fluidSuperToken, address(supVesting), ALICE);
 
@@ -111,7 +111,7 @@ contract SupVestingTest is SupVestingTestInit {
         );
         assertEq(_fluidSuperToken.getFlowRate(recipientSupVesting, recipient), expectedFlowRate, "Flow rate mismatch");
 
-        // Move time to after vesting can be concluded (1 seconds before the stream gets in critical state)
+        // Move time to after vesting can be concluded (before stream gets critical)
         vm.warp(_endDate - 5 hours);
 
         vestingScheduler.executeEndVesting(_fluidSuperToken, recipientSupVesting, recipient);
