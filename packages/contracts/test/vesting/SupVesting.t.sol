@@ -49,7 +49,7 @@ contract SupVestingTest is SupVestingTestInit {
         vm.warp(block.timestamp + 420 days);
 
         vm.prank(FLUID_TREASURY);
-        _fluidSuperToken.approve(address(supVestingFactory), VESTING_AMOUNT * 1000);
+        _fluidSuperToken.approve(address(supVestingFactory), VESTING_AMOUNT);
 
         cliffDate = uint32(block.timestamp + CLIFF_PERIOD);
         flowRate = int256((VESTING_AMOUNT - CLIFF_AMOUNT) / uint256(VESTING_DURATION)).toInt96();
@@ -89,6 +89,9 @@ contract SupVestingTest is SupVestingTestInit {
         _amount = bound(_amount, 1 ether, 1_000_000 ether);
         _endDate = uint32(bound(_endDate, block.timestamp + 365 days, block.timestamp + (365 days * 10)));
         _cliffDate = uint32(bound(_cliffDate, block.timestamp + 3 days, _endDate - 7 days));
+
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.approve(address(supVestingFactory), _amount);
 
         vm.prank(ADMIN);
         address recipientSupVesting =
