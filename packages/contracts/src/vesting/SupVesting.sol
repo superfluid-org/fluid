@@ -71,35 +71,42 @@ contract SupVesting is ISupVesting {
     /**
      * @notice SupVesting contract constructor
      * @param vestingScheduler The Superfluid vesting scheduler contract
-     * @param token The SUP token contract
+     * @param sup The SUP token contract
      * @param recipient The recipient of the vested tokens
-     * @param amount The total amount of tokens to vest
-     * @param duration The duration of the vesting schedule in seconds
-     * @param startDate The timestamp when vesting begins
-     * @param cliffPeriod The cliff period in seconds before any tokens vest
+     * @param cliffDate The timestamp when the cliff period ends and the flow can start
+     * @param flowRate The rate at which tokens are streamed after the cliff period
+     * @param cliffAmount The amount of tokens released at the cliff date
+     * @param endDate The timestamp when the vesting schedule ends
      */
     constructor(
         IVestingSchedulerV2 vestingScheduler,
-        ISuperToken token,
+        ISuperToken sup,
         address recipient,
-        uint256 amount,
-        uint32 duration,
-        uint32 startDate,
-        uint32 cliffPeriod
+        uint32 cliffDate,
+        int96 flowRate,
+        uint256 cliffAmount,
+        uint32 endDate
     ) {
         // Persist the admin, recipient, and vesting scheduler addresses
         RECIPIENT = recipient;
         VESTING_SCHEDULER = vestingScheduler;
-        SUP = token;
+        SUP = sup;
         FACTORY = ISupVestingFactory(msg.sender);
 
         // Grant flow and token allowances
-        token.setMaxFlowPermissions(address(vestingScheduler));
-        token.approve(address(vestingScheduler), type(uint256).max);
+        sup.setMaxFlowPermissions(address(vestingScheduler));
+        sup.approve(address(vestingScheduler), type(uint256).max);
 
         // Create the vesting schedule for this recipient
-        vestingScheduler.createVestingScheduleFromAmountAndDuration(
-            token, recipient, amount, duration, startDate, cliffPeriod, 0 /* claimPeriod */
+        vestingScheduler.createVestingSchedule(
+            sup,
+            recipient,
+            uint32(block.timestamp),
+            cliffDate,
+            flowRate,
+            cliffAmount,
+            endDate,
+            0 /* claimValidityDate */
         );
     }
 

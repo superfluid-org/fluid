@@ -9,6 +9,9 @@ import { IVestingSchedulerV2 } from
 
 import { SupVestingFactory } from "src/vesting/SupVestingFactory.sol";
 import { SupVesting } from "src/vesting/SupVesting.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
+using SafeCast for int256;
 
 function _deployVestingFactory(address vestingScheduler, address supToken, address treasury, address governor)
     returns (address supVestingFactoryAddress)
@@ -25,10 +28,10 @@ function _deployDummyVesting(address vestingScheduler, address supToken, address
         IVestingSchedulerV2(vestingScheduler),
         ISuperToken(supToken),
         governor,
-        1 ether,
-        10 days,
         uint32(block.timestamp + 1 days),
-        0 days
+        1,
+        uint256(1 ether),
+        uint32(block.timestamp + 20 days)
     );
     supVestingAddress = address(supVesting);
 }

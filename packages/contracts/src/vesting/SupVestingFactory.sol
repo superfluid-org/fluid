@@ -26,6 +26,8 @@
 
 pragma solidity ^0.8.23;
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 /* Superfluid Protocol Contracts & Interfaces */
 import { ISuperToken } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
@@ -37,6 +39,7 @@ import { ISupVestingFactory } from "../interfaces/vesting/ISupVestingFactory.sol
 import { SupVesting } from "./SupVesting.sol";
 
 using SuperTokenV1Library for ISuperToken;
+using SafeCast for int256;
 
 /**
  * @title SUP Token Vesting Factory Contract
@@ -125,20 +128,29 @@ contract SupVestingFactory is ISupVestingFactory {
     function createSupVestingContract(
         address recipient,
         uint256 amount,
-        uint32 duration,
-        uint32 startDate,
-        uint32 cliffPeriod
+        uint256 cliffAmount,
+        uint32 cliffDate,
+        uint32 endDate
     ) external onlyAdmin returns (address newSupVestingContract) {
-        if (cliffPeriod < MIN_CLIFF_PERIOD) revert FORBIDDEN();
+        if (cliffDate < block.timestamp + MIN_CLIFF_PERIOD) revert FORBIDDEN();
+        if (cliffAmount >= amount) revert FORBIDDEN();
 
         // Ensure the recipient address does not already have a vesting contract
         if (supVestings[recipient] != address(0)) revert RECIPIENT_ALREADY_HAS_VESTING_CONTRACT();
 
         recipients.push(recipient);
 
+        uint256 vestingDuration = endDate - cliffDate;
+
+        uint256 vestingAmount = amount - cliffAmount;
+        int96 flowRate = int256(vestingAmount / vestingDuration).toInt96();
+
+        // Add the remainder to the cliff amount
+        cliffAmount += vestingAmount - (uint96(flowRate) * vestingDuration);
+
         // Deploy the new SUP Token Vesting contract
         newSupVestingContract =
-            address(new SupVesting(VESTING_SCHEDULER, SUP, recipient, amount, duration, startDate, cliffPeriod));
+            address(new SupVesting(VESTING_SCHEDULER, SUP, recipient, cliffDate, flowRate, cliffAmount, endDate));
 
         // Maps the recipient address to the new SUP Token Vesting contract
         supVestings[recipient] = newSupVestingContract;

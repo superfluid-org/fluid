@@ -16,14 +16,9 @@ import { IVestingSchedulerV2 } from
 using SuperTokenV1Library for SuperToken;
 using SafeCast for int256;
 
-contract SupVestingTest is SFTest {
+contract SupVestingTestInit is SFTest {
     SupVestingFactory public supVestingFactory;
-    SupVesting public supVesting;
     VestingSchedulerV2 public vestingScheduler;
-
-    uint256 public constant VESTING_AMOUNT = 100_000 ether;
-    uint32 public constant VESTING_DURATION = 1095 days;
-    uint32 public constant CLIFF_PERIOD = 365 days;
 
     function setUp() public virtual override {
         super.setUp();
@@ -32,6 +27,23 @@ contract SupVestingTest is SFTest {
         supVestingFactory = new SupVestingFactory(
             IVestingSchedulerV2(address(vestingScheduler)), ISuperToken(_fluidSuperToken), FLUID_TREASURY, ADMIN
         );
+    }
+}
+
+contract SupVestingTest is SupVestingTestInit {
+    SupVesting public supVesting;
+
+    uint256 public constant VESTING_AMOUNT = 115340 ether;
+    uint256 public constant CLIFF_AMOUNT = 38446666666666717280000;
+
+    uint32 public constant VESTING_DURATION = 730 days;
+    uint32 public constant CLIFF_PERIOD = 365 days;
+
+    uint32 public cliffDate;
+    int96 public flowRate;
+
+    function setUp() public virtual override {
+        super.setUp();
 
         // Move time forward to avoid vesting scheduler errors (time based input validation constraints)
         vm.warp(block.timestamp + 420 days);
@@ -39,9 +51,12 @@ contract SupVestingTest is SFTest {
         vm.prank(FLUID_TREASURY);
         _fluidSuperToken.approve(address(supVestingFactory), VESTING_AMOUNT);
 
+        cliffDate = uint32(block.timestamp + CLIFF_PERIOD);
+        flowRate = int256((VESTING_AMOUNT - CLIFF_AMOUNT) / uint256(VESTING_DURATION)).toInt96();
+
         vm.prank(ADMIN);
         supVestingFactory.createSupVestingContract(
-            ALICE, VESTING_AMOUNT, VESTING_DURATION, uint32(block.timestamp), CLIFF_PERIOD
+            ALICE, VESTING_AMOUNT, CLIFF_AMOUNT, cliffDate, uint32(cliffDate + VESTING_DURATION)
         );
 
         supVesting = SupVesting(address(supVestingFactory.supVestings(ALICE)));
@@ -49,30 +64,60 @@ contract SupVestingTest is SFTest {
 
     function testVesting() public {
         // Move time to after vesting can be started
-        vm.warp(block.timestamp + 365 days + 1 seconds);
-
-        int96 expectedFlowRate = int256(VESTING_AMOUNT / uint256(VESTING_DURATION)).toInt96();
+        vm.warp(cliffDate);
 
         // Execute the vesting start
         vestingScheduler.executeCliffAndFlow(_fluidSuperToken, address(supVesting), ALICE);
 
-        assertApproxEqAbs(
-            _fluidSuperToken.getFlowRate(address(supVesting), ALICE),
-            expectedFlowRate,
-            uint256((int256(expectedFlowRate) * 10) / 10_000),
-            "Flow rate mismatch"
-        );
+        assertEq(_fluidSuperToken.balanceOf(ALICE), CLIFF_AMOUNT, "Alice should have received the cliff amount");
+        assertEq(_fluidSuperToken.getFlowRate(address(supVesting), ALICE), flowRate, "Flow rate mismatch");
 
         IVestingSchedulerV2.VestingSchedule memory aliceVS =
             vestingScheduler.getVestingSchedule(address(_fluidSuperToken), address(supVesting), ALICE);
 
-        // Move time to after vesting can be concluded (1 seconds before the stream gets in critical state)
-        vm.warp(aliceVS.endDate - 4 hours - 1 seconds);
+        // Move time to after vesting can be concluded (before the stream gets critical / buffer starts being consumed)
+        vm.warp(aliceVS.endDate - 5 hours);
 
         vestingScheduler.executeEndVesting(_fluidSuperToken, address(supVesting), ALICE);
 
         assertEq(_fluidSuperToken.balanceOf(ALICE), VESTING_AMOUNT, "Alice should have the full amount");
         assertEq(_fluidSuperToken.balanceOf(address(supVesting)), 0, "SupVesting contract should be empty");
+    }
+
+    function testVestingFuzz(uint256 _amount, uint32 _cliffDate, uint32 _endDate) public {
+        address recipient = vm.addr(69_420);
+        _amount = bound(_amount, 1 ether, 1_000_000 ether);
+        _endDate = uint32(bound(_endDate, block.timestamp + 365 days, block.timestamp + (365 days * 10)));
+        _cliffDate = uint32(bound(_cliffDate, block.timestamp + 3 days, _endDate - 7 days));
+
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.approve(address(supVestingFactory), _amount);
+
+        vm.prank(ADMIN);
+        address recipientSupVesting =
+            supVestingFactory.createSupVestingContract(recipient, _amount, _amount / 3, _cliffDate, _endDate);
+
+        (uint256 expectedCliff, int96 expectedFlowRate) =
+            _helperCalculateExpectedCliffAndFlow(_amount, _endDate - _cliffDate);
+
+        // Move time to after vesting can be started
+        vm.warp(_cliffDate);
+
+        // Execute the vesting start
+        vestingScheduler.executeCliffAndFlow(_fluidSuperToken, recipientSupVesting, recipient);
+
+        assertEq(
+            _fluidSuperToken.balanceOf(recipient), expectedCliff, "Recipient should have received the cliff amount"
+        );
+        assertEq(_fluidSuperToken.getFlowRate(recipientSupVesting, recipient), expectedFlowRate, "Flow rate mismatch");
+
+        // Move time to after vesting can be concluded (before stream gets critical)
+        vm.warp(_endDate - 5 hours);
+
+        vestingScheduler.executeEndVesting(_fluidSuperToken, recipientSupVesting, recipient);
+
+        assertEq(_fluidSuperToken.balanceOf(recipient), _amount, "Recipient should have the full amount");
+        assertEq(_fluidSuperToken.balanceOf(recipientSupVesting), 0, "SupVesting contract should be empty");
     }
 
     function testEmergencyWithdrawBeforeVestingStart(address nonAdmin) public {
@@ -105,17 +150,16 @@ contract SupVestingTest is SFTest {
         supVesting.emergencyWithdraw();
 
         // Move time to after vesting can be started
-        vm.warp(block.timestamp + CLIFF_PERIOD + 1 days);
+        vm.warp(cliffDate + 1 minutes);
 
         // Execute the vesting start
         vestingScheduler.executeCliffAndFlow(_fluidSuperToken, address(supVesting), ALICE);
 
         int96 vestingFlowRate = _fluidSuperToken.getFlowRate(address(supVesting), ALICE);
-        int96 expectedFlowRate = int256(VESTING_AMOUNT / uint256(VESTING_DURATION)).toInt96();
 
         console2.log("vestingFlowRate", vestingFlowRate);
 
-        assertEq(vestingFlowRate, expectedFlowRate, "Flow rate mismatch");
+        assertEq(vestingFlowRate, flowRate, "Flow rate mismatch");
 
         vm.warp(block.timestamp + 5 days);
 
@@ -136,4 +180,104 @@ contract SupVestingTest is SFTest {
 
         assertEq(_fluidSuperToken.balanceOf(address(supVesting)), 0, "Balance should be 0");
     }
+}
+
+/// @notice This test is meant to be updated with all the real data for each insider
+contract SupVestingTestRealData is SupVestingTestInit {
+    uint32 public constant TWO_YEARS_IN_SECONDS = 63158400;
+
+    uint256 public constant CURRENT_DATE = 1740783600; // March 1st 2025 (CET)
+    uint32 public constant CLIFF_DATE = 1772319600; // March 1st 2026 (CET)
+    uint32 public constant END_DATE = CLIFF_DATE + TWO_YEARS_IN_SECONDS; // March 1st 2028 00:00:00 (CET)
+
+    uint256 public constant TOTAL_MAX_VESTING_AMOUNT = 250_000_000 ether;
+
+    uint256[7] public amounts;
+
+    function setUp() public virtual override {
+        super.setUp();
+
+        amounts = [100_000 ether, 50_000 ether, 25_000 ether, 17_500 ether, 14_000 ether, 12_710 ether, 9_850 ether];
+
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.approve(address(supVestingFactory), TOTAL_MAX_VESTING_AMOUNT);
+    }
+
+    function testVestings(uint256 creationDate) public {
+        creationDate = bound(creationDate, CURRENT_DATE, CLIFF_DATE - 3 days);
+        vm.warp(creationDate);
+        _helperCreateVestings();
+
+        vm.warp(CLIFF_DATE);
+        _helperExecuteCliffAndFlow();
+
+        vm.warp(END_DATE - 24 hours);
+        _helperExecuteEndVestings();
+    }
+
+    function _helperCreateVestings() internal {
+        vm.startPrank(ADMIN);
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            supVestingFactory.createSupVestingContract(
+                vm.addr(i + 69_420), amounts[i], amounts[i] / 3, CLIFF_DATE, END_DATE
+            );
+        }
+
+        vm.stopPrank();
+    }
+
+    function _helperExecuteCliffAndFlow() internal {
+        vm.startPrank(ADMIN);
+
+        uint256 vestingDuration = END_DATE - CLIFF_DATE;
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            address recipient = vm.addr(i + 69_420);
+            address sv = address(supVestingFactory.supVestings(recipient));
+
+            vestingScheduler.executeCliffAndFlow(_fluidSuperToken, sv, recipient);
+
+            (uint256 expectedCliffAmount, int96 expectedFlowRate) =
+                _helperCalculateExpectedCliffAndFlow(amounts[i], vestingDuration);
+
+            assertEq(
+                _fluidSuperToken.balanceOf(recipient),
+                expectedCliffAmount,
+                "recipient should have received the exact cliff amount"
+            );
+            assertEq(_fluidSuperToken.getFlowRate(sv, recipient), expectedFlowRate, "Recipient Flow rate mismatch");
+        }
+
+        vm.stopPrank();
+    }
+
+    function _helperExecuteEndVestings() internal {
+        vm.startPrank(ADMIN);
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            address recipient = vm.addr(i + 69_420);
+            address sv = address(supVestingFactory.supVestings(recipient));
+
+            console2.log("amounts[i]", amounts[i]);
+            vestingScheduler.executeEndVesting(_fluidSuperToken, sv, recipient);
+
+            assertEq(
+                _fluidSuperToken.balanceOf(recipient), amounts[i], "Recipient should have received the full amount"
+            );
+            assertEq(_fluidSuperToken.balanceOf(sv), 0, "SupVesting contract should be empty");
+            assertEq(_fluidSuperToken.getFlowRate(sv, recipient), 0, "Recipient Flow rate should be 0");
+        }
+
+        vm.stopPrank();
+    }
+}
+
+function _helperCalculateExpectedCliffAndFlow(uint256 amount, uint256 vestingDuration)
+    pure
+    returns (uint256 expectedCliffAmount, int96 expectedFlowRate)
+{
+    expectedCliffAmount = amount / 3;
+    expectedFlowRate = int256((amount - expectedCliffAmount) / vestingDuration).toInt96();
+    expectedCliffAmount += (amount - expectedCliffAmount) - (uint96(expectedFlowRate) * vestingDuration);
 }
