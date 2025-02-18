@@ -6,7 +6,11 @@ import { ERC1820RegistryCompiled } from
     "@superfluid-finance/ethereum-contracts/contracts/libs/ERC1820RegistryCompiled.sol";
 import { SuperfluidFrameworkDeployer } from
     "@superfluid-finance/ethereum-contracts/contracts/utils/SuperfluidFrameworkDeployer.t.sol";
-import { BridgedSuperTokenProxy, IBridgedSuperToken, IXERC20 } from "../../src/token/BridgedSuperToken.sol";
+
+import { IBridgedSuperToken } from "src/interfaces/token/IBridgedSuperToken.sol";
+import { IXERC20 } from "src/interfaces/token/IXERC20.sol";
+
+import { BridgedSuperTokenProxy } from "src/token/BridgedSuperToken.sol";
 
 contract BridgedSuperTokenTest is Test {
     SuperfluidFrameworkDeployer.Framework internal sf;

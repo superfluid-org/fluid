@@ -1,8 +1,33 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
+// SPDX-License-Identifier: MIT
+
+//                      @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//                    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@                        @@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@                        @@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@                        @@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@                        @@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@                        @@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@            @@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@            @@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@            @@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@            @@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@            @@@@@@@@@@@@
+//                   @@@@@@@@@@@@@            @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//                   @@@@@@@@@@@@@            @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//                   @@@@@@@@@@@@@            @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//                   @@@@@@@@@@@@@            @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//                   @@@@@@@@@@@@@            @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//                   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//                    @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+//                      @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
 pragma solidity 0.8.23;
 
 import { IOptimismMintableERC20, IERC165 } from "../interfaces/token/IOptimismMintableERC20.sol";
-import { BridgedSuperTokenProxy, IBridgedSuperToken, IXERC20 } from "./BridgedSuperToken.sol";
+import { BridgedSuperTokenProxy } from "./BridgedSuperToken.sol";
 
 /**
  * @title Extends BridgedSuperTokenProxy with the interface required by the Optimism (Superchain) Standard Bridge
@@ -31,12 +56,12 @@ contract OPBridgedSuperToken is BridgedSuperTokenProxy, IOptimismMintableERC20 {
         return _NATIVE_BRIDGE;
     }
 
-    /// @inheritdoc IXERC20
+    /// @inheritdoc BridgedSuperTokenProxy
     function mint(address user, uint256 amount) public override(BridgedSuperTokenProxy, IOptimismMintableERC20) {
         return super.mint(user, amount);
     }
 
-    /// @inheritdoc IXERC20
+    /// @inheritdoc BridgedSuperTokenProxy
     function burn(address user, uint256 amount) public override(BridgedSuperTokenProxy, IOptimismMintableERC20) {
         return super.burn(user, amount);
     }
@@ -47,9 +72,4 @@ contract OPBridgedSuperToken is BridgedSuperTokenProxy, IOptimismMintableERC20 {
     function supportsInterface(bytes4 interfaceId) external pure virtual returns (bool) {
         return interfaceId == type(IERC165).interfaceId || interfaceId == type(IOptimismMintableERC20).interfaceId;
     }
-}
-
-interface IOPBridgedSuperToken is IBridgedSuperToken, IOptimismMintableERC20 {
-    function mint(address _to, uint256 _amount) external override(IXERC20, IOptimismMintableERC20);
-    function burn(address _from, uint256 _amount) external override(IXERC20, IOptimismMintableERC20);
 }
