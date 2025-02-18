@@ -2,6 +2,22 @@
 
 Latest deployed contract address
 
+### BASE MAINNET - RC Deployment :
+
+| Contract                        | Address                                    | Explorer                                                                |
+| ------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------- |
+| FluidToken (SuperToken)         | 0xa69f80524381275A7fFdb3AE01c54150644c8792 | https://basescan.org/address/0x1547A1FeBE691cE721FD3F60e94e444d60d6f716 |
+| FluidEPProgramManager (Logic)   | 0xee117cD6F04FB85c5bb1bBeB59Bf1F9E16E05764 | https://basescan.org/address/0xee117cD6F04FB85c5bb1bBeB59Bf1F9E16E05764 |
+| FluidEPProgramManager (Proxy)   | 0x1e32cf099992E9D3b17eDdDFFfeb2D07AED95C6a | https://basescan.org/address/0x1e32cf099992E9D3b17eDdDFFfeb2D07AED95C6a |
+| StakingRewardController (Logic) | 0x4f69302E435f6D6c9eD40719098B13265027D8C2 | https://basescan.org/address/0x4f69302E435f6D6c9eD40719098B13265027D8C2 |
+| StakingRewardController (Proxy) | 0xb19Ae25A98d352B36CED60F93db926247535048b | https://basescan.org/address/0xb19Ae25A98d352B36CED60F93db926247535048b |
+| FluidLocker (Logic)             | 0xFfc5222f21170a1609af02A3e81f5a5C7b486C5A | https://basescan.org/address/0xFfc5222f21170a1609af02A3e81f5a5C7b486C5A |
+| FluidLocker (Beacon)            | 0x664161f0974F5B17FB1fD3FDcE5D1679E829176c | https://basescan.org/address/0x664161f0974F5B17FB1fD3FDcE5D1679E829176c |
+| Fontaine (Logic)                | 0xbFe2ceE2Cc266f26Aaf434Ef69e390FC2a0033fA | https://basescan.org/address/0xbFe2ceE2Cc266f26Aaf434Ef69e390FC2a0033fA |
+| Fontaine (Beacon)               | 0xA26FbA47Da24F7DF11b3E4CF60Dcf7D1691Ae47d | https://basescan.org/address/0xA26FbA47Da24F7DF11b3E4CF60Dcf7D1691Ae47d |
+| FluidLockerFactory (Logic)      | 0xf6EED68979870941AEF88914534F67d06Ae15B80 | https://basescan.org/address/0xf6EED68979870941AEF88914534F67d06Ae15B80 |
+| FluidLockerFactory (Proxy)      | 0xA6694cAB43713287F7735dADc940b555db9d39D9 | https://basescan.org/address/0xA6694cAB43713287F7735dADc940b555db9d39D9 |
+
 ### BASE MAINNET - Preliminary Deployment :
 
 | Contract                        | Address                                    | Explorer                                                                |
