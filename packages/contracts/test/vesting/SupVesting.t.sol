@@ -49,7 +49,7 @@ contract SupVestingTest is SupVestingTestInit {
         vm.warp(block.timestamp + 420 days);
 
         vm.prank(FLUID_TREASURY);
-        _fluidSuperToken.approve(address(supVestingFactory), VESTING_AMOUNT * 1000);
+        _fluidSuperToken.approve(address(supVestingFactory), VESTING_AMOUNT);
 
         cliffDate = uint32(block.timestamp + CLIFF_PERIOD);
         flowRate = int256((VESTING_AMOUNT - CLIFF_AMOUNT) / uint256(VESTING_DURATION)).toInt96();
@@ -75,8 +75,8 @@ contract SupVestingTest is SupVestingTestInit {
         IVestingSchedulerV2.VestingSchedule memory aliceVS =
             vestingScheduler.getVestingSchedule(address(_fluidSuperToken), address(supVesting), ALICE);
 
-        // Move time to after vesting can be concluded (1 seconds before the stream gets in critical state)
-        vm.warp(aliceVS.endDate - 5 hours - 1 seconds);
+        // Move time to after vesting can be concluded (before the stream gets critical / buffer starts being consumed)
+        vm.warp(aliceVS.endDate - 5 hours);
 
         vestingScheduler.executeEndVesting(_fluidSuperToken, address(supVesting), ALICE);
 
@@ -89,6 +89,9 @@ contract SupVestingTest is SupVestingTestInit {
         _amount = bound(_amount, 1 ether, 1_000_000 ether);
         _endDate = uint32(bound(_endDate, block.timestamp + 365 days, block.timestamp + (365 days * 10)));
         _cliffDate = uint32(bound(_cliffDate, block.timestamp + 3 days, _endDate - 7 days));
+
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.approve(address(supVestingFactory), _amount);
 
         vm.prank(ADMIN);
         address recipientSupVesting =
@@ -108,7 +111,7 @@ contract SupVestingTest is SupVestingTestInit {
         );
         assertEq(_fluidSuperToken.getFlowRate(recipientSupVesting, recipient), expectedFlowRate, "Flow rate mismatch");
 
-        // Move time to after vesting can be concluded (1 seconds before the stream gets in critical state)
+        // Move time to after vesting can be concluded (before stream gets critical)
         vm.warp(_endDate - 5 hours);
 
         vestingScheduler.executeEndVesting(_fluidSuperToken, recipientSupVesting, recipient);
