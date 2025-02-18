@@ -17,7 +17,7 @@ contract SupVestingFactoryTest is SFTest {
     VestingSchedulerV2 public vestingScheduler;
 
     // 2 years vesting
-    uint32 public constant VESTING_DURATION = 740 days;
+    uint32 public constant VESTING_DURATION = 730 days;
 
     // 1 year cliff
     uint32 public constant CLIFF_PERIOD = 365 days;
