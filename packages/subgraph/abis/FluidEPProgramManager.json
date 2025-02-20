@@ -1,0 +1,735 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "contract ISuperfluidPool",
+        "name": "taxDistributionPool",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "target", "type": "address" }
+    ],
+    "name": "AddressEmptyCode",
+    "type": "error"
+  },
+  { "inputs": [], "name": "CFA_INVALID_FLOW_RATE", "type": "error" },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "implementation", "type": "address" }
+    ],
+    "name": "ERC1967InvalidImplementation",
+    "type": "error"
+  },
+  { "inputs": [], "name": "ERC1967NonPayable", "type": "error" },
+  { "inputs": [], "name": "FailedInnerCall", "type": "error" },
+  { "inputs": [], "name": "INVALID_PARAMETER", "type": "error" },
+  {
+    "inputs": [
+      { "internalType": "string", "name": "reason", "type": "string" }
+    ],
+    "name": "INVALID_SIGNATURE",
+    "type": "error"
+  },
+  { "inputs": [], "name": "InvalidInitialization", "type": "error" },
+  { "inputs": [], "name": "LOCKER_NOT_FOUND", "type": "error" },
+  { "inputs": [], "name": "NOT_PROGRAM_ADMIN", "type": "error" },
+  { "inputs": [], "name": "NotInitializing", "type": "error" },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "owner", "type": "address" }
+    ],
+    "name": "OwnableInvalidOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "account", "type": "address" }
+    ],
+    "name": "OwnableUnauthorizedAccount",
+    "type": "error"
+  },
+  { "inputs": [], "name": "POOL_HAS_NO_UNITS", "type": "error" },
+  { "inputs": [], "name": "PROGRAM_ALREADY_CREATED", "type": "error" },
+  { "inputs": [], "name": "PROGRAM_NOT_FOUND", "type": "error" },
+  {
+    "inputs": [
+      { "internalType": "uint8", "name": "bits", "type": "uint8" },
+      { "internalType": "int256", "name": "value", "type": "int256" }
+    ],
+    "name": "SafeCastOverflowedIntDowncast",
+    "type": "error"
+  },
+  { "inputs": [], "name": "TOO_EARLY_TO_END_PROGRAM", "type": "error" },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "version",
+        "type": "uint64"
+      }
+    ],
+    "name": "Initialized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "programId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "returnedDeposit",
+        "type": "uint256"
+      }
+    ],
+    "name": "ProgramCancelled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "programId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "programAdmin",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "signer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "distributionPool",
+        "type": "address"
+      }
+    ],
+    "name": "ProgramCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "programId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "fundingAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "subsidyAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "earlyEndDate",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "endDate",
+        "type": "uint256"
+      }
+    ],
+    "name": "ProgramFunded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "programId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "newSigner",
+        "type": "address"
+      }
+    ],
+    "name": "ProgramSignerUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "programId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "fundingCompensationAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "subsidyCompensationAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "ProgramStopped",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "implementation",
+        "type": "address"
+      }
+    ],
+    "name": "Upgraded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "programId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "newUnits",
+        "type": "uint256"
+      }
+    ],
+    "name": "UserUnitsUpdated",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "EARLY_PROGRAM_END",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "PROGRAM_DURATION",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "TAX_DISTRIBUTION_POOL",
+    "outputs": [
+      {
+        "internalType": "contract ISuperfluidPool",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "programIds",
+        "type": "uint256[]"
+      },
+      { "internalType": "uint256[]", "name": "newUnits", "type": "uint256[]" },
+      { "internalType": "uint256[]", "name": "nonces", "type": "uint256[]" },
+      {
+        "internalType": "bytes[]",
+        "name": "stackSignatures",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "batchUpdateUnits",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "user", "type": "address" },
+      {
+        "internalType": "uint256[]",
+        "name": "programIds",
+        "type": "uint256[]"
+      },
+      { "internalType": "uint256[]", "name": "newUnits", "type": "uint256[]" },
+      { "internalType": "uint256[]", "name": "nonces", "type": "uint256[]" },
+      {
+        "internalType": "bytes[]",
+        "name": "stackSignatures",
+        "type": "bytes[]"
+      }
+    ],
+    "name": "batchUpdateUserUnits",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract ISuperfluid",
+        "name": "host",
+        "type": "address"
+      },
+      { "internalType": "bytes", "name": "params", "type": "bytes" },
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "buildBatchOperations",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint32",
+            "name": "operationType",
+            "type": "uint32"
+          },
+          { "internalType": "address", "name": "target", "type": "address" },
+          { "internalType": "bytes", "name": "data", "type": "bytes" }
+        ],
+        "internalType": "struct ISuperfluid.Operation[]",
+        "name": "operations",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" },
+      {
+        "internalType": "uint256",
+        "name": "plannedFundingAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "calculateAllowances",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "depositAllowance",
+        "type": "uint256"
+      },
+      { "internalType": "int96", "name": "flowRateAllowance", "type": "int96" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" }
+    ],
+    "name": "cancelProgram",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" },
+      { "internalType": "address", "name": "programAdmin", "type": "address" },
+      { "internalType": "address", "name": "signer", "type": "address" },
+      {
+        "internalType": "contract ISuperToken",
+        "name": "token",
+        "type": "address"
+      },
+      { "internalType": "string", "name": "poolName", "type": "string" },
+      { "internalType": "string", "name": "poolSymbol", "type": "string" }
+    ],
+    "name": "createProgram",
+    "outputs": [
+      {
+        "internalType": "contract ISuperfluidPool",
+        "name": "distributionPool",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract ISuperToken",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "emergencyWithdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "fluidLockerFactory",
+    "outputs": [
+      {
+        "internalType": "contract IFluidLockerFactory",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "fluidTreasury",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" },
+      { "internalType": "address", "name": "user", "type": "address" }
+    ],
+    "name": "getNextValidNonce",
+    "outputs": [
+      { "internalType": "uint256", "name": "validNonce", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" }
+    ],
+    "name": "getProgramDetails",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "int96",
+            "name": "fundingFlowRate",
+            "type": "int96"
+          },
+          {
+            "internalType": "int96",
+            "name": "subsidyFlowRate",
+            "type": "int96"
+          },
+          {
+            "internalType": "uint64",
+            "name": "fundingStartDate",
+            "type": "uint64"
+          }
+        ],
+        "internalType": "struct FluidEPProgramManager.FluidProgramDetails",
+        "name": "details",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" }
+    ],
+    "name": "getProgramPool",
+    "outputs": [
+      {
+        "internalType": "contract ISuperfluidPool",
+        "name": "programPool",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "owner", "type": "address" },
+      { "internalType": "address", "name": "treasury", "type": "address" }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" },
+      {
+        "internalType": "uint256[]",
+        "name": "stackPoints",
+        "type": "uint256[]"
+      },
+      { "internalType": "address[]", "name": "users", "type": "address[]" }
+    ],
+    "name": "manualPoolUpdate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" },
+      { "internalType": "uint256", "name": "stackPoints", "type": "uint256" },
+      { "internalType": "address", "name": "user", "type": "address" }
+    ],
+    "name": "manualPoolUpdate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "paramsGivePermission",
+    "outputs": [{ "internalType": "bytes", "name": "", "type": "bytes" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract ISuperfluid",
+        "name": "host",
+        "type": "address"
+      },
+      { "internalType": "bytes", "name": "params", "type": "bytes" },
+      { "internalType": "address", "name": "msgSender", "type": "address" }
+    ],
+    "name": "postCheck",
+    "outputs": [],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" }
+    ],
+    "name": "programs",
+    "outputs": [
+      { "internalType": "address", "name": "programAdmin", "type": "address" },
+      { "internalType": "address", "name": "stackSigner", "type": "address" },
+      {
+        "internalType": "contract ISuperToken",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "contract ISuperfluidPool",
+        "name": "distributionPool",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "lockerFactoryAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setLockerFactory",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint96", "name": "subsidyRate", "type": "uint96" }
+    ],
+    "name": "setSubsidyRate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "treasuryAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setTreasury",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" },
+      { "internalType": "uint256", "name": "totalAmount", "type": "uint256" }
+    ],
+    "name": "startFunding",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" }
+    ],
+    "name": "stopFunding",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "subsidyFundingRate",
+    "outputs": [{ "internalType": "uint96", "name": "", "type": "uint96" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "newOwner", "type": "address" }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" },
+      { "internalType": "address", "name": "newSigner", "type": "address" }
+    ],
+    "name": "updateProgramSigner",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "programId", "type": "uint256" },
+      { "internalType": "uint256", "name": "newUnits", "type": "uint256" },
+      { "internalType": "uint256", "name": "nonce", "type": "uint256" },
+      { "internalType": "bytes", "name": "stackSignature", "type": "bytes" }
+    ],
+    "name": "updateUnits",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "user", "type": "address" },
+      { "internalType": "uint256", "name": "programId", "type": "uint256" },
+      { "internalType": "uint256", "name": "newUnits", "type": "uint256" },
+      { "internalType": "uint256", "name": "nonce", "type": "uint256" },
+      { "internalType": "bytes", "name": "stackSignature", "type": "bytes" }
+    ],
+    "name": "updateUserUnits",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newImplementation",
+        "type": "address"
+      },
+      { "internalType": "bytes", "name": "data", "type": "bytes" }
+    ],
+    "name": "upgradeTo",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

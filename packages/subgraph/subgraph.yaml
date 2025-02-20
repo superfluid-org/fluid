@@ -1,0 +1,53 @@
+specVersion: 1.0.0
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: FluidEPProgramManager
+    network: base
+    source:
+      abi: FluidEPProgramManager
+      address: "0x1e32cf099992E9D3b17eDdDFFfeb2D07AED95C6a"
+      startBlock: 26550970
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Program
+      abis:
+        - name: FluidEPProgramManager
+          file: ./abis/FluidEPProgramManager.json
+      eventHandlers:
+        - event: ProgramCancelled(indexed uint256,indexed uint256)
+          handler: handleProgramCancelled
+        - event: ProgramCreated(uint256,address,address,address,address)
+          handler: handleProgramCreated
+        - event: ProgramFunded(indexed uint256,indexed uint256,indexed
+            uint256,uint256,uint256)
+          handler: handleProgramFunded
+        - event: ProgramSignerUpdated(uint256,address)
+          handler: handleProgramSignerUpdated
+        - event: ProgramStopped(indexed uint256,indexed uint256,indexed uint256)
+          handler: handleProgramStopped
+      file: ./src/fluid-ep-program-manager.ts
+  - kind: ethereum
+    name: FluidLockerFactory
+    network: base
+    source:
+      abi: FluidLockerFactory
+      address: "0xA6694cAB43713287F7735dADc940b555db9d39D9"
+      startBlock: 26550970
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - LockerCreated
+      abis:
+        - name: FluidLockerFactory
+          file: ./abis/FluidLockerFactory.json
+      eventHandlers:
+        - event: LockerCreated(address,address)
+          handler: handleLockerCreated
+      file: ./src/fluid-locker-factory.ts

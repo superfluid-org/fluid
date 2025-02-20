@@ -1,0 +1,44 @@
+type Program @entity {
+  id: String! # uint256
+  programAdmin: Bytes! # address
+  signer: Bytes! # address
+  token: Bytes! # address
+  distributionPool: Bytes! # address
+  fundingAmount: BigInt! # uint256
+  subsidyAmount: BigInt! # uint256
+  earlyEndDate: BigInt! # uint256
+  endDate: BigInt! # uint256
+  stoppedDate: BigInt! # uint256
+  fundingCompensationAmount: BigInt! # uint256
+  subsidyCompensationAmount: BigInt! # uint256
+  cancellationDate: BigInt! # uint256
+  returnedDeposit: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type GovernorUpdated @entity {
+  id: Bytes!
+  newGovernor: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type FluidLockerFactoryInitialized @entity {
+  id: Bytes!
+  version: BigInt! # uint64
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type LockerCreated @entity {
+  id: Bytes!
+  lockerOwner: Bytes! # address
+  lockerAddress: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
