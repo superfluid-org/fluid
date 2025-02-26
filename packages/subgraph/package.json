@@ -1,6 +1,6 @@
 {
   "name": "sup-subgraph",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "scripts": {
     "codegen": "graph codegen",
     "build": "graph build",

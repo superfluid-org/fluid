@@ -18,27 +18,63 @@ type Program @entity {
   transactionHash: Bytes!
 }
 
-type GovernorUpdated @entity {
+type Locker @entity(immutable: true) {
+  """
+  The address of the deployed locker contract.
+  """
   id: Bytes!
-  newGovernor: Bytes! # address
+
+  """
+  The address of the locker owner.
+  """
+  lockerOwner: Bytes!
+
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
 
-type FluidLockerFactoryInitialized @entity {
+type FluidStreamClaimEvent @entity(immutable: true) {
+  """
+  A generated unique identifier for the claim event.
+  """
   id: Bytes!
-  version: BigInt! # uint64
+
+  """
+  The locker contract that the claim event is associated with.
+  """
+  locker: Locker!
+
+  """
+  The address of the msg.sender.
+  """
+  claimer: Bytes!
+
+  """
+  A mapping of programId to the claim event units.
+  """
+  units: [ClaimEventUnit!]! @derivedFrom(field: "event")
+
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
 
-type LockerCreated @entity {
+type ClaimEventUnit @entity(immutable: true) {
+  """
+  A generated unique identifier for the claim event unit.
+  """
   id: Bytes!
-  lockerOwner: Bytes! # address
-  lockerAddress: Bytes! # address
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
+
+  """
+  The programId that the claim event unit is associated with.
+  """
+  programId: String!
+
+  """
+  The amount of units claimed.
+  """
+  amount: BigInt! # uint256
+
+  event: FluidStreamClaimEvent!
 }

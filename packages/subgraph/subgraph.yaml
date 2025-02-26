@@ -43,7 +43,7 @@ dataSources:
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - LockerCreated
+        - Locker
       abis:
         - name: FluidLockerFactory
           file: ./abis/FluidLockerFactory.json
@@ -51,3 +51,27 @@ dataSources:
         - event: LockerCreated(address,address)
           handler: handleLockerCreated
       file: ./src/fluid-locker-factory.ts
+templates:
+  - kind: ethereum
+    name: FluidLocker
+    network: base
+    source:
+      abi: FluidLocker
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Locker
+        - FluidStreamClaimEvent
+        - ClaimEventUnit
+        - Program
+      abis:
+        - name: FluidLocker
+          file: ./abis/FluidLocker.json
+      eventHandlers:
+        - event: FluidStreamClaimed(indexed uint256,indexed uint256)
+          handler: handleFluidStreamClaimed
+        - event: FluidStreamsClaimed(indexed uint256[],indexed uint256[])
+          handler: handleFluidStreamClaimedBulk
+      file: ./src/fluid-locker.ts
