@@ -167,16 +167,16 @@ FLUID_UNLOCK_STATUS : Whether the Lockers allow the SuperToken to be withdrawn o
 - Have an ADMIN account created
 - Have the TREASURY multisig create and setup
 - Have all the insiders data ready and validated :
-  - insider address
-  - amount for each insider
-  - vesting parameter (`startDate` / `duration` / `cliffPeriod`)
+  - `recipient` address
+  - `amount` for each insider
+  - vesting parameter (`cliffAmount` / `cliffDate` / `endDate`)
 
 ### Step 1 :
 
 - Deploy the `SupVestingFactory` contract
 
-- Note 1 : In `DeployVesting.s.sol` script, we deploy a dummy `SupVesting` contract for verification purpose (??)
-  This might not be need if we perform a preliminary mainnet deployment (to test in prod)
+- Note 1 : In `DeployVesting.s.sol` script, we deploy a dummy `SupVesting` contract for verification purpose.
+  This might not be need if we perform a preliminary mainnet deployment
 
 - Note 2 : Once the `SupVestingFactory` contract is deployed, the SNAPSHOT STRATEGY parameters must be updated.
 
