@@ -38,6 +38,7 @@ contract FluidLockerFactoryTest is SFTest {
         address userLockerAddress = _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }();
 
         assertEq(_fluidLockerFactory.getLockerAddress(_user), userLockerAddress, "locker should exists");
+        assertEq(address(_fluidLockerFactory).balance, LOCKER_CREATION_FEE, "incorrect balance");
 
         vm.expectRevert();
         _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }();
@@ -64,6 +65,7 @@ contract FluidLockerFactoryTest is SFTest {
             _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }(_onBehalfOf);
 
         assertEq(_fluidLockerFactory.getLockerAddress(_onBehalfOf), createdLockerAddress, "locker should exists");
+        assertEq(address(_fluidLockerFactory).balance, LOCKER_CREATION_FEE, "incorrect balance");
 
         vm.expectRevert();
         _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }(_onBehalfOf);
@@ -84,6 +86,34 @@ contract FluidLockerFactoryTest is SFTest {
         _fluidLockerFactory.setGovernor(_newGovernor);
 
         assertEq(_fluidLockerFactory.governor(), _newGovernor, "governor not updated");
+    }
+
+    function testWithdrawETH(address _user) external {
+        vm.assume(_user != address(0));
+        vm.assume(_user != ADMIN);
+
+        vm.deal(_user, type(uint256).max);
+
+        vm.startPrank(_user);
+
+        _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }();
+
+        assertEq(address(_fluidLockerFactory).balance, LOCKER_CREATION_FEE, "incorrect balance");
+
+        vm.expectRevert(IFluidLockerFactory.NOT_GOVERNOR.selector);
+        _fluidLockerFactory.withdrawETH();
+
+        vm.stopPrank();
+
+        uint256 adminBalanceBefore = address(ADMIN).balance;
+
+        vm.prank(ADMIN);
+        _fluidLockerFactory.withdrawETH();
+
+        uint256 adminBalanceAfter = address(ADMIN).balance;
+
+        assertEq(adminBalanceAfter, adminBalanceBefore + LOCKER_CREATION_FEE, "incorrect balance");
+        assertEq(address(_fluidLockerFactory).balance, 0, "incorrect balance");
     }
 
     function testGetUserLocker(address user, address nonUser) external {
