@@ -13,23 +13,84 @@ import { IFluidLockerFactory } from "../src/FluidLockerFactory.sol";
 using SuperTokenV1Library for ISuperToken;
 
 contract FluidLockerFactoryTest is SFTest {
+    uint256 public constant LOCKER_CREATION_FEE = 0.00025 ether;
+
     function setUp() public override {
         super.setUp();
+
+        vm.prank(ADMIN);
+        _fluidLockerFactory.setLockerCreationFee(LOCKER_CREATION_FEE);
     }
 
-    function testCreateLockerContract(address _user) external {
+    function testCreateLockerContract(address _user, uint256 _invalidFee) external {
         vm.assume(_user != address(0));
+        vm.assume(_invalidFee != LOCKER_CREATION_FEE);
+
+        vm.deal(_user, type(uint256).max);
+
+        vm.startPrank(_user);
+
+        vm.expectRevert(IFluidLockerFactory.INVALID_FEE.selector);
+        _fluidLockerFactory.createLockerContract{ value: _invalidFee }();
 
         assertEq(_fluidLockerFactory.getLockerAddress(_user), address(0), "locker should not exists");
 
-        vm.prank(_user);
-        address userLockerAddress = _fluidLockerFactory.createLockerContract();
+        address userLockerAddress = _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }();
 
         assertEq(_fluidLockerFactory.getLockerAddress(_user), userLockerAddress, "locker should exists");
 
-        vm.prank(_user);
         vm.expectRevert();
-        _fluidLockerFactory.createLockerContract();
+        _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }();
+
+        vm.stopPrank();
+    }
+
+    function testCreateLockerContractOnBehalf(address _user, address _onBehalfOf, uint256 _invalidFee) external {
+        vm.assume(_user != _onBehalfOf);
+        vm.assume(_user != address(0));
+        vm.assume(_onBehalfOf != address(0));
+        vm.assume(_invalidFee != LOCKER_CREATION_FEE);
+
+        vm.deal(_user, type(uint256).max);
+
+        vm.startPrank(_user);
+
+        vm.expectRevert(IFluidLockerFactory.INVALID_FEE.selector);
+        _fluidLockerFactory.createLockerContract{ value: _invalidFee }(_onBehalfOf);
+
+        assertEq(_fluidLockerFactory.getLockerAddress(_onBehalfOf), address(0), "locker should not exists");
+
+        address createdLockerAddress =
+            _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }(_onBehalfOf);
+
+        assertEq(_fluidLockerFactory.getLockerAddress(_onBehalfOf), createdLockerAddress, "locker should exists");
+
+        vm.expectRevert();
+        _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }(_onBehalfOf);
+
+        vm.stopPrank();
+    }
+
+    function testCreateLockerContractAdmin(address _nonAdmin, address _onBehalfOf) external {
+        vm.assume(_onBehalfOf != address(0));
+        vm.assume(_nonAdmin != ADMIN);
+
+        vm.prank(_nonAdmin);
+        vm.expectRevert(IFluidLockerFactory.NOT_GOVERNOR.selector);
+        _fluidLockerFactory.createLockerContractAdmin(_onBehalfOf);
+
+        vm.startPrank(ADMIN);
+
+        assertEq(_fluidLockerFactory.getLockerAddress(_onBehalfOf), address(0), "locker should not exists");
+
+        address createdLockerAddress = _fluidLockerFactory.createLockerContractAdmin(_onBehalfOf);
+
+        assertEq(_fluidLockerFactory.getLockerAddress(_onBehalfOf), createdLockerAddress, "locker should exists");
+
+        vm.expectRevert();
+        _fluidLockerFactory.createLockerContractAdmin(_onBehalfOf);
+
+        vm.stopPrank();
     }
 
     function testSetGovernor(address _newGovernor) external {
@@ -50,8 +111,10 @@ contract FluidLockerFactoryTest is SFTest {
     function testGetUserLocker(address user, address nonUser) external {
         vm.assume(user != nonUser);
 
+        vm.deal(user, LOCKER_CREATION_FEE);
+
         vm.prank(user);
-        address userLockerAddress = _fluidLockerFactory.createLockerContract();
+        address userLockerAddress = _fluidLockerFactory.createLockerContract{ value: LOCKER_CREATION_FEE }();
 
         (bool isCreated, address lockerAddressResult) = _fluidLockerFactory.getUserLocker(user);
 
