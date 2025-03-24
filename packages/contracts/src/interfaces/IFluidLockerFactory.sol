@@ -80,14 +80,6 @@ interface IFluidLockerFactory {
     function createLockerContract(address user) external payable returns (address lockerInstance);
 
     /**
-     * @notice Deploy a Locker for the given user
-     * @dev Only the governor address can perform this operation
-     * @param user User address to be associated with the Locker
-     * @return lockerInstance Deployed Locker contract address
-     */
-    function createLockerContractAdmin(address user) external returns (address lockerInstance);
-
-    /**
      * @notice Upgrade this proxy logic
      * @dev Only the governor address can perform this operation
      * @param newImplementation new logic contract address

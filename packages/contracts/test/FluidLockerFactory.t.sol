@@ -71,28 +71,6 @@ contract FluidLockerFactoryTest is SFTest {
         vm.stopPrank();
     }
 
-    function testCreateLockerContractAdmin(address _nonAdmin, address _onBehalfOf) external {
-        vm.assume(_onBehalfOf != address(0));
-        vm.assume(_nonAdmin != ADMIN);
-
-        vm.prank(_nonAdmin);
-        vm.expectRevert(IFluidLockerFactory.NOT_GOVERNOR.selector);
-        _fluidLockerFactory.createLockerContractAdmin(_onBehalfOf);
-
-        vm.startPrank(ADMIN);
-
-        assertEq(_fluidLockerFactory.getLockerAddress(_onBehalfOf), address(0), "locker should not exists");
-
-        address createdLockerAddress = _fluidLockerFactory.createLockerContractAdmin(_onBehalfOf);
-
-        assertEq(_fluidLockerFactory.getLockerAddress(_onBehalfOf), createdLockerAddress, "locker should exists");
-
-        vm.expectRevert();
-        _fluidLockerFactory.createLockerContractAdmin(_onBehalfOf);
-
-        vm.stopPrank();
-    }
-
     function testSetGovernor(address _newGovernor) external {
         address currentGovernor = _fluidLockerFactory.governor();
         vm.assume(_newGovernor != currentGovernor);
