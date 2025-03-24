@@ -92,6 +92,9 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to unlock while the Tax Distribution Pool did not distribute units
     error TAX_DISTRIBUTION_POOL_HAS_NO_UNITS();
 
+    /// @notice Error thrown when attempting to provide liquidity with an amount greater than the available balance
+    error INSUFFICIENT_BALANCE();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/

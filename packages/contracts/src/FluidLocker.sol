@@ -32,6 +32,7 @@ import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 import { Initializable } from "@openzeppelin-v5/contracts/proxy/utils/Initializable.sol";
 import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import { IERC20 } from "@openzeppelin-v5/contracts/token/ERC20/IERC20.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {
@@ -47,6 +48,18 @@ import { IStakingRewardController } from "./interfaces/IStakingRewardController.
 import { IFontaine } from "./interfaces/IFontaine.sol";
 
 import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
+
+/* Uniswap V4 Interfaces */
+import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
+import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import { IPositionManager } from "@uniswap/v4-periphery/src/interfaces/IPositionManager.sol";
+import { TickMath } from "@uniswap/v4-core/src/libraries/TickMath.sol";
+import { Actions } from "@uniswap/v4-periphery/src/libraries/Actions.sol";
+import { PoolIdLibrary } from "@uniswap/v4-core/src/types/PoolId.sol";
+import { StateLibrary } from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
+import { LiquidityAmounts } from "@uniswap/v4-periphery/src/libraries/LiquidityAmounts.sol";
+import { Currency } from "@uniswap/v4-core/src/types/Currency.sol";
+import { IPermit2 } from "@uniswap/v4-periphery/lib/permit2/src/interfaces/IPermit2.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -120,6 +133,19 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Scaler used for unlock percentage calculation
     uint256 private constant _PERCENT_TO_BP = 100;
 
+    //   _    __ ___     ____                          __        __    __         _____ __        __
+    //  | |  / /|__ \   /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__      / ___// /_____ _/ /____  _____
+    //  | | / /__/ /    / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //  | |/ // __/   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
+    //  |___//____/  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
+
+    IERC20 public immutable USDC;
+    IERC20 public immutable WETH;
+    IPositionManager public immutable POSITION_MANAGER;
+    IPoolManager public immutable POOL_MANAGER;
+    address public immutable PERMIT2;
+    uint256 private immutable _LP_OPERATION_DEADLINE = 15 seconds;
+
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -140,6 +166,16 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @notice Stores the Fontaine contract associated to the given unlock identifier
     mapping(uint256 unlockId => IFontaine fontaine) public fontaines;
+
+    //   _    __ ___      _____ __        __
+    //  | |  / /|__ \    / ___// /_____ _/ /____  _____
+    //  | | / /__/ /    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //  | |/ // __/    ___/ / /_/ /_/ / /_/  __(__  )
+    //  |___//____/   /____/\__/\__,_/\__/\___/____/
+
+    PoolKey public usdcPoolKey;
+    PoolKey public wethPoolKey;
+    mapping(PoolKey poolKey => uint256 tokenId) public positonTokenId;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -339,6 +375,78 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
     }
 
+    /**
+     * @notice Provides liquidity to the WETH/SUP pool
+     * @param supAmountMax The maximum amount of SUP to provide as liquidity
+     * @param wethAmountMax The maximum amount of WETH to provide as liquidity
+     */
+    function provideLiquidityWETH(uint256 supAmountMax, uint256 wethAmountMax) external nonReentrant onlyLockerOwner {
+        // Transfer WETH from the caller to this locker
+        WETH.transferFrom(msg.sender, address(this), wethAmountMax);
+
+        // Revert if the amount of $FLUID to provide is greater than the available balance
+        if (supAmountMax > getAvailableBalance()) {
+            /// NOTE / FIXME : here we may want to hard-set the max amount of SUP to getAvailableBalance(). (thoughts?)
+            revert INSUFFICIENT_BALANCE();
+        }
+
+        /// TODO / FIXME : here we may need to market buy some SUP (pumponomics)
+
+        if (_lockerHasPosition(wethPoolKey)) {
+            _increaseLiquidity(wethPoolKey, wethAmountMax, supAmountMax);
+        } else {
+            _mintPosition(wethPoolKey, wethAmountMax, supAmountMax);
+        }
+
+        /// TODO / FIXME : here we may want to give away some units in a GDA pool (LP incentives)
+
+        // Transfer the leftover WETH to the caller (if any)
+        uint256 leftover = WETH.balanceOf(address(this));
+        if (leftover > 0) {
+            WETH.transfer(msg.sender, leftover);
+        }
+    }
+
+    /**
+     * @notice Provides liquidity to the USDC/SUP pool
+     * @param supAmountMax The maximum amount of SUP to provide as liquidity
+     * @param usdcAmountMax The maximum amount of USDC to provide as liquidity
+     */
+    function provideLiquidityUSDC(uint256 supAmountMax, uint256 usdcAmountMax) external nonReentrant onlyLockerOwner {
+        // Transfer USDC from the caller to this locker
+        USDC.transferFrom(msg.sender, address(this), usdcAmountMax);
+
+        // Revert if the amount of $FLUID to provide is greater than the available balance
+        if (supAmountMax > getAvailableBalance()) {
+            /// NOTE / FIXME : here we may want to hard-set the max amount of SUP to getAvailableBalance(). (thoughts?)
+            revert INSUFFICIENT_BALANCE();
+        }
+
+        /// TODO / FIXME : here we may need to market buy some SUP (pumponomics)
+
+        if (_lockerHasPosition(usdcPoolKey)) {
+            _increaseLiquidity(usdcPoolKey, usdcAmountMax, supAmountMax);
+        } else {
+            _mintPosition(usdcPoolKey, usdcAmountMax, supAmountMax);
+        }
+
+        /// TODO / FIXME : here we may want to give away some units in a GDA pool (LP incentives)
+
+        // Transfer the leftover USDC to the caller (if any)
+        uint256 leftover = USDC.balanceOf(address(this));
+        if (leftover > 0) {
+            USDC.transfer(msg.sender, leftover);
+        }
+    }
+
+    function withdrawLiquidityWETH() external nonReentrant onlyLockerOwner {
+        // TODO
+    }
+
+    function withdrawLiquidityUSDC() external nonReentrant onlyLockerOwner {
+        // TODO
+    }
+
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
     //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -436,6 +544,96 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         IFontaine(newFontaine).initialize(recipient, unlockFlowRate, taxFlowRate, unlockPeriod);
 
         emit FluidUnlocked(unlockPeriod, amountToUnlock, recipient, newFontaine);
+    }
+
+    function _lockerHasPosition(PoolKey memory poolKey) internal view returns (bool exists) {
+        exists = positonTokenId[poolKey] > 0;
+    }
+
+    function _approveTokensWithPermit2(address token0, address token1, uint256 amount0, uint256 amount1) internal {
+        // Approve tokens for spending via Permit2
+        IERC20(token0).approve(address(PERMIT2), amount0);
+        IERC20(token1).approve(address(PERMIT2), amount1);
+
+        IPermit2(PERMIT2).approve(
+            token0, address(POSITION_MANAGER), uint160(amount0), uint48(block.timestamp + _LP_OPERATION_DEADLINE)
+        );
+        IPermit2(PERMIT2).approve(
+            token1, address(POSITION_MANAGER), uint160(amount1), uint48(block.timestamp + _LP_OPERATION_DEADLINE)
+        );
+    }
+
+    function _prepareLiquidityOperation(PoolKey memory poolKey, uint256 pairedAmountMax, uint256 supAmountMax)
+        internal
+        returns (uint256 liquidity, uint256 amount0Max, uint256 amount1Max)
+    {
+        address token0 = Currency.unwrap(poolKey.currency0);
+        address token1 = Currency.unwrap(poolKey.currency1);
+
+        if (token0 == address(FLUID)) {
+            amount0Max = supAmountMax;
+            amount1Max = pairedAmountMax;
+        } else {
+            amount0Max = pairedAmountMax;
+            amount1Max = supAmountMax;
+        }
+
+        // Calculate the liquidity based on provided amounts and current price
+        (uint160 sqrtPriceX96,,,) = StateLibrary.getSlot0(POOL_MANAGER, PoolIdLibrary.toId(poolKey));
+
+        liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPriceX96,
+            TickMath.getSqrtPriceAtTick(TickMath.MIN_TICK),
+            TickMath.getSqrtPriceAtTick(TickMath.MAX_TICK),
+            amount0Max,
+            amount1Max
+        );
+
+        // Approve tokens for spending via Permit2
+        _approveTokensWithPermit2(token0, token1, amount0Max, amount1Max);
+    }
+
+    function _mintPosition(PoolKey memory poolKey, uint256 pairedAmountMax, uint256 supAmountMax) internal {
+        (uint256 liquidity, uint256 amount0Max, uint256 amount1Max) =
+            _prepareLiquidityOperation(poolKey, pairedAmountMax, supAmountMax);
+
+        // Store the next token ID before minting
+        positionTokenId[poolKey] = POSITION_MANAGER.nextTokenId();
+
+        bytes memory actions = abi.encodePacked(uint8(Actions.MINT_POSITION), uint8(Actions.SETTLE_PAIR));
+
+        bytes[] memory params = new bytes[](2);
+        params[0] = abi.encode(
+            poolKey, TickMath.MIN_TICK, TickMath.MAX_TICK, liquidity, amount0Max, amount1Max, address(this), bytes("")
+        );
+        params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
+
+        // Execute the minting transaction
+        POSITION_MANAGER.modifyLiquidities(abi.encode(actions, params), block.timestamp + _LP_OPERATION_DEADLINE);
+    }
+
+    function _increaseLiquidity(PoolKey memory poolKey, uint256 pairedAmountMax, uint256 supAmountMax) internal {
+        (uint256 liquidity, uint256 amount0Max, uint256 amount1Max) =
+            _prepareLiquidityOperation(poolKey, pairedAmountMax, supAmountMax);
+
+        bytes memory actions = abi.encodePacked(uint8(Actions.INCREASE_LIQUIDITY), uint8(Actions.SETTLE_PAIR));
+
+        bytes[] memory params = new bytes[](2);
+        params[0] = abi.encode(positionTokenId[poolKey], liquidity, amount0Max, amount1Max, bytes(""));
+        params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
+
+        // Execute the liquidity increase transaction
+        POSITION_MANAGER.modifyLiquidities(abi.encode(actions, params), block.timestamp + _LP_OPERATION_DEADLINE);
+    }
+
+    function _decreaseLiquidity(uint128 liquidity, uint256 amount0min, uint256 amount1min) internal {
+        bytes memory actions = abi.encodePacked(uint8(Actions.DECREASE_LIQUIDITY), uint8(Actions.TAKE_PAIR));
+
+        bytes[] memory params = new bytes[](2);
+        params[0] = abi.encode(positionTokenId, liquidity, amount0min, amount1min, bytes(""));
+        params[1] = abi.encode(currency0, currency1, address(this));
+
+        POSITION_MANAGER.modifyLiquidities(abi.encode(actions, params), block.timestamp + 60);
     }
 
     //      __  ___          ___ _____
