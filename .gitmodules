@@ -7,7 +7,6 @@
 [submodule "packages/contracts/lib/openzeppelin-contracts-v4"]
 	path = packages/contracts/lib/openzeppelin-contracts-v4
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
-
 [submodule "packages/contracts/lib/superfluid-protocol-monorepo"]
 	path = packages/contracts/lib/superfluid-protocol-monorepo
 	url = https://github.com/superfluid-finance/protocol-monorepo
@@ -23,3 +22,9 @@
 [submodule "packages/contracts/lib/uniswap-v4-periphery"]
 	path = packages/contracts/lib/uniswap-v4-periphery
 	url = https://github.com/Uniswap/v4-periphery
+[submodule "packages/contracts/lib/uniswap-v3-core"]
+	path = packages/contracts/lib/uniswap-v3-core
+	url = https://github.com/Uniswap/v3-core
+[submodule "packages/contracts/lib/uniswap-v3-periphery"]
+	path = packages/contracts/lib/uniswap-v3-periphery
+	url = https://github.com/Uniswap/v3-periphery
