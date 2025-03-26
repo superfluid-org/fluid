@@ -4,5 +4,5 @@
 @superfluid-finance/ethereum-contracts/=lib/superfluid-protocol-monorepo/packages/ethereum-contracts/
 @superfluid-finance/solidity-semantic-money/=lib/superfluid-protocol-monorepo/packages/solidity-semantic-money/
 @superfluid-finance/automation-contracts/=lib/superfluid-protocol-monorepo/packages/automation-contracts/
-@uniswap/v4-core/=lib/uniswap-v4-core/
-@uniswap/v4-periphery/=lib/uniswap-v4-periphery/
+@uniswap/v3-core/=lib/uniswap-v3-core/
+@uniswap/v3-periphery/=lib/uniswap-v3-periphery/
