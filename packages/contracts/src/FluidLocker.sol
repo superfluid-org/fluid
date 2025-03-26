@@ -213,7 +213,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         IEPProgramManager programManager,
         IStakingRewardController stakingRewardController,
         address fontaineBeacon,
-        bool isUnlockAvailable
+        bool isUnlockAvailable,
+        INonfungiblePositionManager nonfungiblePositionManager,
+        IUniswapV3Pool pool,
+        ISwapRouter swapRouter
     ) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
@@ -227,6 +230,13 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         // Sets the Fontaine beacon address
         FONTAINE_BEACON = UpgradeableBeacon(fontaineBeacon);
+
+        POOL = pool;
+        SWAP_ROUTER = swapRouter;
+        _POOL_FEE = pool.fee();
+        _POOL_TICK_SPACING = pool.tickSpacing();
+        NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager;
+        WETH = pool.token0() == address(FLUID) ? IERC20(pool.token1()) : IERC20(pool.token0());
     }
 
     /**
