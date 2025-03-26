@@ -49,17 +49,10 @@ import { IFontaine } from "./interfaces/IFontaine.sol";
 
 import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
 
-/* Uniswap V4 Interfaces */
-import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
-import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import { IPositionManager } from "@uniswap/v4-periphery/src/interfaces/IPositionManager.sol";
-import { TickMath } from "@uniswap/v4-core/src/libraries/TickMath.sol";
-import { Actions } from "@uniswap/v4-periphery/src/libraries/Actions.sol";
-import { PoolIdLibrary } from "@uniswap/v4-core/src/types/PoolId.sol";
-import { StateLibrary } from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
-import { LiquidityAmounts } from "@uniswap/v4-periphery/src/libraries/LiquidityAmounts.sol";
-import { Currency } from "@uniswap/v4-core/src/types/Currency.sol";
-import { IPermit2 } from "@uniswap/v4-periphery/lib/permit2/src/interfaces/IPermit2.sol";
+/* Uniswap V3 Interfaces */
+import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -139,12 +132,35 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //  | |/ // __/   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
     //  |___//____/  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
 
-    IERC20 public immutable USDC;
+    /// @notice WETH token interface
     IERC20 public immutable WETH;
-    IPositionManager public immutable POSITION_MANAGER;
-    IPoolManager public immutable POOL_MANAGER;
-    address public immutable PERMIT2;
-    uint256 private immutable _LP_OPERATION_DEADLINE = 15 seconds;
+
+    /// @notice Uniswap V3 Pool interface for WETH/FLUID pair
+    IUniswapV3Pool public immutable POOL;
+
+    /// @notice Uniswap V3 Router interface
+    ISwapRouter public immutable SWAP_ROUTER;
+
+    /// @notice Fee tier of the Uniswap V3 Pool
+    uint24 private immutable _POOL_FEE;
+
+    /// @notice Tick spacing of the Uniswap V3 Pool
+    int24 private immutable _POOL_TICK_SPACING;
+
+    /// @notice Uniswap V3 Nonfungible Position Manager interface
+    INonfungiblePositionManager public immutable NONFUNGIBLE_POSITION_MANAGER;
+
+    /// @notice Uniswap V3 Pool minimum tick
+    int24 private constant _MIN_TICK = -887272;
+
+    /// @notice Uniswap V3 Pool maximum tick
+    int24 private constant _MAX_TICK = -_MIN_TICK;
+
+    /// @notice Pump percentage (expressed in basis points)
+    uint256 public constant BP_PUMP_RATIO = 100; // 1%
+
+    /// @notice Slippage tolerance (expressed in basis points)
+    uint256 public constant BP_SLIPPAGE_TOLERANCE = 500; // 5%
 
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
@@ -173,9 +189,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //  | |/ // __/    ___/ / /_/ /_/ / /_/  __(__  )
     //  |___//____/   /____/\__/\__,_/\__/\___/____/
 
-    PoolKey public usdcPoolKey;
-    PoolKey public wethPoolKey;
-    mapping(PoolKey poolKey => uint256 tokenId) public positonTokenId;
+    /// @notice Stores the Uniswap V3 position token identifier
+    uint256 public positionTokenId;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -376,74 +391,75 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /**
-     * @notice Provides liquidity to the WETH/SUP pool
-     * @param supAmountMax The maximum amount of SUP to provide as liquidity
-     * @param wethAmountMax The maximum amount of WETH to provide as liquidity
+     * @notice Provides liquidity to the WETH/SUP pool by creating or increasing a position
+     * @param wethContributed The total amount of WETH to contribute
+     * @param supPumpAmountMin The minimum amount of SUP tokens to receive from pumping using WETH
+     * @param supLPAmount The amount of SUP tokens to provide as liquidity
      */
-    function provideLiquidityWETH(uint256 supAmountMax, uint256 wethAmountMax) external nonReentrant onlyLockerOwner {
-        // Transfer WETH from the caller to this locker
-        WETH.transferFrom(msg.sender, address(this), wethAmountMax);
+    function provideLiquidityWETH(uint256 wethContributed, uint256 supPumpAmountMin, uint256 supLPAmount)
+        external
+        nonReentrant
+        onlyLockerOwner
+    {
+        /// FIXME : change function to payable and wrap the ETH instead of fetching it from the caller
+        WETH.transferFrom(msg.sender, address(this), wethContributed);
+        _pump(wethContributed * BP_PUMP_RATIO / BP_DENOMINATOR, supPumpAmountMin);
 
-        // Revert if the amount of $FLUID to provide is greater than the available balance
-        if (supAmountMax > getAvailableBalance()) {
-            /// NOTE / FIXME : here we may want to hard-set the max amount of SUP to getAvailableBalance(). (thoughts?)
-            revert INSUFFICIENT_BALANCE();
-        }
+        uint256 wethLPAmount = WETH.balanceOf(address(this));
 
-        /// TODO / FIXME : here we may need to market buy some SUP (pumponomics)
+        WETH.approve(address(NONFUNGIBLE_POSITION_MANAGER), wethLPAmount);
+        FLUID.approve(address(NONFUNGIBLE_POSITION_MANAGER), supLPAmount);
 
-        if (_lockerHasPosition(wethPoolKey)) {
-            _increaseLiquidity(wethPoolKey, wethAmountMax, supAmountMax);
+        if (_hasPosition()) {
+            // _increasePosition();
         } else {
-            _mintPosition(wethPoolKey, wethAmountMax, supAmountMax);
-        }
-
-        /// TODO / FIXME : here we may want to give away some units in a GDA pool (LP incentives)
-
-        // Transfer the leftover WETH to the caller (if any)
-        uint256 leftover = WETH.balanceOf(address(this));
-        if (leftover > 0) {
-            WETH.transfer(msg.sender, leftover);
+            _createPosition(wethLPAmount, supLPAmount);
         }
     }
 
-    /**
-     * @notice Provides liquidity to the USDC/SUP pool
-     * @param supAmountMax The maximum amount of SUP to provide as liquidity
-     * @param usdcAmountMax The maximum amount of USDC to provide as liquidity
-     */
-    function provideLiquidityUSDC(uint256 supAmountMax, uint256 usdcAmountMax) external nonReentrant onlyLockerOwner {
-        // Transfer USDC from the caller to this locker
-        USDC.transferFrom(msg.sender, address(this), usdcAmountMax);
+    function _pump(uint256 wethAmount, uint256 supAmountMinimum) internal {
+        WETH.approve(address(SWAP_ROUTER), wethAmount);
 
-        // Revert if the amount of $FLUID to provide is greater than the available balance
-        if (supAmountMax > getAvailableBalance()) {
-            /// NOTE / FIXME : here we may want to hard-set the max amount of SUP to getAvailableBalance(). (thoughts?)
-            revert INSUFFICIENT_BALANCE();
-        }
+        ISwapRouter.ExactInputParams memory swapParams = ISwapRouter.ExactInputParams({
+            path: abi.encodePacked(address(WETH), _POOL_FEE, address(FLUID)),
+            recipient: address(this),
+            deadline: block.timestamp + 1 minutes,
+            amountIn: wethAmount,
+            amountOutMinimum: supAmountMinimum
+        });
 
-        /// TODO / FIXME : here we may need to market buy some SUP (pumponomics)
-
-        if (_lockerHasPosition(usdcPoolKey)) {
-            _increaseLiquidity(usdcPoolKey, usdcAmountMax, supAmountMax);
-        } else {
-            _mintPosition(usdcPoolKey, usdcAmountMax, supAmountMax);
-        }
-
-        /// TODO / FIXME : here we may want to give away some units in a GDA pool (LP incentives)
-
-        // Transfer the leftover USDC to the caller (if any)
-        uint256 leftover = USDC.balanceOf(address(this));
-        if (leftover > 0) {
-            USDC.transfer(msg.sender, leftover);
-        }
+        SWAP_ROUTER.exactInput(swapParams);
     }
+
+    function _createPosition(uint256 wethAmount, uint256 supAmount) internal {
+        INonfungiblePositionManager.MintParams memory mintParams = INonfungiblePositionManager.MintParams({
+            token0: address(WETH),
+            token1: address(FLUID),
+            fee: _POOL_FEE,
+            tickLower: (_MIN_TICK / _POOL_TICK_SPACING) * _POOL_TICK_SPACING,
+            tickUpper: (_MAX_TICK / _POOL_TICK_SPACING) * _POOL_TICK_SPACING,
+            amount0Desired: wethAmount,
+            amount1Desired: supAmount,
+            amount0Min: (wethAmount * (BP_DENOMINATOR - BP_SLIPPAGE_TOLERANCE)) / BP_DENOMINATOR,
+            amount1Min: (supAmount * (BP_DENOMINATOR - BP_SLIPPAGE_TOLERANCE)) / BP_DENOMINATOR,
+            recipient: address(this),
+            deadline: block.timestamp
+        });
+
+        // Create the UniswapV3 position
+        (uint256 tokenId,, uint256 depositedAmount0, uint256 depositedAmount1) =
+            NONFUNGIBLE_POSITION_MANAGER.mint(mintParams);
+
+        // Store the position
+        positionTokenId = tokenId;
+
+        // Emit the PositionCreated event
+        emit PositionCreated(tokenId, depositedAmount0, depositedAmount1);
+    }
+
+    event PositionCreated(uint256 tokenId, uint256 amount0, uint256 amount1);
 
     function withdrawLiquidityWETH() external nonReentrant onlyLockerOwner {
-        // TODO
-    }
-
-    function withdrawLiquidityUSDC() external nonReentrant onlyLockerOwner {
         // TODO
     }
 
@@ -546,94 +562,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         emit FluidUnlocked(unlockPeriod, amountToUnlock, recipient, newFontaine);
     }
 
-    function _lockerHasPosition(PoolKey memory poolKey) internal view returns (bool exists) {
-        exists = positonTokenId[poolKey] > 0;
-    }
-
-    function _approveTokensWithPermit2(address token0, address token1, uint256 amount0, uint256 amount1) internal {
-        // Approve tokens for spending via Permit2
-        IERC20(token0).approve(address(PERMIT2), amount0);
-        IERC20(token1).approve(address(PERMIT2), amount1);
-
-        IPermit2(PERMIT2).approve(
-            token0, address(POSITION_MANAGER), uint160(amount0), uint48(block.timestamp + _LP_OPERATION_DEADLINE)
-        );
-        IPermit2(PERMIT2).approve(
-            token1, address(POSITION_MANAGER), uint160(amount1), uint48(block.timestamp + _LP_OPERATION_DEADLINE)
-        );
-    }
-
-    function _prepareLiquidityOperation(PoolKey memory poolKey, uint256 pairedAmountMax, uint256 supAmountMax)
-        internal
-        returns (uint256 liquidity, uint256 amount0Max, uint256 amount1Max)
-    {
-        address token0 = Currency.unwrap(poolKey.currency0);
-        address token1 = Currency.unwrap(poolKey.currency1);
-
-        if (token0 == address(FLUID)) {
-            amount0Max = supAmountMax;
-            amount1Max = pairedAmountMax;
-        } else {
-            amount0Max = pairedAmountMax;
-            amount1Max = supAmountMax;
-        }
-
-        // Calculate the liquidity based on provided amounts and current price
-        (uint160 sqrtPriceX96,,,) = StateLibrary.getSlot0(POOL_MANAGER, PoolIdLibrary.toId(poolKey));
-
-        liquidity = LiquidityAmounts.getLiquidityForAmounts(
-            sqrtPriceX96,
-            TickMath.getSqrtPriceAtTick(TickMath.MIN_TICK),
-            TickMath.getSqrtPriceAtTick(TickMath.MAX_TICK),
-            amount0Max,
-            amount1Max
-        );
-
-        // Approve tokens for spending via Permit2
-        _approveTokensWithPermit2(token0, token1, amount0Max, amount1Max);
-    }
-
-    function _mintPosition(PoolKey memory poolKey, uint256 pairedAmountMax, uint256 supAmountMax) internal {
-        (uint256 liquidity, uint256 amount0Max, uint256 amount1Max) =
-            _prepareLiquidityOperation(poolKey, pairedAmountMax, supAmountMax);
-
-        // Store the next token ID before minting
-        positionTokenId[poolKey] = POSITION_MANAGER.nextTokenId();
-
-        bytes memory actions = abi.encodePacked(uint8(Actions.MINT_POSITION), uint8(Actions.SETTLE_PAIR));
-
-        bytes[] memory params = new bytes[](2);
-        params[0] = abi.encode(
-            poolKey, TickMath.MIN_TICK, TickMath.MAX_TICK, liquidity, amount0Max, amount1Max, address(this), bytes("")
-        );
-        params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
-
-        // Execute the minting transaction
-        POSITION_MANAGER.modifyLiquidities(abi.encode(actions, params), block.timestamp + _LP_OPERATION_DEADLINE);
-    }
-
-    function _increaseLiquidity(PoolKey memory poolKey, uint256 pairedAmountMax, uint256 supAmountMax) internal {
-        (uint256 liquidity, uint256 amount0Max, uint256 amount1Max) =
-            _prepareLiquidityOperation(poolKey, pairedAmountMax, supAmountMax);
-
-        bytes memory actions = abi.encodePacked(uint8(Actions.INCREASE_LIQUIDITY), uint8(Actions.SETTLE_PAIR));
-
-        bytes[] memory params = new bytes[](2);
-        params[0] = abi.encode(positionTokenId[poolKey], liquidity, amount0Max, amount1Max, bytes(""));
-        params[1] = abi.encode(poolKey.currency0, poolKey.currency1);
-
-        // Execute the liquidity increase transaction
-        POSITION_MANAGER.modifyLiquidities(abi.encode(actions, params), block.timestamp + _LP_OPERATION_DEADLINE);
-    }
-
-    function _decreaseLiquidity(uint128 liquidity, uint256 amount0min, uint256 amount1min) internal {
-        bytes memory actions = abi.encodePacked(uint8(Actions.DECREASE_LIQUIDITY), uint8(Actions.TAKE_PAIR));
-
-        bytes[] memory params = new bytes[](2);
-        params[0] = abi.encode(positionTokenId, liquidity, amount0min, amount1min, bytes(""));
-        params[1] = abi.encode(currency0, currency1, address(this));
-
-        POSITION_MANAGER.modifyLiquidities(abi.encode(actions, params), block.timestamp + 60);
+    function _hasPosition() internal view returns (bool hasPosition) {
+        hasPosition = positionTokenId != 0;
     }
 
     //      __  ___          ___ _____
