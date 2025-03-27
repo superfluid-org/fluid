@@ -751,7 +751,7 @@ contract FluidLockerTTETest is SFTest {
     //     uint256 wethPumpAmount = wethAmountToContribute * pumpRatio / _BP_DENOMINATOR;
     // }
 
-    function testProvideLiquidityWETH() external {
+    function testProvideLiquidityWETH_createPosition() external {
         // 1 eth contribution :
         // -> 0.01 eth to pump -> expected min sup = 0.01 * 20000 = 200 sup
         // -> 0.99 eth to lp -> expected supLPAmount = 0.99 * 20000 = 19800 sup
@@ -760,8 +760,11 @@ contract FluidLockerTTETest is SFTest {
 
         vm.startPrank(ALICE);
         _weth.approve(address(aliceLocker), 1 ether);
-        aliceLocker.provideLiquidityWETH(1 ether, 199e18, 19800e18);
+        uint256 tokenId = aliceLocker.provideLiquidityWETH(1 ether, 199e18, 19800e18);
         vm.stopPrank();
+
+        assertEq(tokenId, FluidLocker(address(aliceLocker)).positionTokenId(), "tokenId should not be 0");
+        assertEq(_weth.balanceOf(address(aliceLocker)), 0, "weth locker balance should be 0");
     }
 }
 
