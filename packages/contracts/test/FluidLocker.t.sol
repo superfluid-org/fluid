@@ -21,6 +21,10 @@ import { IEPProgramManager } from "../src/interfaces/IEPProgramManager.sol";
 import { IStakingRewardController } from "../src/interfaces/IStakingRewardController.sol";
 import { Fontaine } from "../src/Fontaine.sol";
 
+import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
 
@@ -434,7 +438,10 @@ contract FluidLockerTTETest is SFTest {
                 IEPProgramManager(address(_programManager)),
                 IStakingRewardController(address(_stakingRewardController)),
                 address(_fontaineLogic),
-                !LOCKER_CAN_UNLOCK
+                !LOCKER_CAN_UNLOCK,
+                _nonfungiblePositionManager,
+                _pool,
+                _swapRouter
             )
         );
 
@@ -725,6 +732,38 @@ contract FluidLockerTTETest is SFTest {
         assertGe(ur1, ur2, "unlock rate monotonicity violated");
         assertGe(tr1, tr2, "tax rate monotonicity violated");
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //      ________      _     ____               __                _    _____      ______          __
+    //     / ____/ /_  __(_)___/ / /   ____  _____/ /_____  _____   | |  / /__ \    /_  __/__  _____/ /______
+    //    / /_  / / / / / / __  / /   / __ \/ ___/ //_/ _ \/ ___/   | | / /__/ /     / / / _ \/ ___/ __/ ___/
+    //   / __/ / / /_/ / / /_/ / /___/ /_/ / /__/ ,< /  __/ /       | |/ // __/     / / /  __(__  ) /_(__  )
+    //  /_/   /_/\__,_/_/\__,_/_____/\____/\___/_/|_|\___/_/        |___//____/    /_/  \___/____/\__/____/
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // function _helperGetQuotes(uint256 wethAmountToContribute)
+    //     internal
+    //     returns (uint256 supPumpAmountMin, uint256 supLPAmount)
+    // {
+    //     uint256 pumpRatio = _fluidLockerFactory.BP_PUMP_RATIO();
+    //     uint256 wethPumpAmount = wethAmountToContribute * pumpRatio / _BP_DENOMINATOR;
+    // }
+
+    function testProvideLiquidityWETH() external {
+        // 1 eth contribution :
+        // -> 0.01 eth to pump -> expected min sup = 0.01 * 20000 = 200 sup
+        // -> 0.99 eth to lp -> expected supLPAmount = 0.99 * 20000 = 19800 sup
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.transfer(address(aliceLocker), 20000e18);
+
+        console2.log("TS", block.timestamp);
+        vm.startPrank(ALICE);
+        _weth.approve(address(aliceLocker), 1 ether);
+        aliceLocker.provideLiquidityWETH(1 ether, 100e18, 19800e18);
+        vm.stopPrank();
+    }
 }
 
 contract FluidLockerLayoutTest is FluidLocker {
@@ -735,7 +774,10 @@ contract FluidLockerLayoutTest is FluidLocker {
             IEPProgramManager(address(0)),
             IStakingRewardController(address(0)),
             address(0),
-            true
+            true,
+            INonfungiblePositionManager(address(0)),
+            IUniswapV3Pool(address(0)),
+            ISwapRouter(address(0))
         )
     { }
 

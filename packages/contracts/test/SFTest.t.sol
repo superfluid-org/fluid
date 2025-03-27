@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-
+import { IERC20 } from "@openzeppelin-v5/contracts/token/ERC20/IERC20.sol";
 import { SuperfluidFrameworkDeployer } from
     "@superfluid-finance/ethereum-contracts/contracts/utils/SuperfluidFrameworkDeployer.t.sol";
 import { ERC1820RegistryCompiled } from
@@ -24,6 +24,11 @@ import { StakingRewardController } from "../src/StakingRewardController.sol";
 
 import { _deployAll, DeploySettings } from "../script/Deploy.s.sol";
 
+import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+
 using SuperTokenV1Library for SuperToken;
 using SuperTokenV1Library for ISuperToken;
 using ECDSA for bytes32;
@@ -33,6 +38,15 @@ contract SFTest is Test {
     uint256 public constant INITIAL_BALANCE = 10000 ether;
     uint256 public constant FLUID_SUPPLY = 1_000_000_000 ether;
     uint256 public constant PROGRAM_DURATION = 90 days;
+    uint24 public constant POOL_FEE = 3000;
+    int24 private constant _MIN_TICK = -887272;
+    int24 private constant _MAX_TICK = -_MIN_TICK;
+
+    // Initial Pool Price : 20000 SUP/ETH
+    uint160 public constant INITIAL_SQRT_PRICEX96_SUP_PER_WETH = 11204554194957228397824552468480;
+
+    // Initial Pool Price : 0.00005 ETH/SUP
+    uint160 public constant INITIAL_SQRT_PRICEX96_WETH_PER_SUP = 560227709747861407246843904;
 
     SuperfluidFrameworkDeployer.Framework internal _sf;
     SuperfluidFrameworkDeployer internal _deployer;
@@ -50,6 +64,7 @@ contract SFTest is Test {
     TestToken internal _fluidUnderlying;
     SuperToken internal _fluidSuperToken;
     ISuperToken internal _fluid;
+    IERC20 internal _weth;
 
     FluidEPProgramManager internal _programManager;
     FluidLocker internal _fluidLockerLogic;
@@ -59,7 +74,17 @@ contract SFTest is Test {
     UpgradeableBeacon internal _lockerBeacon;
     UpgradeableBeacon internal _fontaineBeacon;
 
+    // Uniswap V3 Configuration
+    INonfungiblePositionManager internal _nonfungiblePositionManager;
+    ISwapRouter internal _swapRouter;
+    IUniswapV3Factory internal _poolFactory;
+    IUniswapV3Pool internal _pool;
+
     function setUp() public virtual {
+        vm.createSelectFork(vm.envString("BASE_MAINNET_RPC_URL"), 28109090);
+
+        _weth = IERC20(0x4200000000000000000000000000000000000006);
+
         // Superfluid Protocol Deployment Start
         vm.etch(ERC1820RegistryCompiled.at, ERC1820RegistryCompiled.bin);
 
@@ -76,6 +101,7 @@ contract SFTest is Test {
         for (uint256 i; i < TEST_ACCOUNTS.length; ++i) {
             vm.startPrank(TEST_ACCOUNTS[i]);
             vm.deal(TEST_ACCOUNTS[i], INITIAL_BALANCE);
+            deal(address(_weth), TEST_ACCOUNTS[i], INITIAL_BALANCE);
             vm.stopPrank();
         }
 
@@ -85,16 +111,61 @@ contract SFTest is Test {
         _fluidSuperToken.upgrade(FLUID_SUPPLY);
         vm.stopPrank();
 
+        // Uniswap V3 Pool & Interfaces configuration
+        _nonfungiblePositionManager = INonfungiblePositionManager(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1);
+        _swapRouter = ISwapRouter(0x2626664c2603336E57B271c5C0b26F421741e481);
+        _poolFactory = IUniswapV3Factory(0x33128a8fC17869897dcE68Ed026d694621f6FDfD);
+
+        // Deploy the pool
+        _pool = IUniswapV3Pool(_poolFactory.createPool(address(_weth), address(_fluidSuperToken), POOL_FEE));
+
+        // Initialize the pool
+        uint160 sqrtPriceX96 =
+            _pool.token0() == address(_weth) ? INITIAL_SQRT_PRICEX96_SUP_PER_WETH : INITIAL_SQRT_PRICEX96_WETH_PER_SUP;
+        _pool.initialize(sqrtPriceX96);
+
+        // Provide liquidity to the pool (from the treasury)
+        vm.startPrank(FLUID_TREASURY);
+        uint256 wethAmountToDeposit = 100 ether;
+        uint256 supAmountToDeposit = 2_000_000 ether;
+
+        _weth.approve(address(_nonfungiblePositionManager), wethAmountToDeposit);
+        _fluidSuperToken.approve(address(_nonfungiblePositionManager), supAmountToDeposit);
+
+        uint256 amount0 = _pool.token0() == address(_weth) ? wethAmountToDeposit : supAmountToDeposit;
+        uint256 amount1 = _pool.token1() == address(_weth) ? wethAmountToDeposit : supAmountToDeposit;
+
+        INonfungiblePositionManager.MintParams memory mintParams = INonfungiblePositionManager.MintParams({
+            token0: address(_weth),
+            token1: address(_fluidSuperToken),
+            fee: POOL_FEE,
+            tickLower: (_MIN_TICK / _pool.tickSpacing()) * _pool.tickSpacing(),
+            tickUpper: (_MAX_TICK / _pool.tickSpacing()) * _pool.tickSpacing(),
+            amount0Desired: amount0,
+            amount1Desired: amount1,
+            amount0Min: 0,
+            amount1Min: 0,
+            recipient: address(this),
+            deadline: block.timestamp
+        });
+
+        // Create the UniswapV3 position
+        _nonfungiblePositionManager.mint(mintParams);
+        vm.stopPrank();
+
+        // FLUID Contracts Deployment Start
         DeploySettings memory settings = DeploySettings({
             fluid: _fluidSuperToken,
             governor: ADMIN,
             deployer: ADMIN,
             treasury: FLUID_TREASURY,
             factoryPauseStatus: FACTORY_IS_PAUSED,
-            unlockStatus: LOCKER_CAN_UNLOCK
+            unlockStatus: LOCKER_CAN_UNLOCK,
+            pool: _pool,
+            swapRouter: _swapRouter,
+            nonfungiblePositionManager: _nonfungiblePositionManager
         });
 
-        // FLUID Contracts Deployment Start
         vm.startPrank(ADMIN);
 
         (
