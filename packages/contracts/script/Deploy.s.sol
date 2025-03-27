@@ -22,7 +22,7 @@ import { StakingRewardController, IStakingRewardController } from "../src/Stakin
 /* Uniswap V3 Interfaces */
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 
 struct DeploySettings {
     ISuperToken fluid;
@@ -32,7 +32,7 @@ struct DeploySettings {
     bool factoryPauseStatus;
     bool unlockStatus;
     IUniswapV3Pool pool;
-    ISwapRouter swapRouter;
+    IV3SwapRouter swapRouter;
     INonfungiblePositionManager nonfungiblePositionManager;
 }
 
@@ -193,7 +193,7 @@ contract DeployScript is Script {
         bool factoryPauseStatus = vm.envBool("PAUSE_FACTORY_LOCKER_CREATION");
         bool unlockStatus = vm.envBool("FLUID_UNLOCK_STATUS");
         IUniswapV3Pool pool = IUniswapV3Pool(vm.envAddress("WETH_SUP_POOL_ADDRESS"));
-        ISwapRouter swapRouter = ISwapRouter(vm.envAddress("SWAP_ROUTER_ADDRESS"));
+        IV3SwapRouter swapRouter = IV3SwapRouter(vm.envAddress("SWAP_ROUTER_ADDRESS"));
         INonfungiblePositionManager nonfungiblePositionManager =
             INonfungiblePositionManager(vm.envAddress("NONFUNGIBLE_POSITION_MANAGER_ADDRESS"));
 

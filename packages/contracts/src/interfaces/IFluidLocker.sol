@@ -217,4 +217,6 @@ interface IFluidLocker {
      * @return fontaineBeaconImpl The fontaine beacon implementation contract address
      */
     function getFontaineBeaconImplementation() external view returns (address fontaineBeaconImpl);
+
+    function provideLiquidityWETH(uint256 wethContributed, uint256 supPumpAmountMin, uint256 supLPAmount) external;
 }

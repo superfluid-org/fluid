@@ -23,7 +23,7 @@ import { Fontaine } from "../src/Fontaine.sol";
 
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -758,10 +758,9 @@ contract FluidLockerTTETest is SFTest {
         vm.prank(FLUID_TREASURY);
         _fluidSuperToken.transfer(address(aliceLocker), 20000e18);
 
-        console2.log("TS", block.timestamp);
         vm.startPrank(ALICE);
         _weth.approve(address(aliceLocker), 1 ether);
-        aliceLocker.provideLiquidityWETH(1 ether, 100e18, 19800e18);
+        aliceLocker.provideLiquidityWETH(1 ether, 199e18, 19800e18);
         vm.stopPrank();
     }
 }
@@ -777,7 +776,7 @@ contract FluidLockerLayoutTest is FluidLocker {
             true,
             INonfungiblePositionManager(address(0)),
             IUniswapV3Pool(address(0)),
-            ISwapRouter(address(0))
+            IV3SwapRouter(address(0))
         )
     { }
 

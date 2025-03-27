@@ -52,7 +52,7 @@ import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
 /* Uniswap V3 Interfaces */
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -139,7 +139,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     IUniswapV3Pool public immutable POOL;
 
     /// @notice Uniswap V3 Router interface
-    ISwapRouter public immutable SWAP_ROUTER;
+    IV3SwapRouter public immutable SWAP_ROUTER;
 
     /// @notice Fee tier of the Uniswap V3 Pool
     uint24 private immutable _POOL_FEE;
@@ -216,7 +216,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         bool isUnlockAvailable,
         INonfungiblePositionManager nonfungiblePositionManager,
         IUniswapV3Pool pool,
-        ISwapRouter swapRouter
+        IV3SwapRouter swapRouter
     ) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
@@ -408,11 +408,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      */
     function provideLiquidityWETH(uint256 wethContributed, uint256 supPumpAmountMin, uint256 supLPAmount)
         external
-        nonReentrant
         onlyLockerOwner
     {
         /// FIXME : change function to payable and wrap the ETH instead of fetching it from the caller
         WETH.transferFrom(msg.sender, address(this), wethContributed);
+
         _pump(wethContributed * BP_PUMP_RATIO / BP_DENOMINATOR, supPumpAmountMin);
 
         uint256 wethLPAmount = WETH.balanceOf(address(this));
@@ -430,15 +430,25 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     function _pump(uint256 wethAmount, uint256 supAmountMinimum) internal {
         WETH.approve(address(SWAP_ROUTER), wethAmount);
 
-        ISwapRouter.ExactInputParams memory swapParams = ISwapRouter.ExactInputParams({
-            path: abi.encodePacked(address(WETH), _POOL_FEE, address(FLUID)),
+        // ISwapRouter.ExactInputParams memory swapParams = ISwapRouter.ExactInputParams({
+        //     path: abi.encodePacked(address(WETH), _POOL_FEE, address(FLUID)),
+        //     recipient: address(this),
+        //     deadline: block.timestamp + 1 minutes,
+        //     amountIn: wethAmount,
+        //     amountOutMinimum: supAmountMinimum
+        // });
+
+        IV3SwapRouter.ExactInputSingleParams memory swapParams = IV3SwapRouter.ExactInputSingleParams({
+            tokenIn: address(WETH),
+            tokenOut: address(FLUID),
+            fee: _POOL_FEE,
             recipient: address(this),
-            deadline: block.timestamp + 1 minutes,
             amountIn: wethAmount,
-            amountOutMinimum: supAmountMinimum
+            amountOutMinimum: supAmountMinimum,
+            sqrtPriceLimitX96: 0
         });
 
-        SWAP_ROUTER.exactInput(swapParams);
+        SWAP_ROUTER.exactInputSingle(swapParams);
     }
 
     function _createPosition(uint256 wethAmount, uint256 supAmount) internal {

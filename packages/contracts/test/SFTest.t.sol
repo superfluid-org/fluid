@@ -27,7 +27,7 @@ import { _deployAll, DeploySettings } from "../script/Deploy.s.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
-import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 
 using SuperTokenV1Library for SuperToken;
 using SuperTokenV1Library for ISuperToken;
@@ -76,7 +76,7 @@ contract SFTest is Test {
 
     // Uniswap V3 Configuration
     INonfungiblePositionManager internal _nonfungiblePositionManager;
-    ISwapRouter internal _swapRouter;
+    IV3SwapRouter internal _swapRouter;
     IUniswapV3Factory internal _poolFactory;
     IUniswapV3Pool internal _pool;
 
@@ -113,7 +113,7 @@ contract SFTest is Test {
 
         // Uniswap V3 Pool & Interfaces configuration
         _nonfungiblePositionManager = INonfungiblePositionManager(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1);
-        _swapRouter = ISwapRouter(0x2626664c2603336E57B271c5C0b26F421741e481);
+        _swapRouter = IV3SwapRouter(0x2626664c2603336E57B271c5C0b26F421741e481);
         _poolFactory = IUniswapV3Factory(0x33128a8fC17869897dcE68Ed026d694621f6FDfD);
 
         // Deploy the pool
