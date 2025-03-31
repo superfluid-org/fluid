@@ -39,8 +39,8 @@ contract SFTest is Test {
     uint256 public constant FLUID_SUPPLY = 1_000_000_000 ether;
     uint256 public constant PROGRAM_DURATION = 90 days;
     uint24 public constant POOL_FEE = 3000;
-    int24 private constant _MIN_TICK = -887272;
-    int24 private constant _MAX_TICK = -_MIN_TICK;
+    int24 internal constant _MIN_TICK = -887272;
+    int24 internal constant _MAX_TICK = -_MIN_TICK;
 
     // Initial Pool Price : 20000 SUP/ETH
     uint160 public constant INITIAL_SQRT_PRICEX96_SUP_PER_WETH = 11204554194957228397824552468480;
