@@ -54,6 +54,7 @@ import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
 import { TransferHelper } from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -142,20 +143,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Uniswap V3 Router interface
     IV3SwapRouter public immutable SWAP_ROUTER;
 
-    /// @notice Fee tier of the Uniswap V3 Pool
-    uint24 private immutable _POOL_FEE;
-
-    /// @notice Tick spacing of the Uniswap V3 Pool
-    int24 private immutable _POOL_TICK_SPACING;
-
     /// @notice Uniswap V3 Nonfungible Position Manager interface
     INonfungiblePositionManager public immutable NONFUNGIBLE_POSITION_MANAGER;
-
-    /// @notice Uniswap V3 Pool minimum tick
-    int24 private constant _MIN_TICK = -887272;
-
-    /// @notice Uniswap V3 Pool maximum tick
-    int24 private constant _MAX_TICK = -_MIN_TICK;
 
     /// @notice Pump percentage (expressed in basis points)
     uint256 public constant BP_PUMP_RATIO = 100; // 1%
@@ -237,8 +226,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         POOL = pool;
         SWAP_ROUTER = swapRouter;
-        _POOL_FEE = pool.fee();
-        _POOL_TICK_SPACING = pool.tickSpacing();
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager;
         WETH = pool.token0() == address(FLUID) ? IERC20(pool.token1()) : IERC20(pool.token0());
     }
@@ -467,13 +454,119 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         TransferHelper.safeTransfer(address(WETH), lockerOwner, WETH.balanceOf(address(this)));
     }
 
+    event PositionCreated(uint256 tokenId, uint256 amount0, uint256 amount1);
+
+    //   _    ___                 ______                 __  _
+    //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
+    //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //  | |/ / /  __/ |/ |/ /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /// @inheritdoc IFluidLocker
+    function getFlowRatePerProgram(uint256 programId) public view returns (int96 flowRate) {
+        // Get the corresponding program pool
+        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
+
+        // Get the flow rate
+        flowRate = programPool.getMemberFlowRate(address(this));
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getFlowRatePerProgram(uint256[] memory programIds) external view returns (int96[] memory flowRates) {
+        flowRates = new int96[](programIds.length);
+
+        for (uint256 i = 0; i < programIds.length; ++i) {
+            flowRates[i] = getFlowRatePerProgram(programIds[i]);
+        }
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getUnitsPerProgram(uint256 programId) public view returns (uint128 units) {
+        // Get the corresponding program pool
+        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
+
+        // Get this locker's unit within the given program identifier
+        units = programPool.getUnits(address(this));
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getUnitsPerProgram(uint256[] memory programIds) external view returns (uint128[] memory units) {
+        units = new uint128[](programIds.length);
+
+        for (uint256 i = 0; i < programIds.length; ++i) {
+            units[i] = getUnitsPerProgram(programIds[i]);
+        }
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getStakedBalance() external view returns (uint256 sBalance) {
+        sBalance = _stakedBalance;
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getAvailableBalance() public view returns (uint256 aBalance) {
+        aBalance = FLUID.balanceOf(address(this)) - _stakedBalance;
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getFontaineBeaconImplementation() public view returns (address fontaineBeaconImpl) {
+        fontaineBeaconImpl = FONTAINE_BEACON.implementation();
+    }
+
+    //      ____      __                        __   ______                 __  _
+    //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
+    //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    function _instantUnlock(uint256 amountToUnlock, address recipient) internal {
+        // Calculate instant unlock penalty amount
+        uint256 penaltyAmount = (amountToUnlock * _INSTANT_UNLOCK_PENALTY_BP) / BP_DENOMINATOR;
+
+        // Distribute penalty to staker (connected to the TAX_DISTRIBUTION_POOL)
+        FLUID.distribute(address(this), TAX_DISTRIBUTION_POOL, penaltyAmount);
+
+        // Transfer the leftover $FLUID to the locker owner
+        FLUID.transfer(recipient, amountToUnlock - penaltyAmount);
+
+        emit FluidUnlocked(0, amountToUnlock, recipient, address(0));
+    }
+
+    function _vestUnlock(uint256 amountToUnlock, uint128 unlockPeriod, address recipient) internal {
+        // Calculate the unlock and penalty flow rates based on requested amount and unlock period
+        (int96 unlockFlowRate, int96 taxFlowRate) = calculateVestUnlockFlowRates(amountToUnlock, unlockPeriod);
+
+        // Use create2 to deploy a Fontaine Beacon Proxy
+        // The salt used for deployment is the hashed encoded Locker address and unlock identifier
+        address newFontaine = address(
+            new BeaconProxy{ salt: keccak256(abi.encode(address(this), fontaineCount)) }(address(FONTAINE_BEACON), "")
+        );
+
+        // Transfer the total amount to unlock to the newly created Fontaine
+        FLUID.transfer(newFontaine, amountToUnlock);
+
+        // Persist the fontaine address and increment fontaine counter
+        fontaines[fontaineCount] = IFontaine(newFontaine);
+        fontaineCount++;
+
+        // Initialize the new Fontaine instance (this initiate the unlock process)
+        IFontaine(newFontaine).initialize(recipient, unlockFlowRate, taxFlowRate, unlockPeriod);
+
+        emit FluidUnlocked(unlockPeriod, amountToUnlock, recipient, newFontaine);
+    }
+
+    /**
+     * @notice Swaps WETH for SUP tokens using Uniswap V3
+     * @param wethAmount The amount of WETH to swap
+     * @param supAmountMinimum The minimum amount of FLUID tokens to receive
+     */
     function _pump(uint256 wethAmount, uint256 supAmountMinimum) internal {
         WETH.approve(address(SWAP_ROUTER), wethAmount);
 
         IV3SwapRouter.ExactInputSingleParams memory swapParams = IV3SwapRouter.ExactInputSingleParams({
             tokenIn: address(WETH),
             tokenOut: address(FLUID),
-            fee: _POOL_FEE,
+            fee: POOL.fee(),
             recipient: address(this),
             amountIn: wethAmount,
             amountOutMinimum: supAmountMinimum,
@@ -483,15 +576,22 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         SWAP_ROUTER.exactInputSingle(swapParams);
     }
 
+    /**
+     * @notice Creates a new Uniswap V3 position with the specified amounts of tokens
+     * @param amount0 The desired amount of token0 (WETH) to add as liquidity
+     * @param amount1 The desired amount of token1 (FLUID) to add as liquidity
+     */
     function _createPosition(uint256 amount0, uint256 amount1) internal {
         (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
+
+        int24 tickSpacing = POOL.tickSpacing();
 
         INonfungiblePositionManager.MintParams memory mintParams = INonfungiblePositionManager.MintParams({
             token0: address(WETH),
             token1: address(FLUID),
-            fee: _POOL_FEE,
-            tickLower: (_MIN_TICK / _POOL_TICK_SPACING) * _POOL_TICK_SPACING,
-            tickUpper: (_MAX_TICK / _POOL_TICK_SPACING) * _POOL_TICK_SPACING,
+            fee: POOL.fee(),
+            tickLower: (TickMath.MIN_TICK / tickSpacing) * tickSpacing,
+            tickUpper: (TickMath.MAX_TICK / tickSpacing) * tickSpacing,
             amount0Desired: amount0,
             amount1Desired: amount1,
             amount0Min: amount0Min,
@@ -608,107 +708,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
     }
 
-    event PositionCreated(uint256 tokenId, uint256 amount0, uint256 amount1);
-
-    //   _    ___                 ______                 __  _
-    //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
-    //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
-    //  | |/ / /  __/ |/ |/ /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
-    //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
-
-    /// @inheritdoc IFluidLocker
-    function getFlowRatePerProgram(uint256 programId) public view returns (int96 flowRate) {
-        // Get the corresponding program pool
-        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
-
-        // Get the flow rate
-        flowRate = programPool.getMemberFlowRate(address(this));
-    }
-
-    /// @inheritdoc IFluidLocker
-    function getFlowRatePerProgram(uint256[] memory programIds) external view returns (int96[] memory flowRates) {
-        flowRates = new int96[](programIds.length);
-
-        for (uint256 i = 0; i < programIds.length; ++i) {
-            flowRates[i] = getFlowRatePerProgram(programIds[i]);
-        }
-    }
-
-    /// @inheritdoc IFluidLocker
-    function getUnitsPerProgram(uint256 programId) public view returns (uint128 units) {
-        // Get the corresponding program pool
-        ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
-
-        // Get this locker's unit within the given program identifier
-        units = programPool.getUnits(address(this));
-    }
-
-    /// @inheritdoc IFluidLocker
-    function getUnitsPerProgram(uint256[] memory programIds) external view returns (uint128[] memory units) {
-        units = new uint128[](programIds.length);
-
-        for (uint256 i = 0; i < programIds.length; ++i) {
-            units[i] = getUnitsPerProgram(programIds[i]);
-        }
-    }
-
-    /// @inheritdoc IFluidLocker
-    function getStakedBalance() external view returns (uint256 sBalance) {
-        sBalance = _stakedBalance;
-    }
-
-    /// @inheritdoc IFluidLocker
-    function getAvailableBalance() public view returns (uint256 aBalance) {
-        aBalance = FLUID.balanceOf(address(this)) - _stakedBalance;
-    }
-
-    /// @inheritdoc IFluidLocker
-    function getFontaineBeaconImplementation() public view returns (address fontaineBeaconImpl) {
-        fontaineBeaconImpl = FONTAINE_BEACON.implementation();
-    }
-
-    //      ____      __                        __   ______                 __  _
-    //     /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
-    //     / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
-    //   _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
-    //  /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
-
-    function _instantUnlock(uint256 amountToUnlock, address recipient) internal {
-        // Calculate instant unlock penalty amount
-        uint256 penaltyAmount = (amountToUnlock * _INSTANT_UNLOCK_PENALTY_BP) / BP_DENOMINATOR;
-
-        // Distribute penalty to staker (connected to the TAX_DISTRIBUTION_POOL)
-        FLUID.distribute(address(this), TAX_DISTRIBUTION_POOL, penaltyAmount);
-
-        // Transfer the leftover $FLUID to the locker owner
-        FLUID.transfer(recipient, amountToUnlock - penaltyAmount);
-
-        emit FluidUnlocked(0, amountToUnlock, recipient, address(0));
-    }
-
-    function _vestUnlock(uint256 amountToUnlock, uint128 unlockPeriod, address recipient) internal {
-        // Calculate the unlock and penalty flow rates based on requested amount and unlock period
-        (int96 unlockFlowRate, int96 taxFlowRate) = calculateVestUnlockFlowRates(amountToUnlock, unlockPeriod);
-
-        // Use create2 to deploy a Fontaine Beacon Proxy
-        // The salt used for deployment is the hashed encoded Locker address and unlock identifier
-        address newFontaine = address(
-            new BeaconProxy{ salt: keccak256(abi.encode(address(this), fontaineCount)) }(address(FONTAINE_BEACON), "")
-        );
-
-        // Transfer the total amount to unlock to the newly created Fontaine
-        FLUID.transfer(newFontaine, amountToUnlock);
-
-        // Persist the fontaine address and increment fontaine counter
-        fontaines[fontaineCount] = IFontaine(newFontaine);
-        fontaineCount++;
-
-        // Initialize the new Fontaine instance (this initiate the unlock process)
-        IFontaine(newFontaine).initialize(recipient, unlockFlowRate, taxFlowRate, unlockPeriod);
-
-        emit FluidUnlocked(unlockPeriod, amountToUnlock, recipient, newFontaine);
-    }
-
+    /**
+     * @notice Checks if the locker has an active Uniswap V3 position
+     * @return hasPosition True if the locker has a position, false otherwise
+     */
     function _hasPosition() internal view returns (bool hasPosition) {
         hasPosition = positionTokenId != 0;
     }
