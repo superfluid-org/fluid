@@ -743,14 +743,6 @@ contract FluidLockerTTETest is SFTest {
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // function _helperGetQuotes(uint256 wethAmountToContribute)
-    //     internal
-    //     returns (uint256 supPumpAmountMin, uint256 supLPAmount)
-    // {
-    //     uint256 pumpRatio = _fluidLockerFactory.BP_PUMP_RATIO();
-    //     uint256 wethPumpAmount = wethAmountToContribute * pumpRatio / _BP_DENOMINATOR;
-    // }
-
     function testProvideLiquidityWETH_createPosition() external {
         // 1 eth contribution :
         // -> 0.01 eth to pump -> expected min sup = 0.01 * 20000 = 200 sup
@@ -760,11 +752,101 @@ contract FluidLockerTTETest is SFTest {
 
         vm.startPrank(ALICE);
         _weth.approve(address(aliceLocker), 1 ether);
-        uint256 tokenId = aliceLocker.provideLiquidityWETH(1 ether, 199e18, 19800e18);
+        aliceLocker.provideLiquidityWETH(1 ether, 199e18, 19800e18);
         vm.stopPrank();
 
-        assertEq(tokenId, FluidLocker(address(aliceLocker)).positionTokenId(), "tokenId should not be 0");
+        assertGt(FluidLocker(address(aliceLocker)).positionTokenId(), 0, "tokenId should not be 0");
         assertEq(_weth.balanceOf(address(aliceLocker)), 0, "weth locker balance should be 0");
+    }
+
+    function testProvideLiquidityWETH_increasePosition() external {
+        _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
+
+        assertGt(FluidLocker(address(aliceLocker)).positionTokenId(), 0, "tokenId should not be 0");
+        assertEq(_weth.balanceOf(address(aliceLocker)), 0, "weth locker balance should be 0");
+
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.transfer(address(aliceLocker), 19000e18);
+
+        vm.startPrank(ALICE);
+        _weth.approve(address(aliceLocker), 1 ether);
+        aliceLocker.provideLiquidityWETH(1 ether, 190e18, 19000e18);
+        vm.stopPrank();
+    }
+
+    function testCollectFees() external {
+        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
+
+        uint256 aliceWethBalanceBefore = _weth.balanceOf(address(ALICE));
+        uint256 aliceSupBalanceBefore = _fluidSuperToken.balanceOf(address(ALICE));
+
+        _helperBuySUP(makeAddr("buyer"), 10 ether);
+        _helperSellSUP(makeAddr("seller"), 200000e18);
+
+        vm.prank(ALICE);
+        aliceLocker.collectFees();
+
+        uint256 aliceWethBalanceAfter = _weth.balanceOf(address(ALICE));
+        uint256 aliceSupBalanceAfter = _fluidSuperToken.balanceOf(address(ALICE));
+
+        assertGt(aliceWethBalanceAfter, aliceWethBalanceBefore , "alice weth balance should increase");
+        assertGt(aliceSupBalanceAfter, aliceSupBalanceBefore, "alice sup balance should increase");
+    }
+
+    function _helperCreatePosition(address locker, uint256 wethAmount, uint256 supPumpAmount, uint256 supAmount)
+        internal
+        returns (uint256 positionTokenId)
+    {
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.transfer(locker, supAmount);
+
+        vm.startPrank(FluidLocker(locker).lockerOwner());
+        _weth.approve(address(locker), wethAmount);
+        FluidLocker(locker).provideLiquidityWETH(wethAmount, supPumpAmount, supAmount);
+        vm.stopPrank();
+
+        positionTokenId = FluidLocker(locker).positionTokenId();
+    }
+
+    function _helperBuySUP(address buyer, uint256 wethAmount) internal {
+        deal(address(_weth), buyer, wethAmount);
+
+        vm.startPrank(buyer);
+        _weth.approve(address(_swapRouter), wethAmount);
+
+        IV3SwapRouter.ExactInputSingleParams memory swapParams = IV3SwapRouter.ExactInputSingleParams({
+            tokenIn: address(_weth),
+            tokenOut: address(_fluidSuperToken),
+            fee: POOL_FEE,
+            recipient: buyer,
+            amountIn: wethAmount,
+            amountOutMinimum: 0,
+            sqrtPriceLimitX96: 0
+        });
+
+        _swapRouter.exactInputSingle(swapParams);
+        vm.stopPrank();
+    }
+
+    function _helperSellSUP(address seller, uint256 supAmount) internal {
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.transfer(seller, supAmount);
+
+        vm.startPrank(seller);
+        _fluidSuperToken.approve(address(_swapRouter), supAmount);
+
+        IV3SwapRouter.ExactInputSingleParams memory swapParams = IV3SwapRouter.ExactInputSingleParams({
+            tokenIn: address(_fluidSuperToken),
+            tokenOut: address(_weth),
+            fee: POOL_FEE,
+            recipient: seller,
+            amountIn: supAmount,
+            amountOutMinimum: 0,
+            sqrtPriceLimitX96: 0
+        });
+
+        _swapRouter.exactInputSingle(swapParams);
+        vm.stopPrank();
     }
 }
 

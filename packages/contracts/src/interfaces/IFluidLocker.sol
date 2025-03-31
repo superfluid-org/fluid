@@ -219,4 +219,11 @@ interface IFluidLocker {
     function getFontaineBeaconImplementation() external view returns (address fontaineBeaconImpl);
 
     function provideLiquidityWETH(uint256 wethContributed, uint256 supPumpAmountMin, uint256 supLPAmount) external;
+
+    /**
+     * @notice Collects accumulated fees from a Uniswap V3 position
+     * @return collectedWeth The amount of WETH fees collected
+     * @return collectedSup The amount of SUP fees collected
+     */
+    function collectFees() external returns (uint256 collectedWeth, uint256 collectedSup);
 }

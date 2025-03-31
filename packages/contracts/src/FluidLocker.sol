@@ -421,22 +421,31 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         FLUID.approve(address(NONFUNGIBLE_POSITION_MANAGER), supLPAmount);
 
         if (_hasPosition()) {
-            // _increasePosition();
+            _increasePosition(positionTokenId, wethLPAmount, supLPAmount);
         } else {
             _createPosition(wethLPAmount, supLPAmount);
         }
     }
 
+    function collectFees()
+        external
+        nonReentrant
+        onlyLockerOwner
+        returns (uint256 collectedWeth, uint256 collectedSup)
+    {
+        if (_hasPosition()) {
+            POOL.token0() == address(FLUID)
+                ? (collectedSup, collectedWeth) = _collect(positionTokenId)
+                : (collectedWeth, collectedSup) = _collect(positionTokenId);
+
+            // Transfer the collected fees to the locker owner
+            WETH.transfer(lockerOwner, collectedWeth);
+            FLUID.transfer(lockerOwner, collectedSup);
+        }
+    }
+
     function _pump(uint256 wethAmount, uint256 supAmountMinimum) internal {
         WETH.approve(address(SWAP_ROUTER), wethAmount);
-
-        // ISwapRouter.ExactInputParams memory swapParams = ISwapRouter.ExactInputParams({
-        //     path: abi.encodePacked(address(WETH), _POOL_FEE, address(FLUID)),
-        //     recipient: address(this),
-        //     deadline: block.timestamp + 1 minutes,
-        //     amountIn: wethAmount,
-        //     amountOutMinimum: supAmountMinimum
-        // });
 
         IV3SwapRouter.ExactInputSingleParams memory swapParams = IV3SwapRouter.ExactInputSingleParams({
             tokenIn: address(WETH),
@@ -451,17 +460,19 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         SWAP_ROUTER.exactInputSingle(swapParams);
     }
 
-    function _createPosition(uint256 wethAmount, uint256 supAmount) internal {
+    function _createPosition(uint256 amount0, uint256 amount1) internal {
+        (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
+
         INonfungiblePositionManager.MintParams memory mintParams = INonfungiblePositionManager.MintParams({
             token0: address(WETH),
             token1: address(FLUID),
             fee: _POOL_FEE,
             tickLower: (_MIN_TICK / _POOL_TICK_SPACING) * _POOL_TICK_SPACING,
             tickUpper: (_MAX_TICK / _POOL_TICK_SPACING) * _POOL_TICK_SPACING,
-            amount0Desired: wethAmount,
-            amount1Desired: supAmount,
-            amount0Min: (wethAmount * (BP_DENOMINATOR - BP_SLIPPAGE_TOLERANCE)) / BP_DENOMINATOR,
-            amount1Min: (supAmount * (BP_DENOMINATOR - BP_SLIPPAGE_TOLERANCE)) / BP_DENOMINATOR,
+            amount0Desired: amount0,
+            amount1Desired: amount1,
+            amount0Min: amount0Min,
+            amount1Min: amount1Min,
             recipient: address(this),
             deadline: block.timestamp
         });
@@ -475,6 +486,70 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         // Emit the PositionCreated event
         emit PositionCreated(tokenId, depositedAmount0, depositedAmount1);
+    }
+
+    /**
+     * @notice Increases liquidity in a Uniswap V3 position
+     * @param tokenId The ID of the NFT position to increase liquidity in
+     * @param amount0 The desired amount of token0 to add as liquidity
+     * @param amount1 The desired amount of token1 to add as liquidity
+     * @return depositedAmount0 The actual amount of token0 deposited as liquidity
+     * @return depositedAmount1 The actual amount of token1 deposited as liquidity
+     */
+    function _increasePosition(uint256 tokenId, uint256 amount0, uint256 amount1)
+        internal
+        returns (uint256 depositedAmount0, uint256 depositedAmount1)
+    {
+        (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
+
+        // Build Increase Liquidity parameters
+        INonfungiblePositionManager.IncreaseLiquidityParams memory params = INonfungiblePositionManager
+            .IncreaseLiquidityParams({
+            tokenId: tokenId,
+            amount0Desired: amount0,
+            amount1Desired: amount1,
+            amount0Min: amount0Min,
+            amount1Min: amount1Min,
+            deadline: block.timestamp
+        });
+
+        (, depositedAmount0, depositedAmount1) = NONFUNGIBLE_POSITION_MANAGER.increaseLiquidity(params);
+    }
+
+    /**
+     * @notice Collects accumulated fees from a Uniswap V3 position
+     * @param tokenId The ID of the NFT position to collect fees from
+     * @return amount0 The amount of token0 fees collected
+     * @return amount1 The amount of token1 fees collected
+     */
+    function _collect(uint256 tokenId) internal returns (uint256 amount0, uint256 amount1) {
+        INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager.CollectParams({
+            tokenId: tokenId,
+            recipient: address(this),
+            amount0Max: type(uint128).max,
+            amount1Max: type(uint128).max
+        });
+
+        (amount0, amount1) = NONFUNGIBLE_POSITION_MANAGER.collect(collectParams);
+    }
+
+    /**
+     * @notice Calculates minimum amounts based on slippage tolerance
+     * @param amount0 The ideal amount of token0
+     * @param amount1 The ideal amount of token1
+     * @return amount0Min The minimum acceptable amount of token0
+     * @return amount1Min The minimum acceptable amount of token1
+     */
+    function _calculateMinAmounts(uint256 amount0, uint256 amount1)
+        internal
+        pure
+        returns (uint256 amount0Min, uint256 amount1Min)
+    {
+        // Calculate minimum amounts with slippage protection
+        unchecked {
+            amount0Min = (amount0 * (BP_DENOMINATOR - BP_SLIPPAGE_TOLERANCE)) / BP_DENOMINATOR;
+            amount1Min = (amount1 * (BP_DENOMINATOR - BP_SLIPPAGE_TOLERANCE)) / BP_DENOMINATOR;
+        }
     }
 
     event PositionCreated(uint256 tokenId, uint256 amount0, uint256 amount1);
