@@ -53,6 +53,7 @@ import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { INonfungiblePositionManager } from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import { IV3SwapRouter } from "@uniswap/swap-router-contracts/contracts/interfaces/IV3SwapRouter.sol";
+import { TransferHelper } from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -161,6 +162,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @notice Slippage tolerance (expressed in basis points)
     uint256 public constant BP_SLIPPAGE_TOLERANCE = 500; // 5%
+
+    /// @notice Liquidity operation deadline
+    uint256 public constant LP_OPERATION_DEADLINE = 1 minutes;
 
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
@@ -400,12 +404,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
     }
 
-    /**
-     * @notice Provides liquidity to the WETH/SUP pool by creating or increasing a position
-     * @param wethContributed The total amount of WETH to contribute
-     * @param supPumpAmountMin The minimum amount of SUP tokens to receive from pumping using WETH
-     * @param supLPAmount The amount of SUP tokens to provide as liquidity
-     */
+    /// @inheritdoc IFluidLocker
     function provideLiquidityWETH(uint256 wethContributed, uint256 supPumpAmountMin, uint256 supLPAmount)
         external
         onlyLockerOwner
@@ -417,8 +416,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         uint256 wethLPAmount = WETH.balanceOf(address(this));
 
-        WETH.approve(address(NONFUNGIBLE_POSITION_MANAGER), wethLPAmount);
-        FLUID.approve(address(NONFUNGIBLE_POSITION_MANAGER), supLPAmount);
+        TransferHelper.safeApprove(address(WETH), address(NONFUNGIBLE_POSITION_MANAGER), wethLPAmount);
+        TransferHelper.safeApprove(address(FLUID), address(NONFUNGIBLE_POSITION_MANAGER), supLPAmount);
 
         if (_hasPosition()) {
             _increasePosition(positionTokenId, wethLPAmount, supLPAmount);
@@ -427,21 +426,45 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
     }
 
+    /// @inheritdoc IFluidLocker
     function collectFees()
         external
         nonReentrant
         onlyLockerOwner
         returns (uint256 collectedWeth, uint256 collectedSup)
     {
-        if (_hasPosition()) {
-            POOL.token0() == address(FLUID)
-                ? (collectedSup, collectedWeth) = _collect(positionTokenId)
-                : (collectedWeth, collectedSup) = _collect(positionTokenId);
+        // ensure the locker has a position
+        if (!_hasPosition()) revert LOCKER_HAS_NO_POSITION();
 
-            // Transfer the collected fees to the locker owner
-            WETH.transfer(lockerOwner, collectedWeth);
-            FLUID.transfer(lockerOwner, collectedSup);
+        POOL.token0() == address(FLUID)
+            ? (collectedSup, collectedWeth) = _collect(positionTokenId)
+            : (collectedWeth, collectedSup) = _collect(positionTokenId);
+
+        // Transfer the collected fees to the locker owner
+        TransferHelper.safeTransfer(address(WETH), lockerOwner, collectedWeth);
+        TransferHelper.safeTransfer(address(FLUID), lockerOwner, collectedSup);
+    }
+
+    function withdrawLiquidityWETH(uint128 liquidityToRemove, uint256 amount0ToRemove, uint256 amount1ToRemove)
+        external
+        nonReentrant
+        onlyLockerOwner
+    {
+        // ensure the locker has a position
+        if (!_hasPosition()) revert LOCKER_HAS_NO_POSITION();
+
+        (,,,,,,, uint128 positionLiquidity,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(positionTokenId);
+
+        _decreasePosition(positionTokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
+
+        // Burn the position and delete position tokenId if all liquidity is removed
+        if (liquidityToRemove == positionLiquidity) {
+            NONFUNGIBLE_POSITION_MANAGER.burn(positionTokenId);
+            delete positionTokenId;
         }
+
+        // transfer WETH tokens back to the owner
+        TransferHelper.safeTransfer(address(WETH), lockerOwner, WETH.balanceOf(address(this)));
     }
 
     function _pump(uint256 wethAmount, uint256 supAmountMinimum) internal {
@@ -474,7 +497,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             amount0Min: amount0Min,
             amount1Min: amount1Min,
             recipient: address(this),
-            deadline: block.timestamp
+            deadline: block.timestamp + LP_OPERATION_DEADLINE
         });
 
         // Create the UniswapV3 position
@@ -510,10 +533,43 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             amount1Desired: amount1,
             amount0Min: amount0Min,
             amount1Min: amount1Min,
-            deadline: block.timestamp
+            deadline: block.timestamp + LP_OPERATION_DEADLINE
         });
 
         (, depositedAmount0, depositedAmount1) = NONFUNGIBLE_POSITION_MANAGER.increaseLiquidity(params);
+    }
+
+    /**
+     * @notice Decreases liquidity from a Uniswap V3 position
+     * @param tokenId The ID of the NFT position to decrease liquidity from
+     * @param liquidityToRemove The amount of liquidity to remove from the position (only collect fees if set to 0)
+     * @param amount0ToRemove The amount of token0 to remove from the position
+     * @param amount1ToRemove The amount of token1 to remove from the position
+     * @return amount0 The amount of token0 received from removing liquidity
+     * @return amount1 The amount of token1 received from removing liquidity
+     */
+    function _decreasePosition(
+        uint256 tokenId,
+        uint128 liquidityToRemove,
+        uint256 amount0ToRemove,
+        uint256 amount1ToRemove
+    ) internal returns (uint256 amount0, uint256 amount1) {
+        (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0ToRemove, amount1ToRemove);
+
+        // construct Decrease Liquidity parameters
+        INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
+            .DecreaseLiquidityParams({
+            tokenId: tokenId,
+            liquidity: liquidityToRemove,
+            amount0Min: amount0Min,
+            amount1Min: amount1Min,
+            deadline: block.timestamp + LP_OPERATION_DEADLINE
+        });
+
+        NONFUNGIBLE_POSITION_MANAGER.decreaseLiquidity(params);
+
+        // Collect the tokens owed
+        (amount0, amount1) = _collect(tokenId);
     }
 
     /**
@@ -553,10 +609,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     event PositionCreated(uint256 tokenId, uint256 amount0, uint256 amount1);
-
-    function withdrawLiquidityWETH() external nonReentrant onlyLockerOwner {
-        // TODO
-    }
 
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____

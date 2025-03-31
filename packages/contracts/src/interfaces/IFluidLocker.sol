@@ -95,6 +95,9 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to provide liquidity with an amount greater than the available balance
     error INSUFFICIENT_BALANCE();
 
+    /// @notice Error thrown when attempting to collect fees or withdrawing liquidity while the locker has no position
+    error LOCKER_HAS_NO_POSITION();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -218,7 +221,22 @@ interface IFluidLocker {
      */
     function getFontaineBeaconImplementation() external view returns (address fontaineBeaconImpl);
 
+    /**
+     * @notice Provides liquidity to the WETH/SUP pool by creating or increasing a position
+     * @param wethContributed The total amount of WETH to contribute
+     * @param supPumpAmountMin The minimum amount of SUP tokens to receive from pumping using WETH
+     * @param supLPAmount The amount of SUP tokens to provide as liquidity
+     */
     function provideLiquidityWETH(uint256 wethContributed, uint256 supPumpAmountMin, uint256 supLPAmount) external;
+
+    /**
+     * @notice Withdraws liquidity from the WETH/SUP pool
+     * @param liquidityToRemove The amount of liquidity to remove from the position
+     * @param amount0ToRemove The amount of token0 to remove from the position
+     * @param amount1ToRemove The amount of token1 to remove from the position
+     */
+    function withdrawLiquidityWETH(uint128 liquidityToRemove, uint256 amount0ToRemove, uint256 amount1ToRemove)
+        external;
 
     /**
      * @notice Collects accumulated fees from a Uniswap V3 position
