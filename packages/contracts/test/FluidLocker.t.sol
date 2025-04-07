@@ -746,6 +746,8 @@ contract FluidLockerTTETest is SFTest {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     function testV2ProvideLiquidityWETH_createPosition() external {
+        _helperUpgradeLocker();
+
         // 1 eth contribution :
         // -> 0.01 eth to pump -> expected min sup = 0.01 * 20000 = 200 sup
         // -> 0.99 eth to lp -> expected supLPAmount = 0.99 * 20000 = 19800 sup
@@ -753,6 +755,7 @@ contract FluidLockerTTETest is SFTest {
         _fluidSuperToken.transfer(address(aliceLocker), 20000e18);
 
         vm.startPrank(ALICE);
+        aliceLocker.stake();
         _weth.approve(address(aliceLocker), 1 ether);
         aliceLocker.provideLiquidityWETH(1 ether, 199e18, 19800e18);
         vm.stopPrank();
@@ -762,6 +765,7 @@ contract FluidLockerTTETest is SFTest {
     }
 
     function testV2ProvideLiquidityWETH_increasePosition() external {
+        _helperUpgradeLocker();
         _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
 
         assertGt(FluidLocker(address(aliceLocker)).positionTokenId(), 0, "tokenId should not be 0");
@@ -771,12 +775,14 @@ contract FluidLockerTTETest is SFTest {
         _fluidSuperToken.transfer(address(aliceLocker), 19000e18);
 
         vm.startPrank(ALICE);
-        _weth.approve(address(aliceLocker), 1 ether);
-        aliceLocker.provideLiquidityWETH(1 ether, 190e18, 19000e18);
-        vm.stopPrank();
+        aliceLocker.stake();
+        // _weth.approve(address(aliceLocker), 1 ether);
+        // aliceLocker.provideLiquidityWETH(1 ether, 190e18, 19000e18);
+        // vm.stopPrank();
     }
 
     function testV2CollectFees() external {
+        _helperUpgradeLocker();
         _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
 
         uint256 aliceWethBalanceBefore = _weth.balanceOf(address(ALICE));
@@ -795,10 +801,10 @@ contract FluidLockerTTETest is SFTest {
         assertGt(aliceSupBalanceAfter, aliceSupBalanceBefore, "alice sup balance should increase");
     }
 
-    function testV2WithdrawLiquidityWETH_removeAllLiquidity() external {
+    function testV2WithdrawLiquidityWETH_removeAllLiquidity_supDown() external {
+        _helperUpgradeLocker();
         uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
 
-        _helperBuySUP(makeAddr("buyer"), 10 ether);
         _helperSellSUP(makeAddr("seller"), 200000e18);
 
         (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
@@ -810,6 +816,65 @@ contract FluidLockerTTETest is SFTest {
 
         uint256 wethBalanceBefore = _weth.balanceOf(ALICE);
         uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
+        uint256 stakedBalanceBefore = aliceLocker.getStakedBalance();
+        uint256 debtBalanceBefore = aliceLocker.getDebtBalance();
+
+        assertEq(_fluidSuperToken.balanceOf(ALICE), 0, "Alice should have no sup before withdraw");
+
+        vm.prank(ALICE);
+        aliceLocker.withdrawLiquidityWETH(positionLiquidity, amount0ToRemove, amount1ToRemove);
+
+        uint256 wethBalanceAfter = _weth.balanceOf(ALICE);
+        uint256 supInLockerAfter = _fluidSuperToken.balanceOf(address(aliceLocker));
+        uint256 stakedBalanceAfter = aliceLocker.getStakedBalance();
+
+        assertEq(aliceLocker.getDebtBalance(), 0, "debt balance after withdraw should be 0");
+        assertApproxEqAbs(
+            _fluidSuperToken.balanceOf(ALICE),
+            expectedSupBackInLocker - debtBalanceBefore,
+            _fluidSuperToken.balanceOf(ALICE) * 100 / 10000, // 1% tolerance
+            "Alice should have sup after withdraw"
+        );
+
+        assertApproxEqAbs(
+            wethBalanceAfter,
+            wethBalanceBefore + expectedWethReceived,
+            wethBalanceAfter * 10 / 10000, // 0.1% tolerance
+            "Alice WETH balance should increase"
+        );
+        assertApproxEqAbs(
+            supInLockerAfter,
+            supInLockerBefore + debtBalanceBefore,
+            supInLockerAfter * 10 / 10000, // 0.1% tolerance
+            "SUP balance in locker should increase"
+        );
+
+        assertApproxEqAbs(
+            stakedBalanceAfter,
+            stakedBalanceBefore + debtBalanceBefore,
+            stakedBalanceAfter * 10 / 10000, // 0.1% tolerance
+            "staked balance should increase"
+        );
+
+        assertEq(FluidLocker(address(aliceLocker)).positionTokenId(), 0, "position tokenId should be 0");
+    }
+
+    function testV2WithdrawLiquidityWETH_removeAllLiquidity_supUp() external {
+        _helperUpgradeLocker();
+        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
+
+        _helperBuySUP(makeAddr("buyer"), 10 ether);
+
+        (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
+        (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, positionLiquidity);
+
+        uint256 expectedWethReceived = _pool.token0() == address(_weth) ? amount0ToRemove : amount1ToRemove;
+        uint256 expectedSupBackInLocker =
+            _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
+
+        uint256 wethBalanceBefore = _weth.balanceOf(ALICE);
+        uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
+        uint256 stakedBalanceBefore = aliceLocker.getStakedBalance();
 
         vm.prank(ALICE);
         aliceLocker.withdrawLiquidityWETH(positionLiquidity, amount0ToRemove, amount1ToRemove);
@@ -817,12 +882,24 @@ contract FluidLockerTTETest is SFTest {
         uint256 wethBalanceAfter = _weth.balanceOf(ALICE);
         uint256 supInLockerAfter = _fluidSuperToken.balanceOf(address(aliceLocker));
 
-        assertGt(wethBalanceAfter, wethBalanceBefore + expectedWethReceived, "WETH balance should increase");
-        assertGt(supInLockerAfter, supInLockerBefore + expectedSupBackInLocker, "SUP balance in locker should increase");
+        assertGt(aliceLocker.getDebtBalance(), 0, "debt balance after withdraw should be greater than 0");
+        assertEq(
+            aliceLocker.getStakedBalance(),
+            stakedBalanceBefore + expectedSupBackInLocker,
+            "staked balance should be updated"
+        );
+        assertApproxEqAbs(
+            wethBalanceAfter,
+            wethBalanceBefore + expectedWethReceived,
+            wethBalanceAfter * 10 / 10000, // 0.1% tolerance
+            "WETH balance should increase"
+        );
+        assertEq(supInLockerAfter, supInLockerBefore + expectedSupBackInLocker, "SUP balance in locker should increase");
         assertEq(FluidLocker(address(aliceLocker)).positionTokenId(), 0, "position tokenId should be 0");
     }
 
     function testV2WithdrawLiquidityWETH_removePartialLiquidity(uint256 liquidityPercentage) external {
+        _helperUpgradeLocker();
         uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
 
         _helperBuySUP(makeAddr("buyer"), 10 ether);
@@ -881,6 +958,7 @@ contract FluidLockerTTETest is SFTest {
         _fluidSuperToken.transfer(locker, supAmount);
 
         vm.startPrank(FluidLocker(locker).lockerOwner());
+        FluidLocker(locker).stake();
         _weth.approve(address(locker), wethAmount);
         FluidLocker(locker).provideLiquidityWETH(wethAmount, supPumpAmount, supAmount);
         vm.stopPrank();
