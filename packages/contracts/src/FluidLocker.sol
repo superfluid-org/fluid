@@ -185,6 +185,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Stores the Uniswap V3 position token identifier
     uint256 public positionTokenId;
 
+    /// @notice Stores the locker debt (amount of staked $SUP used for providing liquidity)
+    uint256 private _lockerDebt;
+
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
     //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
@@ -394,8 +397,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @inheritdoc IFluidLocker
     function provideLiquidityWETH(uint256 wethContributed, uint256 supPumpAmountMin, uint256 supLPAmount)
         external
+        nonReentrant
         onlyLockerOwner
     {
+        if (_stakedBalance < supLPAmount) revert INSUFFICIENT_STAKED_BALANCE();
+
         /// FIXME : change function to payable and wrap the ETH instead of fetching it from the caller
         WETH.transferFrom(msg.sender, address(this), wethContributed);
 
@@ -406,11 +412,53 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         TransferHelper.safeApprove(address(WETH), address(NONFUNGIBLE_POSITION_MANAGER), wethLPAmount);
         TransferHelper.safeApprove(address(FLUID), address(NONFUNGIBLE_POSITION_MANAGER), supLPAmount);
 
+        uint256 depositedSup;
+
         if (_hasPosition()) {
-            _increasePosition(positionTokenId, wethLPAmount, supLPAmount);
+            (, depositedSup) = _increasePosition(positionTokenId, wethLPAmount, supLPAmount);
         } else {
-            _createPosition(wethLPAmount, supLPAmount);
+            (, depositedSup) = _createPosition(POOL, wethLPAmount, supLPAmount);
         }
+
+        // Update the balance state accounting
+        _stakedBalance -= depositedSup;
+        _lockerDebt += depositedSup;
+    }
+
+    /// @inheritdoc IFluidLocker
+    function withdrawLiquidityWETH(uint128 liquidityToRemove, uint256 amount0ToRemove, uint256 amount1ToRemove)
+        external
+        nonReentrant
+        onlyLockerOwner
+    {
+        // ensure the locker has a position
+        if (!_hasPosition()) revert LOCKER_HAS_NO_POSITION();
+
+        (,,,,,,, uint128 positionLiquidity,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(positionTokenId);
+
+        (, uint256 withdrawnSup) =
+            _decreasePosition(positionTokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
+
+        // Burn the position and delete position tokenId if all liquidity is removed
+        if (liquidityToRemove == positionLiquidity) {
+            NONFUNGIBLE_POSITION_MANAGER.burn(positionTokenId);
+            delete positionTokenId;
+        }
+
+        if (withdrawnSup > _lockerDebt) {
+            uint256 excessSup = withdrawnSup - _lockerDebt;
+
+            _stakedBalance += withdrawnSup - excessSup;
+            _lockerDebt = 0;
+
+            TransferHelper.safeTransfer(address(FLUID), lockerOwner, excessSup);
+        } else {
+            _stakedBalance += withdrawnSup;
+            _lockerDebt -= withdrawnSup;
+        }
+
+        // transfer WETH tokens back to the owner
+        TransferHelper.safeTransfer(address(WETH), lockerOwner, WETH.balanceOf(address(this)));
     }
 
     /// @inheritdoc IFluidLocker
@@ -431,30 +479,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         TransferHelper.safeTransfer(address(WETH), lockerOwner, collectedWeth);
         TransferHelper.safeTransfer(address(FLUID), lockerOwner, collectedSup);
     }
-
-    function withdrawLiquidityWETH(uint128 liquidityToRemove, uint256 amount0ToRemove, uint256 amount1ToRemove)
-        external
-        nonReentrant
-        onlyLockerOwner
-    {
-        // ensure the locker has a position
-        if (!_hasPosition()) revert LOCKER_HAS_NO_POSITION();
-
-        (,,,,,,, uint128 positionLiquidity,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(positionTokenId);
-
-        _decreasePosition(positionTokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
-
-        // Burn the position and delete position tokenId if all liquidity is removed
-        if (liquidityToRemove == positionLiquidity) {
-            NONFUNGIBLE_POSITION_MANAGER.burn(positionTokenId);
-            delete positionTokenId;
-        }
-
-        // transfer WETH tokens back to the owner
-        TransferHelper.safeTransfer(address(WETH), lockerOwner, WETH.balanceOf(address(this)));
-    }
-
-    event PositionCreated(uint256 tokenId, uint256 amount0, uint256 amount1);
 
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -501,6 +525,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @inheritdoc IFluidLocker
     function getStakedBalance() external view returns (uint256 sBalance) {
         sBalance = _stakedBalance;
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getDebtBalance() external view returns (uint256 dBalance) {
+        dBalance = _lockerDebt;
     }
 
     /// @inheritdoc IFluidLocker
@@ -578,18 +607,27 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /**
      * @notice Creates a new Uniswap V3 position with the specified amounts of tokens
-     * @param amount0 The desired amount of token0 (WETH) to add as liquidity
-     * @param amount1 The desired amount of token1 (FLUID) to add as liquidity
+     * @param pool The Uniswap V3 pool to create the position in
+     * @param pairedAssetAmount The desired amount of token0 to add as liquidity
+     * @param supAmount The desired amount of token1 to add as liquidity
+     * @return depositedPairedAssetAmount The actual amount of paired asset deposited as liquidity
+     * @return depositedSupAmount The actual amount of $FLUID deposited as liquidity
      */
-    function _createPosition(uint256 amount0, uint256 amount1) internal {
+    function _createPosition(IUniswapV3Pool pool, uint256 pairedAssetAmount, uint256 supAmount)
+        internal
+        returns (uint256 depositedPairedAssetAmount, uint256 depositedSupAmount)
+    {
+        bool zeroIsSup = pool.token0() == address(FLUID);
+
+        (uint256 amount0, uint256 amount1) = _sortInAmounts(zeroIsSup, supAmount, pairedAssetAmount);
         (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
 
-        int24 tickSpacing = POOL.tickSpacing();
+        int24 tickSpacing = pool.tickSpacing();
 
         INonfungiblePositionManager.MintParams memory mintParams = INonfungiblePositionManager.MintParams({
-            token0: address(WETH),
-            token1: address(FLUID),
-            fee: POOL.fee(),
+            token0: pool.token0(),
+            token1: pool.token1(),
+            fee: pool.fee(),
             tickLower: (TickMath.MIN_TICK / tickSpacing) * tickSpacing,
             tickUpper: (TickMath.MAX_TICK / tickSpacing) * tickSpacing,
             amount0Desired: amount0,
@@ -607,22 +645,26 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Store the position
         positionTokenId = tokenId;
 
-        // Emit the PositionCreated event
-        emit PositionCreated(tokenId, depositedAmount0, depositedAmount1);
+        (depositedSupAmount, depositedPairedAssetAmount) =
+            _sortOutAmounts(zeroIsSup, depositedAmount0, depositedAmount1);
     }
 
     /**
      * @notice Increases liquidity in a Uniswap V3 position
      * @param tokenId The ID of the NFT position to increase liquidity in
-     * @param amount0 The desired amount of token0 to add as liquidity
-     * @param amount1 The desired amount of token1 to add as liquidity
-     * @return depositedAmount0 The actual amount of token0 deposited as liquidity
-     * @return depositedAmount1 The actual amount of token1 deposited as liquidity
+     * @param pairedAssetAmount The desired amount of paired asset to add as liquidity
+     * @param supAmount The desired amount of $FLUID to add as liquidity
+     * @return depositedPairedAssetAmount The actual amount of paired asset deposited as liquidity
+     * @return depositedSupAmount The actual amount of $FLUID deposited as liquidity
      */
-    function _increasePosition(uint256 tokenId, uint256 amount0, uint256 amount1)
+    function _increasePosition(uint256 tokenId, uint256 pairedAssetAmount, uint256 supAmount)
         internal
-        returns (uint256 depositedAmount0, uint256 depositedAmount1)
+        returns (uint256 depositedPairedAssetAmount, uint256 depositedSupAmount)
     {
+        (,, address token0,,,,,,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(tokenId);
+        bool zeroIsSup = token0 == address(FLUID);
+
+        (uint256 amount0, uint256 amount1) = _sortInAmounts(zeroIsSup, supAmount, pairedAssetAmount);
         (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
 
         // Build Increase Liquidity parameters
@@ -636,25 +678,32 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             deadline: block.timestamp + LP_OPERATION_DEADLINE
         });
 
-        (, depositedAmount0, depositedAmount1) = NONFUNGIBLE_POSITION_MANAGER.increaseLiquidity(params);
+        (, uint256 depositedAmount0, uint256 depositedAmount1) = NONFUNGIBLE_POSITION_MANAGER.increaseLiquidity(params);
+
+        (depositedSupAmount, depositedPairedAssetAmount) =
+            _sortOutAmounts(zeroIsSup, depositedAmount0, depositedAmount1);
     }
 
     /**
      * @notice Decreases liquidity from a Uniswap V3 position
      * @param tokenId The ID of the NFT position to decrease liquidity from
      * @param liquidityToRemove The amount of liquidity to remove from the position (only collect fees if set to 0)
-     * @param amount0ToRemove The amount of token0 to remove from the position
-     * @param amount1ToRemove The amount of token1 to remove from the position
-     * @return amount0 The amount of token0 received from removing liquidity
-     * @return amount1 The amount of token1 received from removing liquidity
+     * @param pairedAssetAmountToRemove The minimum amount of paired asset to remove from the position
+     * @param supAmountToRemove The minimum amount of $FLUID to remove from the position
+     * @return withdrawnPairedAssetAmount The amount of paired asset received from removing liquidity
+     * @return withdrawnSupAmount The amount of $FLUID received from removing liquidity
      */
     function _decreasePosition(
         uint256 tokenId,
         uint128 liquidityToRemove,
-        uint256 amount0ToRemove,
-        uint256 amount1ToRemove
-    ) internal returns (uint256 amount0, uint256 amount1) {
-        (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0ToRemove, amount1ToRemove);
+        uint256 pairedAssetAmountToRemove,
+        uint256 supAmountToRemove
+    ) internal returns (uint256 withdrawnPairedAssetAmount, uint256 withdrawnSupAmount) {
+        (,, address token0,,,,,,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(tokenId);
+        bool zeroIsSup = token0 == address(FLUID);
+
+        (uint256 amount0, uint256 amount1) = _sortInAmounts(zeroIsSup, supAmountToRemove, pairedAssetAmountToRemove);
+        (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
 
         // construct Decrease Liquidity parameters
         INonfungiblePositionManager.DecreaseLiquidityParams memory params = INonfungiblePositionManager
@@ -669,7 +718,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         NONFUNGIBLE_POSITION_MANAGER.decreaseLiquidity(params);
 
         // Collect the tokens owed
-        (amount0, amount1) = _collect(tokenId);
+        (uint256 withdrawnAmount0, uint256 withdrawnAmount1) = _collect(tokenId);
+
+        (withdrawnSupAmount, withdrawnPairedAssetAmount) =
+            _sortOutAmounts(zeroIsSup, withdrawnAmount0, withdrawnAmount1);
     }
 
     /**
@@ -714,6 +766,50 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      */
     function _hasPosition() internal view returns (bool hasPosition) {
         hasPosition = positionTokenId != 0;
+    }
+
+    /**
+     * @notice Sorts input amounts based on token order in the Uniswap V3 pool
+     * @param zeroIsSup Whether SUP is token0 in the pool
+     * @param supAmount The amount of SUP tokens
+     * @param pairedAssetAmount The amount of paired asset tokens
+     * @return amount0 The amount of token0 after sorting
+     * @return amount1 The amount of token1 after sorting
+     */
+    function _sortInAmounts(bool zeroIsSup, uint256 supAmount, uint256 pairedAssetAmount)
+        internal
+        pure
+        returns (uint256 amount0, uint256 amount1)
+    {
+        if (zeroIsSup) {
+            amount0 = supAmount;
+            amount1 = pairedAssetAmount;
+        } else {
+            amount0 = pairedAssetAmount;
+            amount1 = supAmount;
+        }
+    }
+
+    /**
+     * @notice Sorts output amounts based on token order in the Uniswap V3 pool
+     * @param zeroIsSup Whether SUP is token0 in the pool
+     * @param amount0 The amount of token0 to sort
+     * @param amount1 The amount of token1 to sort
+     * @return supAmount The sorted SUP token amount
+     * @return pairedAssetAmount The sorted paired asset amount
+     */
+    function _sortOutAmounts(bool zeroIsSup, uint256 amount0, uint256 amount1)
+        internal
+        pure
+        returns (uint256 supAmount, uint256 pairedAssetAmount)
+    {
+        if (zeroIsSup) {
+            supAmount = amount0;
+            pairedAssetAmount = amount1;
+        } else {
+            supAmount = amount1;
+            pairedAssetAmount = amount0;
+        }
     }
 
     //      __  ___          ___ _____

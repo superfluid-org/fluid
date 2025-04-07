@@ -98,6 +98,9 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to collect fees or withdrawing liquidity while the locker has no position
     error LOCKER_HAS_NO_POSITION();
 
+    /// @notice Error thrown when attempting to provide liquidity with an amount of SUP tokens greater than the staked balance
+    error INSUFFICIENT_STAKED_BALANCE();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -207,6 +210,12 @@ interface IFluidLocker {
      * @return sBalance amount of FLUID Token staked in this Locker
      */
     function getStakedBalance() external view returns (uint256 sBalance);
+
+    /**
+     * @notice Returns this Lockers' debt balance
+     * @return dBalance amount of debt owed by this Locker
+     */
+    function getDebtBalance() external view returns (uint256 dBalance);
 
     /**
      * @notice Returns this Lockers' available FLUID Token balance
