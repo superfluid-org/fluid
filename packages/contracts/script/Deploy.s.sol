@@ -18,6 +18,7 @@ import { FluidLocker } from "../src/FluidLocker.sol";
 import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
 import { StakingRewardController, IStakingRewardController } from "../src/StakingRewardController.sol";
+import { LiquidityPoolController, ILiquidityPoolController } from "../src/LiquidityPoolController.sol";
 
 /* Uniswap V3 Interfaces */
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -31,7 +32,6 @@ struct DeploySettings {
     address treasury;
     bool factoryPauseStatus;
     bool unlockStatus;
-    IUniswapV3Pool pool;
     IV3SwapRouter swapRouter;
     INonfungiblePositionManager nonfungiblePositionManager;
 }
@@ -53,7 +53,8 @@ function _deployLockerBeacon(
     ISuperfluidPool taxDistributionPool,
     address programManagerAddress,
     address stakingRewardControllerAddress,
-    address fontaineBeaconAddress
+    address fontaineBeaconAddress,
+    address liquidityPoolControllerAddress
 ) returns (address lockerLogicAddress, address lockerBeaconAddress) {
     // Deploy the Fluid Locker Implementation and associated Beacon contract
     lockerLogicAddress = address(
@@ -65,7 +66,7 @@ function _deployLockerBeacon(
             fontaineBeaconAddress,
             settings.unlockStatus,
             settings.nonfungiblePositionManager,
-            settings.pool,
+            ILiquidityPoolController(liquidityPoolControllerAddress),
             settings.swapRouter
         )
     );
@@ -74,6 +75,20 @@ function _deployLockerBeacon(
 
     // Transfer Locker Beacon ownership to the governor
     lockerBeacon.transferOwnership(settings.governor);
+}
+
+function _deployLiquidityPoolController(address governor)
+    returns (address liquidityPoolControllerLogicAddress, address liquidityPoolControllerProxyAddress)
+{
+    // Deploy the Liquidity Pool Controller contract
+    LiquidityPoolController liquidityPoolControllerLogic = new LiquidityPoolController();
+    liquidityPoolControllerLogicAddress = address(liquidityPoolControllerLogic);
+
+    ERC1967Proxy liquidityPoolControllerProxy = new ERC1967Proxy(
+        liquidityPoolControllerLogicAddress,
+        abi.encodeWithSelector(LiquidityPoolController.initialize.selector, governor)
+    );
+    liquidityPoolControllerProxyAddress = address(liquidityPoolControllerProxy);
 }
 
 function _deployStakingRewardController(ISuperToken fluid, address owner)
@@ -121,56 +136,71 @@ function _deployLockerFactory(
     lockerFactoryProxyAddress = address(lockerFactoryProxy);
 }
 
-function _deployAll(DeploySettings memory settings)
-    returns (
-        address programManagerLogicAddress,
-        address programManagerProxyAddress,
-        address stakingRewardControllerLogicAddress,
-        address stakingRewardControllerProxyAddress,
-        address lockerFactoryLogicAddress,
-        address lockerFactoryProxyAddress,
-        address lockerLogicAddress,
-        address lockerBeaconAddress,
-        address fontaineLogicAddress,
-        address fontaineBeaconAddress
-    )
-{
-    (stakingRewardControllerLogicAddress, stakingRewardControllerProxyAddress) =
+struct DeployedContracts {
+    address programManagerLogicAddress;
+    address programManagerProxyAddress;
+    address stakingRewardControllerLogicAddress;
+    address stakingRewardControllerProxyAddress;
+    address lockerFactoryLogicAddress;
+    address lockerFactoryProxyAddress;
+    address lockerLogicAddress;
+    address lockerBeaconAddress;
+    address fontaineLogicAddress;
+    address fontaineBeaconAddress;
+    address liquidityPoolControllerLogicAddress;
+    address liquidityPoolControllerProxyAddress;
+}
+
+function _deployAll(DeploySettings memory settings) returns (DeployedContracts memory deployedContracts) {
+    (deployedContracts.stakingRewardControllerLogicAddress, deployedContracts.stakingRewardControllerProxyAddress) =
         _deployStakingRewardController(settings.fluid, settings.deployer);
 
     ISuperfluidPool taxDistributionPool =
-        StakingRewardController(stakingRewardControllerProxyAddress).taxDistributionPool();
+        StakingRewardController(deployedContracts.stakingRewardControllerProxyAddress).taxDistributionPool();
 
     // Deploy Ecosystem Partner Program Manager
-    (programManagerLogicAddress, programManagerProxyAddress) =
+    (deployedContracts.programManagerLogicAddress, deployedContracts.programManagerProxyAddress) =
         _deployFluidEPProgramManager(settings.deployer, settings.treasury, taxDistributionPool);
 
     // Deploy the Fontaine Implementation and associated Beacon contract
-    (fontaineLogicAddress, fontaineBeaconAddress) =
+    (deployedContracts.fontaineLogicAddress, deployedContracts.fontaineBeaconAddress) =
         _deployFontaineBeacon(settings.fluid, taxDistributionPool, settings.governor);
 
+    (deployedContracts.liquidityPoolControllerLogicAddress, deployedContracts.liquidityPoolControllerProxyAddress) =
+        _deployLiquidityPoolController(settings.governor);
+
     // Deploy the Fluid Locker Implementation and associated Beacon contract
-    (lockerLogicAddress, lockerBeaconAddress) = _deployLockerBeacon(
+    (deployedContracts.lockerLogicAddress, deployedContracts.lockerBeaconAddress) = _deployLockerBeacon(
         settings,
         taxDistributionPool,
-        programManagerProxyAddress,
-        stakingRewardControllerProxyAddress,
-        fontaineBeaconAddress
+        deployedContracts.programManagerProxyAddress,
+        deployedContracts.stakingRewardControllerProxyAddress,
+        deployedContracts.fontaineBeaconAddress,
+        deployedContracts.liquidityPoolControllerProxyAddress
     );
 
-    (lockerFactoryLogicAddress, lockerFactoryProxyAddress) = _deployLockerFactory(
-        settings.factoryPauseStatus, settings.governor, lockerBeaconAddress, stakingRewardControllerProxyAddress
+    (deployedContracts.lockerFactoryLogicAddress, deployedContracts.lockerFactoryProxyAddress) = _deployLockerFactory(
+        settings.factoryPauseStatus,
+        settings.governor,
+        deployedContracts.lockerBeaconAddress,
+        deployedContracts.stakingRewardControllerProxyAddress
     );
 
     // Sets the FluidLockerFactory address in the StakingRewardController
-    StakingRewardController(stakingRewardControllerProxyAddress).setLockerFactory(lockerFactoryProxyAddress);
+    StakingRewardController(deployedContracts.stakingRewardControllerProxyAddress).setLockerFactory(
+        deployedContracts.lockerFactoryProxyAddress
+    );
 
     // Sets the FluidLockerFactory address in the ProgramManager
-    FluidEPProgramManager(programManagerProxyAddress).setLockerFactory(lockerFactoryProxyAddress);
+    FluidEPProgramManager(deployedContracts.programManagerProxyAddress).setLockerFactory(
+        deployedContracts.lockerFactoryProxyAddress
+    );
 
     // Transfer ownership of the contracts to the governor
-    StakingRewardController(stakingRewardControllerProxyAddress).transferOwnership(settings.governor);
-    FluidEPProgramManager(programManagerProxyAddress).transferOwnership(settings.governor);
+    StakingRewardController(deployedContracts.stakingRewardControllerProxyAddress).transferOwnership(settings.governor);
+    FluidEPProgramManager(deployedContracts.programManagerProxyAddress).transferOwnership(settings.governor);
+
+    return deployedContracts;
 }
 
 // forge script script/Deploy.s.sol:DeployScript --ffi --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify -vvvv
@@ -192,7 +222,6 @@ contract DeployScript is Script {
         ISuperToken fluid = ISuperToken(vm.envAddress("FLUID_ADDRESS"));
         bool factoryPauseStatus = vm.envBool("PAUSE_FACTORY_LOCKER_CREATION");
         bool unlockStatus = vm.envBool("FLUID_UNLOCK_STATUS");
-        IUniswapV3Pool pool = IUniswapV3Pool(vm.envAddress("WETH_SUP_POOL_ADDRESS"));
         IV3SwapRouter swapRouter = IV3SwapRouter(vm.envAddress("SWAP_ROUTER_ADDRESS"));
         INonfungiblePositionManager nonfungiblePositionManager =
             INonfungiblePositionManager(vm.envAddress("NONFUNGIBLE_POSITION_MANAGER_ADDRESS"));
@@ -209,7 +238,6 @@ contract DeployScript is Script {
             treasury: treasury,
             factoryPauseStatus: factoryPauseStatus,
             unlockStatus: unlockStatus,
-            pool: pool,
             swapRouter: swapRouter,
             nonfungiblePositionManager: nonfungiblePositionManager
         });
@@ -217,30 +245,21 @@ contract DeployScript is Script {
         _logDeploymentSettings(deployer, address(fluid), governor, treasury, factoryPauseStatus, unlockStatus);
 
         vm.startBroadcast(deployerPrivateKey);
-        (
-            address programManagerLogicAddress,
-            address programManagerProxyAddress,
-            address stakingRewardControllerLogicAddress,
-            address stakingRewardControllerProxyAddress,
-            address lockerFactoryLogicAddress,
-            address lockerFactoryProxyAddress,
-            address lockerLogicAddress,
-            address lockerBeaconAddress,
-            address fontaineLogicAddress,
-            address fontaineBeaconAddress
-        ) = _deployAll(settings);
+        DeployedContracts memory deployedContracts = _deployAll(settings);
 
         _logDeploymentSummary(
-            programManagerLogicAddress,
-            programManagerProxyAddress,
-            stakingRewardControllerLogicAddress,
-            stakingRewardControllerProxyAddress,
-            lockerFactoryLogicAddress,
-            lockerFactoryProxyAddress,
-            lockerLogicAddress,
-            lockerBeaconAddress,
-            fontaineLogicAddress,
-            fontaineBeaconAddress
+            deployedContracts.programManagerLogicAddress,
+            deployedContracts.programManagerProxyAddress,
+            deployedContracts.stakingRewardControllerLogicAddress,
+            deployedContracts.stakingRewardControllerProxyAddress,
+            deployedContracts.lockerFactoryLogicAddress,
+            deployedContracts.lockerFactoryProxyAddress,
+            deployedContracts.lockerLogicAddress,
+            deployedContracts.lockerBeaconAddress,
+            deployedContracts.fontaineLogicAddress,
+            deployedContracts.fontaineBeaconAddress,
+            deployedContracts.liquidityPoolControllerLogicAddress,
+            deployedContracts.liquidityPoolControllerProxyAddress
         );
     }
 
@@ -274,7 +293,9 @@ contract DeployScript is Script {
         address lockerLogicAddress,
         address lockerBeaconAddress,
         address fontaineLogicAddress,
-        address fontaineBeaconAddress
+        address fontaineBeaconAddress,
+        address liquidityPoolControllerLogicAddress,
+        address liquidityPoolControllerProxyAddress
     ) internal pure {
         console2.log("");
         console2.log("*----------------------------------* DEPLOYMENT SUMMARY *----------------------------------*");
@@ -289,6 +310,8 @@ contract DeployScript is Script {
         console2.log("| Fontaine (Beacon)               : deployed at %s |", fontaineBeaconAddress);
         console2.log("| FluidLockerFactory (Logic)      : deployed at %s |", lockerFactoryLogicAddress);
         console2.log("| FluidLockerFactory (Proxy)      : deployed at %s |", lockerFactoryProxyAddress);
+        console2.log("| LiquidityPoolController (Logic) : deployed at %s |", liquidityPoolControllerLogicAddress);
+        console2.log("| LiquidityPoolController (Proxy) : deployed at %s |", liquidityPoolControllerProxyAddress);
         console2.log("*------------------------------------------------------------------------------------------*");
     }
 
