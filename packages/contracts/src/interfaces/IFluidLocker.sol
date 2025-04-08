@@ -101,6 +101,9 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to provide liquidity with an amount of SUP tokens greater than the staked balance
     error INSUFFICIENT_STAKED_BALANCE();
 
+    /// @notice Error thrown when attempting to provide liquidity to a Uniswap Pool that is not approved
+    error LIQUIDITY_POOL_NOT_APPROVED();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -231,26 +234,34 @@ interface IFluidLocker {
     function getFontaineBeaconImplementation() external view returns (address fontaineBeaconImpl);
 
     /**
-     * @notice Provides liquidity to the WETH/SUP pool by creating or increasing a position
-     * @param wethContributed The total amount of WETH to contribute
-     * @param supPumpAmountMin The minimum amount of SUP tokens to receive from pumping using WETH
+     * @notice Provides liquidity to a liquidity pool by creating or increasing a position
+     * @param poolId The identifier of the liquidity pool to provide liquidity to
+     * @param pairedAssetAmount The amount of paired asset tokens to contribute
+     * @param supPumpAmountMin The minimum amount of SUP tokens to receive from pumping using paired asset
      * @param supLPAmount The amount of SUP tokens to provide as liquidity
      */
-    function provideLiquidityWETH(uint256 wethContributed, uint256 supPumpAmountMin, uint256 supLPAmount) external;
+    function provideLiquidity(uint256 poolId, uint256 pairedAssetAmount, uint256 supPumpAmountMin, uint256 supLPAmount)
+        external;
 
     /**
-     * @notice Withdraws liquidity from the WETH/SUP pool
+     * @notice Withdraws liquidity from a liquidity pool
+     * @param poolId The identifier of the liquidity pool to withdraw liquidity from
      * @param liquidityToRemove The amount of liquidity to remove from the position
      * @param amount0ToRemove The amount of token0 to remove from the position
      * @param amount1ToRemove The amount of token1 to remove from the position
      */
-    function withdrawLiquidityWETH(uint128 liquidityToRemove, uint256 amount0ToRemove, uint256 amount1ToRemove)
-        external;
+    function withdrawLiquidity(
+        uint256 poolId,
+        uint128 liquidityToRemove,
+        uint256 amount0ToRemove,
+        uint256 amount1ToRemove
+    ) external;
 
     /**
      * @notice Collects accumulated fees from a Uniswap V3 position
-     * @return collectedWeth The amount of WETH fees collected
-     * @return collectedSup The amount of SUP fees collected
+     * @param poolId The identifier of the liquidity pool to collect fees from
+     * @return collectedAsset The amount of asset tokens collected
+     * @return collectedSup The amount of SUP tokens collected
      */
-    function collectFees() external returns (uint256 collectedWeth, uint256 collectedSup);
+    function collectFees(uint256 poolId) external returns (uint256 collectedAsset, uint256 collectedSup);
 }

@@ -33,6 +33,7 @@ import { Initializable } from "@openzeppelin-v5/contracts/proxy/utils/Initializa
 import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import { IERC20 } from "@openzeppelin-v5/contracts/token/ERC20/IERC20.sol";
+import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {
@@ -46,8 +47,7 @@ import { IEPProgramManager } from "./interfaces/IEPProgramManager.sol";
 import { IFluidLocker } from "./interfaces/IFluidLocker.sol";
 import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 import { IFontaine } from "./interfaces/IFontaine.sol";
-
-import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
+import { ILiquidityPoolController } from "./interfaces/ILiquidityPoolController.sol";
 
 /* Uniswap V3 Interfaces */
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -134,17 +134,14 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //  | |/ // __/   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
     //  |___//____/  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
 
-    /// @notice WETH token interface
-    IERC20 public immutable WETH;
-
-    /// @notice Uniswap V3 Pool interface for WETH/FLUID pair
-    IUniswapV3Pool public immutable POOL;
-
     /// @notice Uniswap V3 Router interface
     IV3SwapRouter public immutable SWAP_ROUTER;
 
     /// @notice Uniswap V3 Nonfungible Position Manager interface
     INonfungiblePositionManager public immutable NONFUNGIBLE_POSITION_MANAGER;
+
+    /// @notice Liquidity Pool Controller interface
+    ILiquidityPoolController public immutable LIQUIDITY_POOL_CONTROLLER;
 
     /// @notice Pump percentage (expressed in basis points)
     uint256 public constant BP_PUMP_RATIO = 100; // 1%
@@ -182,8 +179,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //  | |/ // __/    ___/ / /_/ /_/ / /_/  __(__  )
     //  |___//____/   /____/\__/\__,_/\__/\___/____/
 
-    /// @notice Stores the Uniswap V3 position token identifier
-    uint256 public positionTokenId;
+    /// @notice Stores the Uniswap V3 position token identifier for a given pool identifier
+    mapping(address pool => uint256 positionTokenId) public positionTokenIds;
 
     /// @notice Stores the locker debt (amount of staked $SUP used for providing liquidity)
     uint256 private _lockerDebt;
@@ -211,7 +208,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         address fontaineBeacon,
         bool isUnlockAvailable,
         INonfungiblePositionManager nonfungiblePositionManager,
-        IUniswapV3Pool pool,
+        ILiquidityPoolController liquidityPoolController,
         IV3SwapRouter swapRouter
     ) {
         // Disable initializers to prevent implementation contract initalization
@@ -227,10 +224,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Sets the Fontaine beacon address
         FONTAINE_BEACON = UpgradeableBeacon(fontaineBeacon);
 
-        POOL = pool;
         SWAP_ROUTER = swapRouter;
         NONFUNGIBLE_POSITION_MANAGER = nonfungiblePositionManager;
-        WETH = pool.token0() == address(FLUID) ? IERC20(pool.token1()) : IERC20(pool.token0());
+        LIQUIDITY_POOL_CONTROLLER = liquidityPoolController;
     }
 
     /**
@@ -395,29 +391,48 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function provideLiquidityWETH(uint256 wethContributed, uint256 supPumpAmountMin, uint256 supLPAmount)
+    function provideLiquidity(uint256 poolId, uint256 pairedAssetAmount, uint256 supPumpAmountMin, uint256 supLPAmount)
         external
         nonReentrant
         onlyLockerOwner
     {
+        // Ensure the locker has enough staked balance to provide liquidity
         if (_stakedBalance < supLPAmount) revert INSUFFICIENT_STAKED_BALANCE();
 
-        /// FIXME : change function to payable and wrap the ETH instead of fetching it from the caller
-        WETH.transferFrom(msg.sender, address(this), wethContributed);
+        // Get the corresponding liquidity pool
+        IUniswapV3Pool liquidityPool = IUniswapV3Pool(LIQUIDITY_POOL_CONTROLLER.getLiquidityPool(poolId));
 
-        _pump(wethContributed * BP_PUMP_RATIO / BP_DENOMINATOR, supPumpAmountMin);
+        // Ensure the liquidity pool is approved
+        if (address(liquidityPool) == address(0)) revert LIQUIDITY_POOL_NOT_APPROVED();
 
-        uint256 wethLPAmount = WETH.balanceOf(address(this));
+        // Get the paired asset
+        address pairedAsset = liquidityPool.token0() == address(FLUID) ? liquidityPool.token1() : liquidityPool.token0();
 
-        TransferHelper.safeApprove(address(WETH), address(NONFUNGIBLE_POSITION_MANAGER), wethLPAmount);
+        // Transfer the paired asset from the caller to the locker
+        TransferHelper.safeTransferFrom(pairedAsset, msg.sender, address(this), pairedAssetAmount);
+
+        // Pumponomics (market buy SUP with 1% of the provided paired asset)
+        _pump(
+            IUniswapV3Pool(liquidityPool),
+            pairedAsset,
+            pairedAssetAmount * BP_PUMP_RATIO / BP_DENOMINATOR,
+            supPumpAmountMin
+        );
+
+        // Get the amount of paired asset tokens in the locker
+        uint256 pairedAssetLPAmount = IERC20(pairedAsset).balanceOf(address(this));
+
+        // Approve the locker to spend the paired asset and the $SUP tokens
+        TransferHelper.safeApprove(pairedAsset, address(NONFUNGIBLE_POSITION_MANAGER), pairedAssetLPAmount);
         TransferHelper.safeApprove(address(FLUID), address(NONFUNGIBLE_POSITION_MANAGER), supLPAmount);
 
         uint256 depositedSup;
 
-        if (_hasPosition()) {
-            (, depositedSup) = _increasePosition(positionTokenId, wethLPAmount, supLPAmount);
+        if (_hasPosition(address(liquidityPool))) {
+            (, depositedSup) =
+                _increasePosition(positionTokenIds[address(liquidityPool)], pairedAssetLPAmount, supLPAmount);
         } else {
-            (, depositedSup) = _createPosition(POOL, wethLPAmount, supLPAmount);
+            (, depositedSup) = _createPosition(liquidityPool, pairedAssetLPAmount, supLPAmount);
         }
 
         // Update the balance state accounting
@@ -426,13 +441,21 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function withdrawLiquidityWETH(uint128 liquidityToRemove, uint256 amount0ToRemove, uint256 amount1ToRemove)
-        external
-        nonReentrant
-        onlyLockerOwner
-    {
+    function withdrawLiquidity(
+        uint256 poolId,
+        uint128 liquidityToRemove,
+        uint256 amount0ToRemove,
+        uint256 amount1ToRemove
+    ) external nonReentrant onlyLockerOwner {
+        // Get the corresponding liquidity pool
+        IUniswapV3Pool liquidityPool = IUniswapV3Pool(LIQUIDITY_POOL_CONTROLLER.getLiquidityPool(poolId));
+
         // ensure the locker has a position
-        if (!_hasPosition()) revert LOCKER_HAS_NO_POSITION();
+        if (!_hasPosition(address(liquidityPool))) revert LOCKER_HAS_NO_POSITION();
+
+        address pairedAsset = liquidityPool.token0() == address(FLUID) ? liquidityPool.token1() : liquidityPool.token0();
+
+        uint256 positionTokenId = positionTokenIds[address(liquidityPool)];
 
         (,,,,,,, uint128 positionLiquidity,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(positionTokenId);
 
@@ -442,7 +465,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Burn the position and delete position tokenId if all liquidity is removed
         if (liquidityToRemove == positionLiquidity) {
             NONFUNGIBLE_POSITION_MANAGER.burn(positionTokenId);
-            delete positionTokenId;
+            delete positionTokenIds[address(liquidityPool)];
         }
 
         if (withdrawnSup > _lockerDebt) {
@@ -457,26 +480,40 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             _lockerDebt -= withdrawnSup;
         }
 
-        // transfer WETH tokens back to the owner
-        TransferHelper.safeTransfer(address(WETH), lockerOwner, WETH.balanceOf(address(this)));
+        // transfer the paired asset tokens back to the owner
+        TransferHelper.safeTransfer(pairedAsset, lockerOwner, IERC20(pairedAsset).balanceOf(address(this)));
     }
 
     /// @inheritdoc IFluidLocker
-    function collectFees()
+    function collectFees(uint256 poolId)
         external
         nonReentrant
         onlyLockerOwner
-        returns (uint256 collectedWeth, uint256 collectedSup)
+        returns (uint256 collectedAsset, uint256 collectedSup)
     {
-        // ensure the locker has a position
-        if (!_hasPosition()) revert LOCKER_HAS_NO_POSITION();
+        // Get the liquidity pool corresponding to the pool identifier
+        IUniswapV3Pool liquidityPool = IUniswapV3Pool(LIQUIDITY_POOL_CONTROLLER.getLiquidityPool(poolId));
 
-        POOL.token0() == address(FLUID)
-            ? (collectedSup, collectedWeth) = _collect(positionTokenId)
-            : (collectedWeth, collectedSup) = _collect(positionTokenId);
+        // ensure the locker has a position
+        if (!_hasPosition(address(liquidityPool))) revert LOCKER_HAS_NO_POSITION();
+
+        uint256 positionTokenId = positionTokenIds[address(liquidityPool)];
+
+        if (liquidityPool.token0() == address(FLUID)) {
+            // Collect the fees
+            (collectedSup, collectedAsset) = _collect(positionTokenId);
+
+            // Transfer the paired asset tokens back to the owner
+            TransferHelper.safeTransfer(liquidityPool.token1(), lockerOwner, collectedAsset);
+        } else {
+            // Collect the fees
+            (collectedAsset, collectedSup) = _collect(positionTokenId);
+
+            // Transfer the paired asset tokens back to the owner
+            TransferHelper.safeTransfer(liquidityPool.token0(), lockerOwner, collectedAsset);
+        }
 
         // Transfer the collected fees to the locker owner
-        TransferHelper.safeTransfer(address(WETH), lockerOwner, collectedWeth);
         TransferHelper.safeTransfer(address(FLUID), lockerOwner, collectedSup);
     }
 
@@ -585,19 +622,23 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /**
-     * @notice Swaps WETH for SUP tokens using Uniswap V3
-     * @param wethAmount The amount of WETH to swap
+     * @notice Swaps paired asset for FLUID tokens using Uniswap V3 (Pumponomics)
+     * @param pool The Uniswap V3 pool to perform the swap in
+     * @param pairedAsset The address of the paired asset to swap from
+     * @param pairedAssetAmount The amount of paired asset to swap
      * @param supAmountMinimum The minimum amount of FLUID tokens to receive
      */
-    function _pump(uint256 wethAmount, uint256 supAmountMinimum) internal {
-        WETH.approve(address(SWAP_ROUTER), wethAmount);
+    function _pump(IUniswapV3Pool pool, address pairedAsset, uint256 pairedAssetAmount, uint256 supAmountMinimum)
+        internal
+    {
+        IERC20(pairedAsset).approve(address(SWAP_ROUTER), pairedAssetAmount);
 
         IV3SwapRouter.ExactInputSingleParams memory swapParams = IV3SwapRouter.ExactInputSingleParams({
-            tokenIn: address(WETH),
+            tokenIn: pairedAsset,
             tokenOut: address(FLUID),
-            fee: POOL.fee(),
+            fee: pool.fee(),
             recipient: address(this),
-            amountIn: wethAmount,
+            amountIn: pairedAssetAmount,
             amountOutMinimum: supAmountMinimum,
             sqrtPriceLimitX96: 0
         });
@@ -619,12 +660,31 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     {
         bool zeroIsSup = pool.token0() == address(FLUID);
 
+        INonfungiblePositionManager.MintParams memory mintParams =
+            _formatMintParams(pool, zeroIsSup, pairedAssetAmount, supAmount);
+
+        // Create the UniswapV3 position
+        (uint256 tokenId,, uint256 depositedAmount0, uint256 depositedAmount1) =
+            NONFUNGIBLE_POSITION_MANAGER.mint(mintParams);
+
+        // Store the position
+        positionTokenIds[address(pool)] = tokenId;
+
+        (depositedSupAmount, depositedPairedAssetAmount) =
+            _sortOutAmounts(zeroIsSup, depositedAmount0, depositedAmount1);
+    }
+
+    function _formatMintParams(IUniswapV3Pool pool, bool zeroIsSup, uint256 pairedAssetAmount, uint256 supAmount)
+        internal
+        view
+        returns (INonfungiblePositionManager.MintParams memory mintParams)
+    {
         (uint256 amount0, uint256 amount1) = _sortInAmounts(zeroIsSup, supAmount, pairedAssetAmount);
         (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
 
         int24 tickSpacing = pool.tickSpacing();
 
-        INonfungiblePositionManager.MintParams memory mintParams = INonfungiblePositionManager.MintParams({
+        mintParams = INonfungiblePositionManager.MintParams({
             token0: pool.token0(),
             token1: pool.token1(),
             fee: pool.fee(),
@@ -637,16 +697,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             recipient: address(this),
             deadline: block.timestamp + LP_OPERATION_DEADLINE
         });
-
-        // Create the UniswapV3 position
-        (uint256 tokenId,, uint256 depositedAmount0, uint256 depositedAmount1) =
-            NONFUNGIBLE_POSITION_MANAGER.mint(mintParams);
-
-        // Store the position
-        positionTokenId = tokenId;
-
-        (depositedSupAmount, depositedPairedAssetAmount) =
-            _sortOutAmounts(zeroIsSup, depositedAmount0, depositedAmount1);
     }
 
     /**
@@ -762,10 +812,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /**
      * @notice Checks if the locker has an active Uniswap V3 position
+     * @param pool The pool address to query
      * @return hasPosition True if the locker has a position, false otherwise
      */
-    function _hasPosition() internal view returns (bool hasPosition) {
-        hasPosition = positionTokenId != 0;
+    function _hasPosition(address pool) internal view returns (bool hasPosition) {
+        hasPosition = positionTokenIds[pool] != 0;
     }
 
     /**
