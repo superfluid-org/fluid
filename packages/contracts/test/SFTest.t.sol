@@ -21,8 +21,9 @@ import { FluidLocker } from "../src/FluidLocker.sol";
 import { FluidLockerFactory } from "../src/FluidLockerFactory.sol";
 import { Fontaine } from "../src/Fontaine.sol";
 import { StakingRewardController } from "../src/StakingRewardController.sol";
+import { LiquidityPoolController } from "../src/LiquidityPoolController.sol";
 
-import { _deployAll, DeploySettings } from "../script/Deploy.s.sol";
+import { _deployAll, DeploySettings, DeployedContracts } from "../script/Deploy.s.sol";
 
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import { IUniswapV3Factory } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
@@ -71,9 +72,9 @@ contract SFTest is Test {
     Fontaine internal _fontaineLogic;
     FluidLockerFactory internal _fluidLockerFactory;
     StakingRewardController internal _stakingRewardController;
+    LiquidityPoolController internal _liquidityPoolController;
     UpgradeableBeacon internal _lockerBeacon;
     UpgradeableBeacon internal _fontaineBeacon;
-
     // Uniswap V3 Configuration
     INonfungiblePositionManager internal _nonfungiblePositionManager;
     IV3SwapRouter internal _swapRouter;
@@ -161,34 +162,37 @@ contract SFTest is Test {
             treasury: FLUID_TREASURY,
             factoryPauseStatus: FACTORY_IS_PAUSED,
             unlockStatus: LOCKER_CAN_UNLOCK,
-            pool: _pool,
             swapRouter: _swapRouter,
             nonfungiblePositionManager: _nonfungiblePositionManager
         });
 
         vm.startPrank(ADMIN);
 
-        (
-            , /* address programManagerLogicAddress */
-            address programManagerProxyAddress,
-            , /* address stakingRewardControllerLogicAddress */
-            address stakingRewardControllerProxyAddress,
-            , /* address lockerFactoryLogicAddress */
-            address lockerFactoryProxyAddress,
-            address lockerLogicAddress,
-            address lockerBeaconAddress,
-            address fontaineLogicAddress,
-            address fontaineBeaconAddress
-        ) = _deployAll(settings);
+        DeployedContracts memory deployedContracts = _deployAll(settings);
+        //     , /* address programManagerLogicAddress */
+        //     address programManagerProxyAddress,
+        //     , /* address stakingRewardControllerLogicAddress */
+        //     address stakingRewardControllerProxyAddress,
+        //     , /* address lockerFactoryLogicAddress */
+        //     address lockerFactoryProxyAddress,
+        //     address lockerLogicAddress,
+        //     address lockerBeaconAddress,
+        //     address fontaineLogicAddress,
+        //     address fontaineBeaconAddress,
+        //     , /* address liquidityPoolControllerLogicAddress, */
+        //     address liquidityPoolControllerProxyAddress
+        // ) = _deployAll(settings);
 
-        _programManager = FluidEPProgramManager(programManagerProxyAddress);
-        _stakingRewardController = StakingRewardController(stakingRewardControllerProxyAddress);
-        _fluidLockerFactory = FluidLockerFactory(lockerFactoryProxyAddress);
-        _fluidLockerLogic = FluidLocker(lockerLogicAddress);
-        _fontaineLogic = Fontaine(fontaineLogicAddress);
+        _programManager = FluidEPProgramManager(deployedContracts.programManagerProxyAddress);
+        _stakingRewardController = StakingRewardController(deployedContracts.stakingRewardControllerProxyAddress);
+        _fluidLockerFactory = FluidLockerFactory(deployedContracts.lockerFactoryProxyAddress);
+        _fluidLockerLogic = FluidLocker(deployedContracts.lockerLogicAddress);
+        _fontaineLogic = Fontaine(deployedContracts.fontaineLogicAddress);
         _fluid = ISuperToken(address(_fluidSuperToken));
-        _lockerBeacon = UpgradeableBeacon(lockerBeaconAddress);
-        _fontaineBeacon = UpgradeableBeacon(fontaineBeaconAddress);
+        _lockerBeacon = UpgradeableBeacon(deployedContracts.lockerBeaconAddress);
+        _fontaineBeacon = UpgradeableBeacon(deployedContracts.fontaineBeaconAddress);
+        _liquidityPoolController = LiquidityPoolController(deployedContracts.liquidityPoolControllerProxyAddress);
+
         vm.stopPrank();
 
         // FLUID Contracts Deployment End
