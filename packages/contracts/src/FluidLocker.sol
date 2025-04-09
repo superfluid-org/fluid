@@ -450,6 +450,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Get the corresponding liquidity pool
         IUniswapV3Pool liquidityPool = IUniswapV3Pool(LIQUIDITY_POOL_CONTROLLER.getLiquidityPool(poolId));
 
+        // Ensure the liquidity pool is approved
+        if (address(liquidityPool) == address(0)) revert LIQUIDITY_POOL_NOT_APPROVED();
+
         // ensure the locker has a position
         if (!_hasPosition(address(liquidityPool))) revert LOCKER_HAS_NO_POSITION();
 
