@@ -426,6 +426,7 @@ contract FluidLockerTTETest is SFTest {
     uint256 internal constant _PERCENT_TO_BP = 100;
 
     uint256 public constant LIQUIDITY_POOL_ID = 0;
+    uint256 public constant NON_APPROVED_POOL_ID = 69;
 
     ISuperfluidPool[] public programPools;
     IFluidLocker public aliceLocker;
@@ -786,6 +787,33 @@ contract FluidLockerTTETest is SFTest {
         vm.stopPrank();
     }
 
+    function testV2ProvideLiquidity_nonApprovedPool() external {
+        _helperUpgradeLocker();
+
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.transfer(address(aliceLocker), 20000e18);
+
+        vm.startPrank(ALICE);
+        aliceLocker.stake();
+        _weth.approve(address(aliceLocker), 1 ether);
+        vm.expectRevert(IFluidLocker.LIQUIDITY_POOL_NOT_APPROVED.selector);
+        aliceLocker.provideLiquidity(NON_APPROVED_POOL_ID, 1 ether, 199e18, 19800e18);
+        vm.stopPrank();
+    }
+
+    function testV2ProvideLiquidity_insufficientSupStaked() external {
+        _helperUpgradeLocker();
+
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.transfer(address(aliceLocker), 20000e18);
+
+        vm.startPrank(ALICE);
+        _weth.approve(address(aliceLocker), 1 ether);
+        vm.expectRevert(IFluidLocker.INSUFFICIENT_STAKED_BALANCE.selector);
+        aliceLocker.provideLiquidity(LIQUIDITY_POOL_ID, 1 ether, 199e18, 19800e18);
+        vm.stopPrank();
+    }
+
     function testV2CollectFees() external {
         _helperUpgradeLocker();
         _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
@@ -940,6 +968,29 @@ contract FluidLockerTTETest is SFTest {
             positionTokenIdBefore,
             "position tokenId should be the same"
         );
+    }
+
+    function testV2withdrawLiquidity_nonApprovedPool() external {
+        _helperUpgradeLocker();
+        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
+
+        (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
+        (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, positionLiquidity);
+
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.LIQUIDITY_POOL_NOT_APPROVED.selector);
+        aliceLocker.withdrawLiquidity(NON_APPROVED_POOL_ID, positionLiquidity, amount0ToRemove, amount1ToRemove);
+    }
+
+    function testV2withdrawLiquidity_lockerHasNoPosition() external {
+        _helperUpgradeLocker();
+
+        uint128 positionLiquidity = 1e18;
+        (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, positionLiquidity);
+
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.LOCKER_HAS_NO_POSITION.selector);
+        aliceLocker.withdrawLiquidity(LIQUIDITY_POOL_ID, positionLiquidity, amount0ToRemove, amount1ToRemove);
     }
 
     function _helperGetAmountsForLiquidity(IUniswapV3Pool pool, uint128 liquidity)
