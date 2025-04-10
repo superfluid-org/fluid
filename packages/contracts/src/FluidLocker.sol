@@ -326,10 +326,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function stake() external nonReentrant onlyLockerOwner unlockAvailable {
-        uint256 amountToStake = getAvailableBalance();
-
-        if (amountToStake == 0) revert NO_FLUID_TO_STAKE();
+    function stake(uint256 amountToStake) external nonReentrant onlyLockerOwner unlockAvailable {
+        if (amountToStake > getAvailableBalance()) revert INSUFFICIENT_AVAILABLE_BALANCE();
 
         if (!FLUID.isMemberConnected(address(TAX_DISTRIBUTION_POOL), address(this))) {
             // Connect this locker to the Tax Distribution Pool
@@ -349,19 +347,21 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function unstake() external nonReentrant onlyLockerOwner unlockAvailable {
+    function unstake(uint256 amountToUnstake) external nonReentrant onlyLockerOwner unlockAvailable {
         if (block.timestamp < stakingUnlocksAt) {
             revert STAKING_COOLDOWN_NOT_ELAPSED();
         }
 
-        // Enfore staked balance is not zero
-        if (_stakedBalance == 0) revert NO_FLUID_TO_UNSTAKE();
+        // Enforce amount to unstake is not greater than the staked balance
+        if (amountToUnstake > _stakedBalance) {
+            revert INSUFFICIENT_STAKED_BALANCE();
+        }
 
-        // Set staked balance to 0
-        _stakedBalance = 0;
+        // Update the staked balance
+        _stakedBalance -= amountToUnstake;
 
         // Call Staking Reward Controller to update staker's units
-        STAKING_REWARD_CONTROLLER.updateStakerUnits(0);
+        STAKING_REWARD_CONTROLLER.updateStakerUnits(_stakedBalance);
 
         // Disconnect this locker from the Tax Distribution Pool
         FLUID.disconnectPool(TAX_DISTRIBUTION_POOL);
@@ -398,11 +398,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         nonReentrant
         onlyLockerOwner
     {
-        // Ensure the locker has enough staked balance to provide liquidity
-        if (_stakedBalance < supLPAmount) {
-            revert INSUFFICIENT_STAKED_BALANCE();
-        }
-
         // Get the corresponding liquidity pool
         IUniswapV3Pool liquidityPool = IUniswapV3Pool(LIQUIDITY_POOL_CONTROLLER.getLiquidityPool(poolId));
 

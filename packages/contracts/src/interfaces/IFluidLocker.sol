@@ -80,8 +80,11 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to unstake from locker that does not have staked $FLUID
     error NO_FLUID_TO_UNSTAKE();
 
-    /// @notice Error thrown when attempting to stake from locker that does not have available $FLUID
-    error NO_FLUID_TO_STAKE();
+    /// @notice Error thrown when attempting to stake from locker that does not have enough available $FLUID
+    error INSUFFICIENT_AVAILABLE_BALANCE();
+
+    /// @notice Error thrown when attempting to unstake from locker that does not have enough staked $FLUID
+    error INSUFFICIENT_STAKED_BALANCE();
 
     /// @notice Error thrown when attempting to unstake while the staking cooldown is not yet elapsed
     error STAKING_COOLDOWN_NOT_ELAPSED();
@@ -97,9 +100,6 @@ interface IFluidLocker {
 
     /// @notice Error thrown when attempting to collect fees or withdrawing liquidity while the locker has no position
     error LOCKER_HAS_NO_POSITION();
-
-    /// @notice Error thrown when attempting to provide liquidity with an amount of SUP tokens greater than the staked balance
-    error INSUFFICIENT_STAKED_BALANCE();
 
     /// @notice Error thrown when attempting to provide liquidity to a Uniswap Pool that is not approved
     error LIQUIDITY_POOL_NOT_APPROVED();
@@ -154,14 +154,16 @@ interface IFluidLocker {
     /**
      * @notice Stake all the available FLUID Token of this locker
      * @dev Only this Locker owner can call this function
+     * @param amountToStake amount of FLUID Token to stake
      */
-    function stake() external;
+    function stake(uint256 amountToStake) external;
 
     /**
      * @notice Unstake all the staked FLUID Token of this locker
      * @dev Only this Locker owner can call this function
+     * @param amountToUnstake amount of FLUID Token to unstake
      */
-    function unstake() external;
+    function unstake(uint256 amountToUnstake) external;
 
     /**
      * @notice Helper function to help the Locker connect to a program pool
