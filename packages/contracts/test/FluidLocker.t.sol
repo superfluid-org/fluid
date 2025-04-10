@@ -286,57 +286,67 @@ contract FluidLockerTest is SFTest {
         aliceLocker.unlock(unlockPeriod, ALICE);
     }
 
-    function testStake() external virtual {
-        uint256 funding = 10_000e18;
-        _helperFundLocker(address(aliceLocker), funding);
-        assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), funding, "incorrect Locker bal before op");
-        assertEq(aliceLocker.getAvailableBalance(), funding, "incorrect available bal before op");
+    function testStake(uint256 amountToStake1, uint256 amountToStake2) external virtual {
+        amountToStake1 = bound(amountToStake1, 1, 100_000_000 ether);
+        amountToStake2 = bound(amountToStake2, 1, 100_000_000 ether);
+        _helperFundLocker(address(aliceLocker), amountToStake1);
+        assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), amountToStake1, "incorrect Locker bal before op");
+        assertEq(aliceLocker.getAvailableBalance(), amountToStake1, "incorrect available bal before op");
         assertEq(aliceLocker.getStakedBalance(), 0, "incorrect staked bal before op");
 
         vm.prank(ALICE);
-        aliceLocker.stake();
+        aliceLocker.stake(amountToStake1);
 
         assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available bal after op");
-        assertEq(aliceLocker.getStakedBalance(), funding, "incorrect staked bal after op");
+        assertEq(aliceLocker.getStakedBalance(), amountToStake1, "incorrect staked bal after op");
         assertEq(
             _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
-            funding / 1e16,
+            amountToStake1 / 1e16,
             "incorrect units"
         );
 
         vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.NO_FLUID_TO_STAKE.selector);
-        aliceLocker.stake();
+        vm.expectRevert(IFluidLocker.INSUFFICIENT_AVAILABLE_BALANCE.selector);
+        aliceLocker.stake(amountToStake2);
     }
 
-    function testUnstake() external virtual {
-        uint256 funding = 10_000e18;
-        _helperFundLocker(address(aliceLocker), funding);
+    function testUnstake(uint256 amountToStake, uint256 amountToUnstake, uint256 invalidAmountToUnstake)
+        external
+        virtual
+    {
+        amountToStake = bound(amountToStake, 1, 100_000_000 ether);
+        vm.assume(amountToUnstake <= amountToStake);
+        vm.assume(invalidAmountToUnstake > amountToStake);
+
+        _helperFundLocker(address(aliceLocker), amountToStake);
+
         vm.startPrank(ALICE);
-        aliceLocker.stake();
+        aliceLocker.stake(amountToStake);
 
         assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available bal before op");
-        assertEq(aliceLocker.getStakedBalance(), funding, "incorrect staked bal before op");
+        assertEq(aliceLocker.getStakedBalance(), amountToStake, "incorrect staked bal before op");
         assertEq(
             _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
-            funding / 1e16,
+            amountToStake / 1e16,
             "incorrect units before op"
         );
 
         vm.expectRevert(IFluidLocker.STAKING_COOLDOWN_NOT_ELAPSED.selector);
-        aliceLocker.unstake();
+        aliceLocker.unstake(amountToUnstake);
 
         vm.warp(uint256(FluidLocker(address(aliceLocker)).stakingUnlocksAt()) + 1);
-        aliceLocker.unstake();
+        aliceLocker.unstake(amountToUnstake);
 
-        assertEq(aliceLocker.getAvailableBalance(), funding, "incorrect available bal after op");
-        assertEq(aliceLocker.getStakedBalance(), 0, "incorrect staked bal after op");
+        assertEq(aliceLocker.getAvailableBalance(), amountToUnstake, "incorrect available bal after op");
+        assertEq(aliceLocker.getStakedBalance(), amountToStake - amountToUnstake, "incorrect staked bal after op");
         assertEq(
-            _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)), 0, "incorrect units after op"
+            _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
+            (amountToStake - amountToUnstake) / 1e16,
+            "incorrect units after op"
         );
 
-        vm.expectRevert(IFluidLocker.NO_FLUID_TO_UNSTAKE.selector);
-        aliceLocker.unstake();
+        vm.expectRevert(IFluidLocker.INSUFFICIENT_STAKED_BALANCE.selector);
+        aliceLocker.unstake(invalidAmountToUnstake);
 
         vm.stopPrank();
     }
@@ -394,7 +404,7 @@ contract FluidLockerTest is SFTest {
     function _helperBobStaking() internal {
         _helperFundLocker(address(bobLocker), 10_000e18);
         vm.prank(BOB);
-        bobLocker.stake();
+        bobLocker.stake(10_000e18);
     }
 
     function _helperCalculateUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)
@@ -615,33 +625,81 @@ contract FluidLockerTTETest is SFTest {
         );
     }
 
-    function testStake() external {
-        uint256 funding = 10_000e18;
-        _helperFundLocker(address(aliceLocker), funding);
-        assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), funding, "incorrect Locker bal before op");
-        assertEq(aliceLocker.getAvailableBalance(), funding, "incorrect available bal before op");
+    function testStake(uint256 amountToStake1, uint256 amountToStake2) external virtual {
+        amountToStake1 = bound(amountToStake1, 1, 100_000_000 ether);
+        amountToStake2 = bound(amountToStake2, 1, 100_000_000 ether);
+        _helperFundLocker(address(aliceLocker), amountToStake1);
+        assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), amountToStake1, "incorrect Locker bal before op");
+        assertEq(aliceLocker.getAvailableBalance(), amountToStake1, "incorrect available bal before op");
         assertEq(aliceLocker.getStakedBalance(), 0, "incorrect staked bal before op");
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.TTE_NOT_ACTIVATED.selector);
-        aliceLocker.stake();
+        aliceLocker.stake(amountToStake1);
 
         _helperUpgradeLocker();
 
         vm.prank(ALICE);
-        aliceLocker.stake();
+        aliceLocker.stake(amountToStake1);
 
         assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available bal after op");
-        assertEq(aliceLocker.getStakedBalance(), funding, "incorrect staked bal after op");
+        assertEq(aliceLocker.getStakedBalance(), amountToStake1, "incorrect staked bal after op");
         assertEq(
             _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
-            funding / 1e16,
+            amountToStake1 / 1e16,
             "incorrect units"
         );
 
         vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.NO_FLUID_TO_STAKE.selector);
-        aliceLocker.stake();
+        vm.expectRevert(IFluidLocker.INSUFFICIENT_AVAILABLE_BALANCE.selector);
+        aliceLocker.stake(amountToStake2);
+    }
+
+    function testUnstake(uint256 amountToStake, uint256 amountToUnstake, uint256 invalidAmountToUnstake)
+        external
+        virtual
+    {
+        amountToStake = bound(amountToStake, 1, 100_000_000 ether);
+        vm.assume(amountToUnstake <= amountToStake);
+        vm.assume(invalidAmountToUnstake > amountToStake);
+
+        _helperFundLocker(address(aliceLocker), amountToStake);
+
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.TTE_NOT_ACTIVATED.selector);
+        aliceLocker.unstake(amountToUnstake);
+
+        _helperUpgradeLocker();
+
+        vm.startPrank(ALICE);
+        aliceLocker.stake(amountToStake);
+
+        assertEq(aliceLocker.getAvailableBalance(), 0, "incorrect available bal before op");
+        assertEq(aliceLocker.getStakedBalance(), amountToStake, "incorrect staked bal before op");
+        assertEq(
+            _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
+            amountToStake / 1e16,
+            "incorrect units before op"
+        );
+
+        vm.expectRevert(IFluidLocker.STAKING_COOLDOWN_NOT_ELAPSED.selector);
+        aliceLocker.unstake(amountToUnstake);
+
+        vm.warp(uint256(FluidLocker(address(aliceLocker)).stakingUnlocksAt()) + 1);
+        aliceLocker.unstake(amountToUnstake);
+
+        assertEq(aliceLocker.getAvailableBalance(), amountToUnstake, "incorrect available bal after op");
+        assertEq(aliceLocker.getStakedBalance(), amountToStake - amountToUnstake, "incorrect staked bal after op");
+        assertEq(
+            _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
+            (amountToStake - amountToUnstake) / 1e16,
+            "incorrect units after op"
+        );
+
+        vm.expectRevert(IFluidLocker.INSUFFICIENT_STAKED_BALANCE.selector);
+        aliceLocker.unstake(invalidAmountToUnstake);
+
+        vm.stopPrank();
     }
 
     function _helperUpgradeLocker() internal {
@@ -654,7 +712,7 @@ contract FluidLockerTTETest is SFTest {
     function _helperBobStaking() internal {
         _helperFundLocker(address(bobLocker), 10_000e18);
         vm.prank(BOB);
-        bobLocker.stake();
+        bobLocker.stake(10_000e18);
     }
 
     function _helperCalculateUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)
@@ -761,7 +819,6 @@ contract FluidLockerTTETest is SFTest {
         _fluidSuperToken.transfer(address(aliceLocker), 20000e18);
 
         vm.startPrank(ALICE);
-        aliceLocker.stake();
         aliceLocker.provideLiquidity{ value: 1 ether }(LIQUIDITY_POOL_ID, 1 ether, 199e18, 19800e18);
         vm.stopPrank();
 
@@ -780,7 +837,6 @@ contract FluidLockerTTETest is SFTest {
         _fluidSuperToken.transfer(address(aliceLocker), 19000e18);
 
         vm.startPrank(ALICE);
-        aliceLocker.stake();
         aliceLocker.provideLiquidity{ value: 1 ether }(LIQUIDITY_POOL_ID, 1 ether, 190e18, 19000e18);
         vm.stopPrank();
     }
@@ -792,7 +848,6 @@ contract FluidLockerTTETest is SFTest {
         _fluidSuperToken.transfer(address(aliceLocker), 20000e18);
 
         vm.startPrank(ALICE);
-        aliceLocker.stake();
         vm.expectRevert(IFluidLocker.LIQUIDITY_POOL_NOT_APPROVED.selector);
         aliceLocker.provideLiquidity{ value: 1 ether }(NON_APPROVED_POOL_ID, 1 ether, 199e18, 19800e18);
         vm.stopPrank();
@@ -1010,7 +1065,6 @@ contract FluidLockerTTETest is SFTest {
         _fluidSuperToken.transfer(locker, supAmount);
 
         vm.startPrank(FluidLocker(locker).lockerOwner());
-        FluidLocker(locker).stake();
         FluidLocker(locker).provideLiquidity{ value: wethAmount }(
             LIQUIDITY_POOL_ID, wethAmount, supPumpAmount, supAmount
         );

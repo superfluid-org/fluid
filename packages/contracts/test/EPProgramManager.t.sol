@@ -816,7 +816,7 @@ contract FluidEPProgramManagerTest is SFTest {
     function _helperBobStaking() internal {
         _helperFundLocker(address(bobLocker), 10_000e18);
         vm.prank(BOB);
-        bobLocker.stake();
+        bobLocker.stake(10_000e18);
     }
 
     function _helperStartFunding(uint256 _programId, uint256 _fundingAmount, uint32 _duration) internal {

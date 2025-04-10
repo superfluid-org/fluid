@@ -150,7 +150,7 @@ contract FontaineTest is SFTest {
     function _helperBobStaking() internal {
         _helperFundLocker(address(bobLocker), 10_000e18);
         vm.prank(BOB);
-        bobLocker.stake();
+        bobLocker.stake(10_000e18);
     }
 
     function _helperCreateFontaine() internal returns (address newFontaine) {
