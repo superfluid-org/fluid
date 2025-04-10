@@ -104,6 +104,9 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to provide liquidity to a Uniswap Pool that is not approved
     error LIQUIDITY_POOL_NOT_APPROVED();
 
+    /// @notice Error thrown when attempting to provide liquidity with an amount of ETH sent different than the paired asset amount
+    error INSUFFICIENT_ETH_SENT();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -241,7 +244,8 @@ interface IFluidLocker {
      * @param supLPAmount The amount of SUP tokens to provide as liquidity
      */
     function provideLiquidity(uint256 poolId, uint256 pairedAssetAmount, uint256 supPumpAmountMin, uint256 supLPAmount)
-        external;
+        external
+        payable;
 
     /**
      * @notice Withdraws liquidity from a liquidity pool

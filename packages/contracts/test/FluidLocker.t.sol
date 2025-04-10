@@ -762,8 +762,7 @@ contract FluidLockerTTETest is SFTest {
 
         vm.startPrank(ALICE);
         aliceLocker.stake();
-        _weth.approve(address(aliceLocker), 1 ether);
-        aliceLocker.provideLiquidity(LIQUIDITY_POOL_ID, 1 ether, 199e18, 19800e18);
+        aliceLocker.provideLiquidity{ value: 1 ether }(LIQUIDITY_POOL_ID, 1 ether, 199e18, 19800e18);
         vm.stopPrank();
 
         assertGt(FluidLocker(address(aliceLocker)).positionTokenIds(address(_pool)), 0, "tokenId should not be 0");
@@ -782,8 +781,7 @@ contract FluidLockerTTETest is SFTest {
 
         vm.startPrank(ALICE);
         aliceLocker.stake();
-        _weth.approve(address(aliceLocker), 1 ether);
-        aliceLocker.provideLiquidity(LIQUIDITY_POOL_ID, 1 ether, 190e18, 19000e18);
+        aliceLocker.provideLiquidity{ value: 1 ether }(LIQUIDITY_POOL_ID, 1 ether, 190e18, 19000e18);
         vm.stopPrank();
     }
 
@@ -795,9 +793,8 @@ contract FluidLockerTTETest is SFTest {
 
         vm.startPrank(ALICE);
         aliceLocker.stake();
-        _weth.approve(address(aliceLocker), 1 ether);
         vm.expectRevert(IFluidLocker.LIQUIDITY_POOL_NOT_APPROVED.selector);
-        aliceLocker.provideLiquidity(NON_APPROVED_POOL_ID, 1 ether, 199e18, 19800e18);
+        aliceLocker.provideLiquidity{ value: 1 ether }(NON_APPROVED_POOL_ID, 1 ether, 199e18, 19800e18);
         vm.stopPrank();
     }
 
@@ -808,9 +805,8 @@ contract FluidLockerTTETest is SFTest {
         _fluidSuperToken.transfer(address(aliceLocker), 20000e18);
 
         vm.startPrank(ALICE);
-        _weth.approve(address(aliceLocker), 1 ether);
         vm.expectRevert(IFluidLocker.INSUFFICIENT_STAKED_BALANCE.selector);
-        aliceLocker.provideLiquidity(LIQUIDITY_POOL_ID, 1 ether, 199e18, 19800e18);
+        aliceLocker.provideLiquidity{ value: 1 ether }(LIQUIDITY_POOL_ID, 1 ether, 199e18, 19800e18);
         vm.stopPrank();
     }
 
@@ -1015,8 +1011,9 @@ contract FluidLockerTTETest is SFTest {
 
         vm.startPrank(FluidLocker(locker).lockerOwner());
         FluidLocker(locker).stake();
-        _weth.approve(address(locker), wethAmount);
-        FluidLocker(locker).provideLiquidity(LIQUIDITY_POOL_ID, wethAmount, supPumpAmount, supAmount);
+        FluidLocker(locker).provideLiquidity{ value: wethAmount }(
+            LIQUIDITY_POOL_ID, wethAmount, supPumpAmount, supAmount
+        );
         vm.stopPrank();
 
         positionTokenId = FluidLocker(locker).positionTokenIds(address(_pool));

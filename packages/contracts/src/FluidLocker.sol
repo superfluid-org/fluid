@@ -34,6 +34,7 @@ import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.so
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import { IERC20 } from "@openzeppelin-v5/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "solady/utils/ReentrancyGuard.sol";
+import { IWETH9 } from "./token/IWETH9.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {
@@ -393,23 +394,38 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @inheritdoc IFluidLocker
     function provideLiquidity(uint256 poolId, uint256 pairedAssetAmount, uint256 supPumpAmountMin, uint256 supLPAmount)
         external
+        payable
         nonReentrant
         onlyLockerOwner
     {
         // Ensure the locker has enough staked balance to provide liquidity
-        if (_stakedBalance < supLPAmount) revert INSUFFICIENT_STAKED_BALANCE();
+        if (_stakedBalance < supLPAmount) {
+            revert INSUFFICIENT_STAKED_BALANCE();
+        }
 
         // Get the corresponding liquidity pool
         IUniswapV3Pool liquidityPool = IUniswapV3Pool(LIQUIDITY_POOL_CONTROLLER.getLiquidityPool(poolId));
 
         // Ensure the liquidity pool is approved
-        if (address(liquidityPool) == address(0)) revert LIQUIDITY_POOL_NOT_APPROVED();
+        if (address(liquidityPool) == address(0)) {
+            revert LIQUIDITY_POOL_NOT_APPROVED();
+        }
 
         // Get the paired asset
         address pairedAsset = liquidityPool.token0() == address(FLUID) ? liquidityPool.token1() : liquidityPool.token0();
 
-        // Transfer the paired asset from the caller to the locker
-        TransferHelper.safeTransferFrom(pairedAsset, msg.sender, address(this), pairedAssetAmount);
+        if (pairedAsset == NONFUNGIBLE_POSITION_MANAGER.WETH9()) {
+            // Check that the amount of ETH sent is equal to the paired asset amount
+            if (msg.value != pairedAssetAmount) {
+                revert INSUFFICIENT_ETH_SENT();
+            }
+
+            // Wrap ETH into WETH
+            IWETH9(pairedAsset).deposit{ value: pairedAssetAmount }();
+        } else {
+            // Transfer the paired asset from the caller to the locker
+            TransferHelper.safeTransferFrom(pairedAsset, msg.sender, address(this), pairedAssetAmount);
+        }
 
         // Pumponomics (market buy SUP with 1% of the provided paired asset)
         _pump(
@@ -451,10 +467,14 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         IUniswapV3Pool liquidityPool = IUniswapV3Pool(LIQUIDITY_POOL_CONTROLLER.getLiquidityPool(poolId));
 
         // Ensure the liquidity pool is approved
-        if (address(liquidityPool) == address(0)) revert LIQUIDITY_POOL_NOT_APPROVED();
+        if (address(liquidityPool) == address(0)) {
+            revert LIQUIDITY_POOL_NOT_APPROVED();
+        }
 
         // ensure the locker has a position
-        if (!_hasPosition(address(liquidityPool))) revert LOCKER_HAS_NO_POSITION();
+        if (!_hasPosition(address(liquidityPool))) {
+            revert LOCKER_HAS_NO_POSITION();
+        }
 
         address pairedAsset = liquidityPool.token0() == address(FLUID) ? liquidityPool.token1() : liquidityPool.token0();
 
@@ -677,31 +697,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             _sortOutAmounts(zeroIsSup, depositedAmount0, depositedAmount1);
     }
 
-    function _formatMintParams(IUniswapV3Pool pool, bool zeroIsSup, uint256 pairedAssetAmount, uint256 supAmount)
-        internal
-        view
-        returns (INonfungiblePositionManager.MintParams memory mintParams)
-    {
-        (uint256 amount0, uint256 amount1) = _sortInAmounts(zeroIsSup, supAmount, pairedAssetAmount);
-        (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
-
-        int24 tickSpacing = pool.tickSpacing();
-
-        mintParams = INonfungiblePositionManager.MintParams({
-            token0: pool.token0(),
-            token1: pool.token1(),
-            fee: pool.fee(),
-            tickLower: (TickMath.MIN_TICK / tickSpacing) * tickSpacing,
-            tickUpper: (TickMath.MAX_TICK / tickSpacing) * tickSpacing,
-            amount0Desired: amount0,
-            amount1Desired: amount1,
-            amount0Min: amount0Min,
-            amount1Min: amount1Min,
-            recipient: address(this),
-            deadline: block.timestamp + LP_OPERATION_DEADLINE
-        });
-    }
-
     /**
      * @notice Increases liquidity in a Uniswap V3 position
      * @param tokenId The ID of the NFT position to increase liquidity in
@@ -792,6 +787,31 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         });
 
         (amount0, amount1) = NONFUNGIBLE_POSITION_MANAGER.collect(collectParams);
+    }
+
+    function _formatMintParams(IUniswapV3Pool pool, bool zeroIsSup, uint256 pairedAssetAmount, uint256 supAmount)
+        internal
+        view
+        returns (INonfungiblePositionManager.MintParams memory mintParams)
+    {
+        (uint256 amount0, uint256 amount1) = _sortInAmounts(zeroIsSup, supAmount, pairedAssetAmount);
+        (uint256 amount0Min, uint256 amount1Min) = _calculateMinAmounts(amount0, amount1);
+
+        int24 tickSpacing = pool.tickSpacing();
+
+        mintParams = INonfungiblePositionManager.MintParams({
+            token0: pool.token0(),
+            token1: pool.token1(),
+            fee: pool.fee(),
+            tickLower: (TickMath.MIN_TICK / tickSpacing) * tickSpacing,
+            tickUpper: (TickMath.MAX_TICK / tickSpacing) * tickSpacing,
+            amount0Desired: amount0,
+            amount1Desired: amount1,
+            amount0Min: amount0Min,
+            amount1Min: amount1Min,
+            recipient: address(this),
+            deadline: block.timestamp + LP_OPERATION_DEADLINE
+        });
     }
 
     /**
