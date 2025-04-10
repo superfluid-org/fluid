@@ -183,9 +183,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Stores the Uniswap V3 position token identifier for a given pool identifier
     mapping(address pool => uint256 positionTokenId) public positionTokenIds;
 
-    /// @notice Stores the locker debt (amount of staked $SUP used for providing liquidity)
-    uint256 private _lockerDebt;
-
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
     //   / /   / __ \/ __ \/ ___/ __/ ___/ / / / ___/ __/ __ \/ ___/
@@ -445,10 +442,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         } else {
             (, depositedSup) = _createPosition(liquidityPool, pairedAssetLPAmount, supLPAmount);
         }
-
-        // Update the balance state accounting
-        _stakedBalance -= depositedSup;
-        _lockerDebt += depositedSup;
     }
 
     /// @inheritdoc IFluidLocker
@@ -484,18 +477,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         if (liquidityToRemove == positionLiquidity) {
             NONFUNGIBLE_POSITION_MANAGER.burn(positionTokenId);
             delete positionTokenIds[address(liquidityPool)];
-        }
-
-        if (withdrawnSup > _lockerDebt) {
-            uint256 excessSup = withdrawnSup - _lockerDebt;
-
-            _stakedBalance += withdrawnSup - excessSup;
-            _lockerDebt = 0;
-
-            TransferHelper.safeTransfer(address(FLUID), lockerOwner, excessSup);
-        } else {
-            _stakedBalance += withdrawnSup;
-            _lockerDebt -= withdrawnSup;
         }
 
         // transfer the paired asset tokens back to the owner
@@ -580,11 +561,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @inheritdoc IFluidLocker
     function getStakedBalance() external view returns (uint256 sBalance) {
         sBalance = _stakedBalance;
-    }
-
-    /// @inheritdoc IFluidLocker
-    function getDebtBalance() external view returns (uint256 dBalance) {
-        dBalance = _lockerDebt;
     }
 
     /// @inheritdoc IFluidLocker

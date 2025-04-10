@@ -220,12 +220,6 @@ interface IFluidLocker {
     function getStakedBalance() external view returns (uint256 sBalance);
 
     /**
-     * @notice Returns this Lockers' debt balance
-     * @return dBalance amount of debt owed by this Locker
-     */
-    function getDebtBalance() external view returns (uint256 dBalance);
-
-    /**
      * @notice Returns this Lockers' available FLUID Token balance
      * @dev Available balance is the total balance minus the staked balance
      * @return aBalance amount of FLUID Token available in this Locker
