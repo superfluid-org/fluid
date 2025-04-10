@@ -293,7 +293,12 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function unlock(uint128 unlockPeriod, address recipient) external nonReentrant onlyLockerOwner unlockAvailable {
+    function unlock(uint256 unlockAmount, uint128 unlockPeriod, address recipient)
+        external
+        nonReentrant
+        onlyLockerOwner
+        unlockAvailable
+    {
         // Enforce unlock period validity
         if (unlockPeriod != 0 && (unlockPeriod < _MIN_UNLOCK_PERIOD || unlockPeriod > _MAX_UNLOCK_PERIOD)) {
             revert INVALID_UNLOCK_PERIOD();
@@ -304,21 +309,20 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             revert FORBIDDEN();
         }
 
+        // Ensure that the unlock amount is not greater than the available balance
+        if (unlockAmount > getAvailableBalance()) {
+            revert INSUFFICIENT_AVAILABLE_BALANCE();
+        }
+
         // Ensure that the tax distribution pools has at least one unit distributed
         if (TAX_DISTRIBUTION_POOL.getTotalUnits() == 0) {
             revert TAX_DISTRIBUTION_POOL_HAS_NO_UNITS();
         }
 
-        // Get balance available for unlocking
-        uint256 availableBalance = getAvailableBalance();
-
-        // Revert if there is no FLUID to unlock
-        if (availableBalance == 0) revert NO_FLUID_TO_UNLOCK();
-
         if (unlockPeriod == 0) {
-            _instantUnlock(availableBalance, recipient);
+            _instantUnlock(unlockAmount, recipient);
         } else {
-            _vestUnlock(availableBalance, unlockPeriod, recipient);
+            _vestUnlock(unlockAmount, unlockPeriod, recipient);
         }
     }
 
