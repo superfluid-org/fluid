@@ -39,6 +39,7 @@ contract FluidLockerTest is SFTest {
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
     uint128 internal constant _MAX_UNLOCK_PERIOD = 365 days;
     uint256 private constant _BP_DENOMINATOR = 10_000;
+    uint256 private constant _INSTANT_UNLOCK_PENALTY_BP = 8_000;
     uint256 internal constant _SCALER = 1e18;
 
     ISuperfluidPool[] public programPools;
@@ -198,37 +199,57 @@ contract FluidLockerTest is SFTest {
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), amount, "incorrect balance after operation");
     }
 
-    function testInstantUnlock() external virtual {
-        _helperFundLocker(address(aliceLocker), 10_000e18);
+    function testInstantUnlock(uint256 fundingAmount, uint256 unlockAmount, uint256 invalidUnlockAmount)
+        external
+        virtual
+    {
+        fundingAmount = bound(fundingAmount, 1 ether, 1_000_000e18);
+        unlockAmount = bound(unlockAmount, 1 ether, fundingAmount);
+        vm.assume(invalidUnlockAmount > fundingAmount);
+
+        _helperFundLocker(address(aliceLocker), fundingAmount);
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
-        aliceLocker.unlock(0, ALICE);
+        aliceLocker.unlock(unlockAmount, 0, ALICE);
 
         _helperBobStaking();
 
         assertEq(_fluidSuperToken.balanceOf(address(ALICE)), 0, "incorrect Alice bal before op");
-        assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 10_000e18, "incorrect Locker bal before op");
+        assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), fundingAmount, "incorrect Locker bal before op");
         assertEq(bobLocker.getAvailableBalance(), 0, "incorrect Bob bal before op");
 
         vm.prank(BOB);
         vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
-        aliceLocker.unlock(0, ALICE);
+        aliceLocker.unlock(unlockAmount, 0, ALICE);
 
-        vm.prank(ALICE);
+        vm.startPrank(ALICE);
         vm.expectRevert(IFluidLocker.FORBIDDEN.selector);
-        aliceLocker.unlock(0, address(0));
+        aliceLocker.unlock(unlockAmount, 0, address(0));
 
-        vm.prank(ALICE);
-        aliceLocker.unlock(0, ALICE);
+        vm.expectRevert(IFluidLocker.INSUFFICIENT_AVAILABLE_BALANCE.selector);
+        aliceLocker.unlock(invalidUnlockAmount, 0, ALICE);
 
-        assertEq(_fluidSuperToken.balanceOf(address(ALICE)), 2_000e18, "incorrect Alice bal after op");
-        assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
-        assertEq(bobLocker.getAvailableBalance(), 8_000e18, "incorrect Bob bal after op");
+        aliceLocker.unlock(unlockAmount, 0, ALICE);
 
-        vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.NO_FLUID_TO_UNLOCK.selector);
-        aliceLocker.unlock(0, ALICE);
+        uint256 expectedPenalty = ISuperToken(address(_fluidSuperToken)).estimateDistributionActualAmount(
+            address(aliceLocker),
+            FluidLocker(address(aliceLocker)).TAX_DISTRIBUTION_POOL(),
+            (unlockAmount * _INSTANT_UNLOCK_PENALTY_BP) / _BP_DENOMINATOR
+        );
+        uint256 expectedTransfer = unlockAmount - expectedPenalty;
+
+        assertEq(_fluidSuperToken.balanceOf(address(ALICE)), expectedTransfer, "incorrect Alice bal after op");
+
+        assertEq(
+            _fluidSuperToken.balanceOf(address(aliceLocker)),
+            fundingAmount - unlockAmount,
+            "incorrect Locker bal after op"
+        );
+
+        assertEq(bobLocker.getAvailableBalance(), expectedPenalty, "incorrect Bob bal after op");
+
+        vm.stopPrank();
     }
 
     function testVestUnlock(uint128 unlockPeriod) external virtual {
@@ -238,7 +259,7 @@ contract FluidLockerTest is SFTest {
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
-        aliceLocker.unlock(unlockPeriod, ALICE);
+        aliceLocker.unlock(funding, unlockPeriod, ALICE);
 
         _helperBobStaking();
 
@@ -253,7 +274,7 @@ contract FluidLockerTest is SFTest {
         (int96 taxFlowRate, int96 unlockFlowRate) = _helperCalculateUnlockFlowRates(funding, unlockPeriod);
 
         vm.prank(ALICE);
-        aliceLocker.unlock(unlockPeriod, ALICE);
+        aliceLocker.unlock(funding, unlockPeriod, ALICE);
 
         IFontaine newFontaine = FluidLocker(address(aliceLocker)).fontaines(0);
 
@@ -278,12 +299,12 @@ contract FluidLockerTest is SFTest {
         unlockPeriod = uint128(bound(unlockPeriod, 0 + 1, _MIN_UNLOCK_PERIOD - 1));
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.INVALID_UNLOCK_PERIOD.selector);
-        aliceLocker.unlock(unlockPeriod, ALICE);
+        aliceLocker.unlock(funding, unlockPeriod, ALICE);
 
         unlockPeriod = uint128(bound(unlockPeriod, _MAX_UNLOCK_PERIOD + 1, 100_000 days));
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.INVALID_UNLOCK_PERIOD.selector);
-        aliceLocker.unlock(unlockPeriod, ALICE);
+        aliceLocker.unlock(funding, unlockPeriod, ALICE);
     }
 
     function testStake(uint256 amountToStake1, uint256 amountToStake2) external virtual {
@@ -430,6 +451,7 @@ contract FluidLockerTTETest is SFTest {
     uint256 public constant signerPkey = 0x69;
 
     uint256 private constant _BP_DENOMINATOR = 10_000;
+    uint256 private constant _INSTANT_UNLOCK_PENALTY_BP = 8_000;
     uint256 internal constant _SCALER = 1e18;
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
     uint128 internal constant _MAX_UNLOCK_PERIOD = 365 days;
@@ -552,31 +574,61 @@ contract FluidLockerTTETest is SFTest {
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), amount, "incorrect balance after operation");
     }
 
-    function testInstantUnlock() external {
-        _helperFundLocker(address(aliceLocker), 10_000e18);
+    function testInstantUnlock(uint256 fundingAmount, uint256 unlockAmount, uint256 invalidUnlockAmount)
+        external
+        virtual
+    {
+        fundingAmount = bound(fundingAmount, 1 ether, 1_000_000e18);
+        unlockAmount = bound(unlockAmount, 1 ether, fundingAmount);
+        vm.assume(invalidUnlockAmount > fundingAmount);
 
-        assertEq(_fluidSuperToken.balanceOf(address(ALICE)), 0, "incorrect Alice bal before op");
-        assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 10_000e18, "incorrect Locker bal before op");
-        assertEq(bobLocker.getAvailableBalance(), 0, "incorrect Bob bal before op");
+        _helperFundLocker(address(aliceLocker), fundingAmount);
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.TTE_NOT_ACTIVATED.selector);
-        aliceLocker.unlock(0, ALICE);
-
+        aliceLocker.unlock(unlockAmount, 0, ALICE);
         _helperUpgradeLocker();
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
-        aliceLocker.unlock(0, ALICE);
+        aliceLocker.unlock(unlockAmount, 0, ALICE);
 
         _helperBobStaking();
 
-        vm.prank(ALICE);
-        aliceLocker.unlock(0, ALICE);
+        assertEq(_fluidSuperToken.balanceOf(address(ALICE)), 0, "incorrect Alice bal before op");
+        assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), fundingAmount, "incorrect Locker bal before op");
+        assertEq(bobLocker.getAvailableBalance(), 0, "incorrect Bob bal before op");
 
-        assertEq(_fluidSuperToken.balanceOf(address(ALICE)), 2_000e18, "incorrect Alice bal after op");
-        assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
-        assertEq(bobLocker.getAvailableBalance(), 8_000e18, "incorrect Bob bal after op");
+        vm.prank(BOB);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.unlock(unlockAmount, 0, ALICE);
+
+        vm.startPrank(ALICE);
+        vm.expectRevert(IFluidLocker.FORBIDDEN.selector);
+        aliceLocker.unlock(unlockAmount, 0, address(0));
+
+        vm.expectRevert(IFluidLocker.INSUFFICIENT_AVAILABLE_BALANCE.selector);
+        aliceLocker.unlock(invalidUnlockAmount, 0, ALICE);
+
+        aliceLocker.unlock(unlockAmount, 0, ALICE);
+
+        uint256 expectedPenalty = ISuperToken(address(_fluidSuperToken)).estimateDistributionActualAmount(
+            address(aliceLocker),
+            FluidLocker(address(aliceLocker)).TAX_DISTRIBUTION_POOL(),
+            (unlockAmount * _INSTANT_UNLOCK_PENALTY_BP) / _BP_DENOMINATOR
+        );
+        uint256 expectedTransfer = unlockAmount - expectedPenalty;
+
+        assertEq(unlockAmount, expectedTransfer + expectedPenalty, "unlockAmount != expectedTransfer + expectedPenalty");
+        assertEq(_fluidSuperToken.balanceOf(address(ALICE)), expectedTransfer, "incorrect Alice bal after op");
+        assertEq(
+            _fluidSuperToken.balanceOf(address(aliceLocker)),
+            fundingAmount - unlockAmount,
+            "incorrect Locker bal after op"
+        );
+        assertEq(bobLocker.getAvailableBalance(), expectedPenalty, "incorrect Bob bal after op");
+
+        vm.stopPrank();
     }
 
     function testVestUnlock(uint128 unlockPeriod) external {
@@ -589,25 +641,25 @@ contract FluidLockerTTETest is SFTest {
         assertEq(
             address(FluidLocker(address(aliceLocker)).fontaines(0)),
             address(IFontaine(address(0))),
-            "incorrect fontaine addrfoess"
+            "incorrect fontaine address"
         );
 
         (int96 taxFlowRate, int96 unlockFlowRate) = _helperCalculateUnlockFlowRates(funding, unlockPeriod);
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.TTE_NOT_ACTIVATED.selector);
-        aliceLocker.unlock(unlockPeriod, ALICE);
+        aliceLocker.unlock(funding, unlockPeriod, ALICE);
 
         _helperUpgradeLocker();
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
-        aliceLocker.unlock(unlockPeriod, ALICE);
+        aliceLocker.unlock(funding, unlockPeriod, ALICE);
 
         _helperBobStaking();
 
         vm.prank(ALICE);
-        aliceLocker.unlock(unlockPeriod, ALICE);
+        aliceLocker.unlock(funding, unlockPeriod, ALICE);
 
         IFontaine newFontaine = FluidLocker(address(aliceLocker)).fontaines(0);
 
