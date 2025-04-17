@@ -21,9 +21,16 @@ contract DeployFluidLockerFactoyrImplementation is Script {
         address stakingRewardControllerAddress = vm.envAddress("STAKING_REWARD_CONTROLLER_ADDRESS");
 
         // Deployer settings
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivKey = vm.envOr("PRIVATE_KEY", uint256(0));
 
-        vm.startBroadcast(deployerPrivateKey);
+        if (deployerPrivKey != 0) {
+            vm.startBroadcast(deployerPrivKey);
+        } else {
+            vm.startBroadcast();
+        }
+
+        console2.log("LOCKER_BEACON_ADDRESS=%s", lockerBeaconAddress);
+        console2.log("STAKING_REWARD_CONTROLLER_ADDRESS %s", stakingRewardControllerAddress);
 
         FluidLockerFactory fluidLockerFactory =
             new FluidLockerFactory(lockerBeaconAddress, IStakingRewardController(stakingRewardControllerAddress), false);
@@ -35,8 +42,7 @@ contract DeployFluidLockerFactoyrImplementation is Script {
         inputs[0] = "../tasks/show-git-rev.sh";
         inputs[1] = "forge_ffi_mode";
         try vm.ffi(inputs) returns (bytes memory res) {
-            console2.log("GIT REVISION :");
-            console2.log(string(res));
+            console2.log("GIT REVISION : %s", string(res));
         } catch {
             console2.log("!! _showGitRevision: FFI not enabled");
         }
