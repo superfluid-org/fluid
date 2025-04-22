@@ -882,7 +882,8 @@ contract FluidLockerTTETest is SFTest {
         _helperUpgradeLocker();
         _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
 
-        assertGt(FluidLocker(address(aliceLocker)).positionTokenIds(address(_pool)), 0, "tokenId should not be 0");
+        uint256 positionTokenId = FluidLocker(address(aliceLocker)).positionTokenIds(address(_pool));
+        assertGt(positionTokenId, 0, "tokenId should not be 0");
         assertEq(_weth.balanceOf(address(aliceLocker)), 0, "weth locker balance should be 0");
 
         vm.prank(FLUID_TREASURY);
@@ -925,7 +926,7 @@ contract FluidLockerTTETest is SFTest {
         assertGt(aliceSupBalanceAfter, aliceSupBalanceBefore, "alice sup balance should increase");
     }
 
-    function testV2withdrawLiquidity_removeAllLiquidity() external {
+    function testV2withdrawLiquidity_removeAllLiquidity_beforeTaxFreeWithdrawDelay() external {
         _helperUpgradeLocker();
         uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
 
@@ -999,6 +1000,127 @@ contract FluidLockerTTETest is SFTest {
             FluidLocker(address(aliceLocker)).positionTokenIds(address(_pool)),
             positionTokenIdBefore,
             "position tokenId should be the same"
+        );
+    }
+
+    function testV2withdrawLiquidity_removeAllLiquidity_afterTaxFreeWithdrawDelay() external {
+        _helperUpgradeLocker();
+        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
+
+        _helperSellSUP(makeAddr("seller"), 200000e18);
+
+        (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
+        (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, positionLiquidity);
+
+        uint256 expectedWethReceived = _pool.token0() == address(_weth) ? amount0ToRemove : amount1ToRemove;
+        uint256 expectedSupBack = _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
+
+        uint256 wethBalanceBefore = _weth.balanceOf(ALICE);
+        uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
+        uint256 supInAliceBefore = _fluidSuperToken.balanceOf(address(ALICE));
+
+        vm.warp(block.timestamp + FluidLocker(address(aliceLocker)).TAX_FREE_WITHDRAW_DELAY());
+
+        vm.prank(ALICE);
+        aliceLocker.withdrawLiquidity(LIQUIDITY_POOL_ID, positionLiquidity, amount0ToRemove, amount1ToRemove);
+
+        uint256 wethBalanceAfter = _weth.balanceOf(ALICE);
+        uint256 supInLockerAfter = _fluidSuperToken.balanceOf(address(aliceLocker));
+        uint256 supInAliceAfter = _fluidSuperToken.balanceOf(address(ALICE));
+
+        assertApproxEqAbs(
+            wethBalanceAfter,
+            wethBalanceBefore + expectedWethReceived,
+            wethBalanceAfter * 10 / 10000, // 0.1% tolerance
+            "Alice WETH balance should increase"
+        );
+        assertApproxEqAbs(
+            supInAliceAfter,
+            supInAliceBefore + expectedSupBack,
+            supInAliceAfter * 10 / 10000, // 0.1% tolerance
+            "SUP balance in Alice wallet should increase"
+        );
+
+        assertEq(supInLockerAfter, supInLockerBefore, "SUP balance in locker should not change");
+        assertEq(FluidLocker(address(aliceLocker)).positionTokenIds(address(_pool)), 0, "position tokenId should be 0");
+    }
+
+    function testV2withdrawLiquidity_removePartialLiquidity_beforeAndAfterTaxFreeWithdrawDelay(
+        uint256 liquidityPercentage
+    ) external {
+        _helperUpgradeLocker();
+        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
+
+        _helperBuySUP(makeAddr("buyer"), 10 ether);
+        _helperSellSUP(makeAddr("seller"), 200000e18);
+
+        (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
+
+        // Randomized partial liquidity removal : 1% to 99% of the liquidity
+        liquidityPercentage = uint256(bound(liquidityPercentage, 100, 9900));
+
+        uint128 liquidityToRemove = uint128((positionLiquidity * liquidityPercentage) / _BP_DENOMINATOR);
+
+        (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, liquidityToRemove);
+
+        uint256 expectedWethReceived = _pool.token0() == address(_weth) ? amount0ToRemove : amount1ToRemove;
+        uint256 expectedSupBack = _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
+
+        uint256 wethBalanceBefore = _weth.balanceOf(ALICE);
+        uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
+        uint256 positionTokenIdBefore = FluidLocker(address(aliceLocker)).positionTokenIds(address(_pool));
+
+        vm.prank(ALICE);
+        aliceLocker.withdrawLiquidity(LIQUIDITY_POOL_ID, liquidityToRemove, amount0ToRemove, amount1ToRemove);
+
+        uint256 wethBalanceAfter = _weth.balanceOf(ALICE);
+        uint256 supInLockerAfter = _fluidSuperToken.balanceOf(address(aliceLocker));
+
+        assertGt(wethBalanceAfter, wethBalanceBefore + expectedWethReceived, "WETH balance should increase");
+        assertGt(supInLockerAfter, supInLockerBefore + expectedSupBack, "SUP balance in locker should increase");
+        assertEq(
+            FluidLocker(address(aliceLocker)).positionTokenIds(address(_pool)),
+            positionTokenIdBefore,
+            "position tokenId should be the same"
+        );
+
+        (,,,,,,, positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
+
+        (amount0ToRemove, amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, positionLiquidity);
+
+        expectedWethReceived = _pool.token0() == address(_weth) ? amount0ToRemove : amount1ToRemove;
+        expectedSupBack = _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
+
+        wethBalanceBefore = _weth.balanceOf(ALICE);
+        supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
+        uint256 supInAliceBefore = _fluidSuperToken.balanceOf(address(ALICE));
+
+        vm.warp(block.timestamp + FluidLocker(address(aliceLocker)).TAX_FREE_WITHDRAW_DELAY());
+
+        vm.prank(ALICE);
+        aliceLocker.withdrawLiquidity(LIQUIDITY_POOL_ID, positionLiquidity, amount0ToRemove, amount1ToRemove);
+
+        wethBalanceAfter = _weth.balanceOf(ALICE);
+        supInLockerAfter = _fluidSuperToken.balanceOf(address(aliceLocker));
+        uint256 supInAliceAfter = _fluidSuperToken.balanceOf(address(ALICE));
+
+        assertApproxEqAbs(
+            wethBalanceAfter,
+            wethBalanceBefore + expectedWethReceived,
+            wethBalanceAfter * 10 / 10000,
+            "WETH balance should increase after tax free withdraw"
+        );
+        assertEq(supInLockerAfter, supInLockerBefore, "SUP balance in locker should not change after tax free withdraw");
+        assertApproxEqAbs(
+            supInAliceAfter,
+            supInAliceBefore + expectedSupBack,
+            supInAliceAfter * 10 / 10000,
+            "SUP balance in Alice wallet should increase after tax free withdraw"
+        );
+        assertEq(
+            FluidLocker(address(aliceLocker)).positionTokenIds(address(_pool)),
+            0,
+            "position tokenId should be deleted (position burnt)"
         );
     }
 

@@ -153,6 +153,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Liquidity operation deadline
     uint256 public constant LP_OPERATION_DEADLINE = 1 minutes;
 
+    /// @notice Tax free withdraw delay
+    uint256 public constant TAX_FREE_WITHDRAW_DELAY = 180 days;
+
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -182,6 +185,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @notice Stores the Uniswap V3 position token identifier for a given pool identifier
     mapping(address pool => uint256 positionTokenId) public positionTokenIds;
+
+    /// @notice Stores the tax free withdraw timestamp for a given position token identifier
+    mapping(uint256 positionTokenId => uint256 taxFreeWithdrawTimestamp) public positionExitTimestamps;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -438,14 +444,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         TransferHelper.safeApprove(pairedAsset, address(NONFUNGIBLE_POSITION_MANAGER), pairedAssetLPAmount);
         TransferHelper.safeApprove(address(FLUID), address(NONFUNGIBLE_POSITION_MANAGER), supLPAmount);
 
-        uint256 depositedSup;
-
-        if (_hasPosition(address(liquidityPool))) {
-            (, depositedSup) =
-                _increasePosition(positionTokenIds[address(liquidityPool)], pairedAssetLPAmount, supLPAmount);
-        } else {
-            (, depositedSup) = _createPosition(liquidityPool, pairedAssetLPAmount, supLPAmount);
-        }
+        // Create a new Uniswap V3 position
+        _createPosition(liquidityPool, pairedAssetLPAmount, supLPAmount);
     }
 
     /// @inheritdoc IFluidLocker
@@ -485,6 +485,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         // transfer the paired asset tokens back to the owner
         TransferHelper.safeTransfer(pairedAsset, lockerOwner, IERC20(pairedAsset).balanceOf(address(this)));
+
+        if (block.timestamp >= positionExitTimestamps[positionTokenId]) {
+            TransferHelper.safeTransfer(address(FLUID), lockerOwner, withdrawnSup);
+        }
     }
 
     /// @inheritdoc IFluidLocker
@@ -667,6 +671,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         // Store the position
         positionTokenIds[address(pool)] = tokenId;
+
+        // Set the tax free withdraw timestamp
+        positionExitTimestamps[tokenId] = block.timestamp + TAX_FREE_WITHDRAW_DELAY;
 
         (depositedSupAmount, depositedPairedAssetAmount) =
             _sortOutAmounts(zeroIsSup, depositedAmount0, depositedAmount1);
