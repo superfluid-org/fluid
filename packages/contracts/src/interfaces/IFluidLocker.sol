@@ -235,24 +235,21 @@ interface IFluidLocker {
 
     /**
      * @notice Provides liquidity to a liquidity pool by creating or increasing a position
-     * @param poolId The identifier of the liquidity pool to provide liquidity to
-     * @param pairedAssetAmount The amount of paired asset tokens to contribute
+     * @param ethAmount The amount of ETH to contribute
      * @param supPumpAmountMin The minimum amount of SUP tokens to receive from pumping using paired asset
      * @param supLPAmount The amount of SUP tokens to provide as liquidity
      */
-    function provideLiquidity(uint256 poolId, uint256 pairedAssetAmount, uint256 supPumpAmountMin, uint256 supLPAmount)
-        external
-        payable;
+    function provideLiquidity(uint256 ethAmount, uint256 supPumpAmountMin, uint256 supLPAmount) external payable;
 
     /**
      * @notice Withdraws liquidity from a liquidity pool
-     * @param poolId The identifier of the liquidity pool to withdraw liquidity from
+     * @param tokenId The token identifier of the position to withdraw liquidity from
      * @param liquidityToRemove The amount of liquidity to remove from the position
      * @param amount0ToRemove The amount of token0 to remove from the position
      * @param amount1ToRemove The amount of token1 to remove from the position
      */
     function withdrawLiquidity(
-        uint256 poolId,
+        uint256 tokenId,
         uint128 liquidityToRemove,
         uint256 amount0ToRemove,
         uint256 amount1ToRemove
@@ -260,9 +257,9 @@ interface IFluidLocker {
 
     /**
      * @notice Collects accumulated fees from a Uniswap V3 position
-     * @param poolId The identifier of the liquidity pool to collect fees from
-     * @return collectedAsset The amount of asset tokens collected
+     * @param tokenId The token identifier of the position to collect fees from
+     * @return collectedWeth The amount of WETH tokens collected
      * @return collectedSup The amount of SUP tokens collected
      */
-    function collectFees(uint256 poolId) external returns (uint256 collectedAsset, uint256 collectedSup);
+    function collectFees(uint256 tokenId) external returns (uint256 collectedWeth, uint256 collectedSup);
 }
