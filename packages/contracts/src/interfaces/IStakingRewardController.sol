@@ -26,6 +26,9 @@
 
 pragma solidity ^0.8.23;
 
+/* Superfluid Protocol Contracts & Interfaces */
+import { ISuperfluidPool } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+
 /**
  * @title Staking Reward Controller Contract Interface
  * @author Superfluid
@@ -42,6 +45,9 @@ interface IStakingRewardController {
     /// @notice Event emitted when locker updates their units from staking or unstaking
     event UpdatedStakersUnits(address indexed staker, uint128 indexed totalStakerUnits);
 
+    /// @notice Event emitted when locker updates their units from providing or withdrawingliquidity
+    event UpdatedLiquidityProviderUnits(address indexed liquidityProvider, uint128 indexed totalLiquidityProviderUnits);
+
     /// @notice Event emitted when the subsidy flowrate is updated
     event SubsidyFlowRateUpdated(int96 indexed newSubsidyFlowRate);
 
@@ -53,6 +59,26 @@ interface IStakingRewardController {
 
     /// @notice Event emitted when a Locker is approved
     event LockerApproved(address indexed approvedLocker);
+
+    /// @notice Event emitted when the tax allocation is updated
+    event TaxAllocationUpdated(uint128 stakerAllocation, uint128 liquidityProviderAllocation);
+
+    //      ____        __        __
+    //     / __ \____ _/ /_____ _/ /___  ______  ___  _____
+    //    / / / / __ `/ __/ __ `/ __/ / / / __ \/ _ \/ ___/
+    //   / /_/ / /_/ / /_/ /_/ / /_/ /_/ / /_/ /  __(__  )
+    //  /_____/\__,_/\__/\__,_/\__/\__, / .___/\___/____/
+    //                            /____/_/
+
+    /**
+     * @notice Tax Allocation Data Type
+     * @param stakerAllocation staker allocation (expressed in basis points)
+     * @param liquidityProviderAllocation liquidity provider allocation (expressed in basis points)
+     */
+    struct TaxAllocation {
+        uint128 stakerAllocation;
+        uint128 liquidityProviderAllocation;
+    }
 
     //     ______           __                     ______
     //    / ____/_  _______/ /_____  ____ ___     / ____/_____________  __________
@@ -86,6 +112,13 @@ interface IStakingRewardController {
     function updateStakerUnits(uint256 lockerStakedBalance) external;
 
     /**
+     * @notice Update the caller's (liquidity provider) units within the GDA Penalty Pool
+     * @dev Only approved lockers can perform this operation
+     * @param lockerLiquidityBalance locker's new liquidity balance amount
+     */
+    function updateLiquidityProviderUnits(uint256 lockerLiquidityBalance) external;
+
+    /**
      * @notice Update the Locker Factory contract address
      * @dev Only the contract owner can perform this operation
      * @param lockerFactoryAddress Locker Factory contract address to be set
@@ -101,9 +134,47 @@ interface IStakingRewardController {
 
     /**
      * @notice Upgrade this proxy logic
-     * @dev Only the owner address can perform this operation
+     * @dev Only the contract owner can perform this operation
      * @param newImplementation new logic contract address
      * @param data calldata for potential initializer
      */
     function upgradeTo(address newImplementation, bytes calldata data) external;
+
+    /**
+     * @notice Set the tax allocation
+     * @dev Only the contract owner can perform this operation
+     * @param stakerAllocation staker allocation percentage (expressed in basis points)
+     * @param liquidityProviderAllocation liquidity provider allocation percentage (expressed in basis points)
+     */
+    function setTaxAllocation(uint128 stakerAllocation, uint128 liquidityProviderAllocation) external;
+
+    /**
+     * @notice Distribute the adjustment tax amount to the staker and liquidity provider pools
+     */
+    function distributeTaxAdjustment() external;
+
+    //   _    ___                 ______                 __  _
+    //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
+    //  | | / / / _ \ | /| / /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //  | |/ / /  __/ |/ |/ /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    /**
+     * @notice Get the tax allocation
+     * @return stakerAllocation staker allocation percentage (expressed in basis points)
+     * @return liquidityProviderAllocation liquidity provider allocation percentage (expressed in basis points)
+     */
+    function getTaxAllocation() external view returns (uint128 stakerAllocation, uint128 liquidityProviderAllocation);
+
+    /**
+     * @notice Get the tax distribution pool
+     * @return taxDistributionPool tax distribution pool
+     */
+    function taxDistributionPool() external view returns (ISuperfluidPool taxDistributionPool);
+
+    /**
+     * @notice Get the provider distribution pool
+     * @return providerDistributionPool provider distribution pool
+     */
+    function providerDistributionPool() external view returns (ISuperfluidPool providerDistributionPool);
 }
