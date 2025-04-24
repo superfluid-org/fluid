@@ -100,7 +100,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     ISuperToken public immutable FLUID;
 
     /// @notice Superfluid GDA Tax Distribution Pool interface
-    ISuperfluidPool public immutable TAX_DISTRIBUTION_POOL;
+    ISuperfluidPool public immutable STAKER_DISTRIBUTION_POOL;
+
+    /// @notice Superfluid GDA Provider Distribution Pool interface
+    ISuperfluidPool public immutable PROVIDER_DISTRIBUTION_POOL;
 
     /// @notice Distribution Program Manager interface
     IEPProgramManager public immutable EP_PROGRAM_MANAGER;
@@ -197,15 +200,16 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /**
      * @notice Locker contract constructor
      * @param fluid FLUID SuperToken contract interface
-     * @param taxDistributionPool Tax Distribution Pool GDA contract interface
      * @param programManager Ecosystem Partner Program Manager contract interface
      * @param stakingRewardController Staking Reward Controller contract interface
      * @param fontaineBeacon Fontaine Beacon contract address
      * @param isUnlockAvailable True if the unlock is available, false otherwise
+     * @param nonfungiblePositionManager Nonfungible Position Manager contract interface
+     * @param ethSupPool ETH/SUP Uniswap V3 Pool contract interface
+     * @param swapRouter Uniswap V3 Swap Router contract interface
      */
     constructor(
         ISuperToken fluid,
-        ISuperfluidPool taxDistributionPool,
         IEPProgramManager programManager,
         IStakingRewardController stakingRewardController,
         address fontaineBeacon,
@@ -220,9 +224,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Sets immutable states
         UNLOCK_AVAILABLE = isUnlockAvailable;
         FLUID = fluid;
-        TAX_DISTRIBUTION_POOL = taxDistributionPool;
         EP_PROGRAM_MANAGER = programManager;
         STAKING_REWARD_CONTROLLER = stakingRewardController;
+        PROVIDER_DISTRIBUTION_POOL = stakingRewardController.providerDistributionPool();
+        STAKER_DISTRIBUTION_POOL = stakingRewardController.taxDistributionPool();
 
         // Sets the Fontaine beacon address
         FONTAINE_BEACON = UpgradeableBeacon(fontaineBeacon);
@@ -319,9 +324,16 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             revert INSUFFICIENT_AVAILABLE_BALANCE();
         }
 
-        // Ensure that the tax distribution pools has at least one unit distributed
-        if (TAX_DISTRIBUTION_POOL.getTotalUnits() == 0) {
-            revert TAX_DISTRIBUTION_POOL_HAS_NO_UNITS();
+        // Check if there will be a tax distribution event
+        if (unlockPeriod < _MAX_UNLOCK_PERIOD) {
+            // Ensure that the tax distribution pools have at least one unit distributed
+            if (STAKER_DISTRIBUTION_POOL.getTotalUnits() == 0) {
+                revert STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS();
+            }
+
+            if (PROVIDER_DISTRIBUTION_POOL.getTotalUnits() == 0) {
+                revert PROVIDER_DISTRIBUTION_POOL_HAS_NO_UNITS();
+            }
         }
 
         if (unlockPeriod == 0) {
@@ -335,9 +347,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     function stake(uint256 amountToStake) external nonReentrant onlyLockerOwner unlockAvailable {
         if (amountToStake > getAvailableBalance()) revert INSUFFICIENT_AVAILABLE_BALANCE();
 
-        if (!FLUID.isMemberConnected(address(TAX_DISTRIBUTION_POOL), address(this))) {
+        if (!FLUID.isMemberConnected(address(STAKER_DISTRIBUTION_POOL), address(this))) {
             // Connect this locker to the Tax Distribution Pool
-            FLUID.connectPool(TAX_DISTRIBUTION_POOL);
+            FLUID.connectPool(STAKER_DISTRIBUTION_POOL);
         }
 
         // Update staked balance
@@ -370,7 +382,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         STAKING_REWARD_CONTROLLER.updateStakerUnits(_stakedBalance);
 
         // Disconnect this locker from the Tax Distribution Pool
-        FLUID.disconnectPool(TAX_DISTRIBUTION_POOL);
+        FLUID.disconnectPool(STAKER_DISTRIBUTION_POOL);
 
         emit FluidUnstaked();
     }
@@ -558,11 +570,19 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Calculate instant unlock penalty amount
         uint256 penaltyAmount = (amountToUnlock * _INSTANT_UNLOCK_PENALTY_BP) / BP_DENOMINATOR;
 
-        // Distribute penalty to staker (connected to the TAX_DISTRIBUTION_POOL)
-        uint256 actualPenaltyAmount = FLUID.distribute(address(this), TAX_DISTRIBUTION_POOL, penaltyAmount);
+        (, uint256 providerAllocation) = STAKING_REWARD_CONTROLLER.getTaxAllocation();
+
+        // Distribute penalty to provider (connected to the PROVIDER_DISTRIBUTION_POOL)
+        uint256 actualProviderDistributionAmount = FLUID.distribute(
+            address(this), PROVIDER_DISTRIBUTION_POOL, penaltyAmount * providerAllocation / BP_DENOMINATOR
+        );
+
+        // Distribute penalty to staker (connected to the STAKER_DISTRIBUTION_POOL)
+        uint256 actualStakerDistributionAmount =
+            FLUID.distribute(address(this), STAKER_DISTRIBUTION_POOL, penaltyAmount - actualProviderDistributionAmount);
 
         // Transfer the leftover $FLUID to the locker owner
-        FLUID.transfer(recipient, amountToUnlock - actualPenaltyAmount);
+        FLUID.transfer(recipient, amountToUnlock - actualProviderDistributionAmount - actualStakerDistributionAmount);
 
         emit FluidUnlocked(0, amountToUnlock, recipient, address(0));
     }
