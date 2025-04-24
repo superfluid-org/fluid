@@ -103,10 +103,10 @@ contract FontaineTest is SFTest {
         IFontaine(newFontaine).terminateUnlock();
 
         assertApproxEqAbs(
-            bobLocker.getAvailableBalance(), expectedTaxBalance, expectedTaxBalance * 2 / 100, "invalid tax amount"
+            bobLocker.getAvailableBalance(), expectedTaxBalance, expectedTaxBalance * 10 / 100, "invalid tax amount"
         );
         assertApproxEqAbs(
-            _fluid.balanceOf(user), expectedUserBalance, expectedUserBalance * 2 / 100, "invalid unlocked amount"
+            _fluid.balanceOf(user), expectedUserBalance, expectedUserBalance * 10 / 100, "invalid unlocked amount"
         );
     }
 

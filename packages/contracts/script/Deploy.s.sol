@@ -50,7 +50,6 @@ function _deployFontaineBeacon(ISuperToken fluid, ISuperfluidPool taxDistributio
 
 function _deployLockerBeacon(
     DeploySettings memory settings,
-    ISuperfluidPool taxDistributionPool,
     address programManagerAddress,
     address stakingRewardControllerAddress,
     address fontaineBeaconAddress
@@ -59,7 +58,6 @@ function _deployLockerBeacon(
     lockerLogicAddress = address(
         new FluidLocker(
             settings.fluid,
-            taxDistributionPool,
             IEPProgramManager(programManagerAddress),
             IStakingRewardController(stakingRewardControllerAddress),
             fontaineBeaconAddress,
@@ -152,7 +150,6 @@ function _deployAll(DeploySettings memory settings) returns (DeployedContracts m
     // Deploy the Fluid Locker Implementation and associated Beacon contract
     (deployedContracts.lockerLogicAddress, deployedContracts.lockerBeaconAddress) = _deployLockerBeacon(
         settings,
-        taxDistributionPool,
         deployedContracts.programManagerProxyAddress,
         deployedContracts.stakingRewardControllerProxyAddress,
         deployedContracts.fontaineBeaconAddress

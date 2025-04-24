@@ -210,7 +210,7 @@ contract FluidLockerTest is SFTest {
         _helperFundLocker(address(aliceLocker), fundingAmount);
 
         vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        vm.expectRevert(IFluidLocker.STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
         aliceLocker.unlock(unlockAmount, 0, ALICE);
 
         _helperBobStaking();
@@ -234,7 +234,7 @@ contract FluidLockerTest is SFTest {
 
         uint256 expectedPenalty = ISuperToken(address(_fluidSuperToken)).estimateDistributionActualAmount(
             address(aliceLocker),
-            FluidLocker(address(aliceLocker)).TAX_DISTRIBUTION_POOL(),
+            FluidLocker(address(aliceLocker)).STAKER_DISTRIBUTION_POOL(),
             (unlockAmount * _INSTANT_UNLOCK_PENALTY_BP) / _BP_DENOMINATOR
         );
         uint256 expectedTransfer = unlockAmount - expectedPenalty;
@@ -258,7 +258,7 @@ contract FluidLockerTest is SFTest {
         _helperFundLocker(address(aliceLocker), funding);
 
         vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        vm.expectRevert(IFluidLocker.STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
         aliceLocker.unlock(funding, unlockPeriod, ALICE);
 
         _helperBobStaking();
@@ -285,7 +285,7 @@ contract FluidLockerTest is SFTest {
             "incorrect unlock flowrate"
         );
         assertApproxEqAbs(
-            FluidLocker(address(aliceLocker)).TAX_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
+            FluidLocker(address(aliceLocker)).STAKER_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
             taxFlowRate,
             funding / 1e16,
             "incorrect tax flowrate"
@@ -471,7 +471,6 @@ contract FluidLockerTTETest is SFTest {
         _nonUnlockableLockerLogic = address(
             new FluidLocker(
                 _fluid,
-                _stakingRewardController.taxDistributionPool(),
                 IEPProgramManager(address(_programManager)),
                 IStakingRewardController(address(_stakingRewardController)),
                 address(_fontaineLogic),
@@ -588,7 +587,7 @@ contract FluidLockerTTETest is SFTest {
         _helperUpgradeLocker();
 
         vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        vm.expectRevert(IFluidLocker.STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
         aliceLocker.unlock(unlockAmount, 0, ALICE);
 
         _helperBobStaking();
@@ -612,7 +611,7 @@ contract FluidLockerTTETest is SFTest {
 
         uint256 expectedPenalty = ISuperToken(address(_fluidSuperToken)).estimateDistributionActualAmount(
             address(aliceLocker),
-            FluidLocker(address(aliceLocker)).TAX_DISTRIBUTION_POOL(),
+            FluidLocker(address(aliceLocker)).STAKER_DISTRIBUTION_POOL(),
             (unlockAmount * _INSTANT_UNLOCK_PENALTY_BP) / _BP_DENOMINATOR
         );
         uint256 expectedTransfer = unlockAmount - expectedPenalty;
@@ -651,7 +650,7 @@ contract FluidLockerTTETest is SFTest {
         _helperUpgradeLocker();
 
         vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.TAX_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        vm.expectRevert(IFluidLocker.STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
         aliceLocker.unlock(funding, unlockPeriod, ALICE);
 
         _helperBobStaking();
@@ -668,7 +667,7 @@ contract FluidLockerTTETest is SFTest {
             "incorrect unlock flowrate"
         );
         assertApproxEqAbs(
-            FluidLocker(address(aliceLocker)).TAX_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
+            FluidLocker(address(aliceLocker)).STAKER_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
             taxFlowRate,
             funding / 1e16,
             "incorrect tax flowrate"
@@ -1182,7 +1181,6 @@ contract FluidLockerLayoutTest is FluidLocker {
     constructor()
         FluidLocker(
             ISuperToken(address(0)),
-            ISuperfluidPool(address(0)),
             IEPProgramManager(address(0)),
             IStakingRewardController(address(0)),
             address(0),
