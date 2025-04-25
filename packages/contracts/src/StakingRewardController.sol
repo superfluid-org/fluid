@@ -133,8 +133,14 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
         PoolConfig memory poolConfig =
             PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
 
-        // Create Superfluid GDA Pool
+        // Create Staker Superfluid GDA Pool
         taxDistributionPool = FLUID.createPool(address(this), poolConfig);
+
+        // Create LP Superfluid GDA Pool
+        providerDistributionPool = FLUID.createPool(address(this), poolConfig);
+
+        taxAllocation.stakerAllocation = 1_000;
+        taxAllocation.liquidityProviderAllocation = 9_000;
     }
 
     //      ______     __                        __   ______                 __  _
