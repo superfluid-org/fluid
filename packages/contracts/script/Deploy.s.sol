@@ -36,11 +36,14 @@ struct DeploySettings {
     IUniswapV3Pool ethSupPool;
 }
 
-function _deployFontaineBeacon(ISuperToken fluid, ISuperfluidPool taxDistributionPool, address governor)
-    returns (address fontaineLogicAddress, address fontaineBeaconAddress)
-{
+function _deployFontaineBeacon(
+    ISuperToken fluid,
+    ISuperfluidPool stakerDistributionPool,
+    ISuperfluidPool providerDistributionPool,
+    address governor
+) returns (address fontaineLogicAddress, address fontaineBeaconAddress) {
     // Deploy the Fontaine Implementation and associated Beacon contract
-    fontaineLogicAddress = address(new Fontaine(fluid, taxDistributionPool));
+    fontaineLogicAddress = address(new Fontaine(fluid, stakerDistributionPool, providerDistributionPool));
     UpgradeableBeacon fontaineBeacon = new UpgradeableBeacon(fontaineLogicAddress);
     fontaineBeaconAddress = address(fontaineBeacon);
 
@@ -84,6 +87,7 @@ function _deployStakingRewardController(ISuperToken fluid, address owner)
     ERC1967Proxy stakingRewardControllerProxy = new ERC1967Proxy(
         stakingRewardControllerLogicAddress, abi.encodeWithSelector(StakingRewardController.initialize.selector, owner)
     );
+
     stakingRewardControllerProxyAddress = address(stakingRewardControllerProxy);
 }
 
@@ -136,16 +140,19 @@ function _deployAll(DeploySettings memory settings) returns (DeployedContracts m
     (deployedContracts.stakingRewardControllerLogicAddress, deployedContracts.stakingRewardControllerProxyAddress) =
         _deployStakingRewardController(settings.fluid, settings.deployer);
 
-    ISuperfluidPool taxDistributionPool =
+    ISuperfluidPool stakerDistributionPool =
         StakingRewardController(deployedContracts.stakingRewardControllerProxyAddress).taxDistributionPool();
+
+    ISuperfluidPool providerDistributionPool =
+        StakingRewardController(deployedContracts.stakingRewardControllerProxyAddress).providerDistributionPool();
 
     // Deploy Ecosystem Partner Program Manager
     (deployedContracts.programManagerLogicAddress, deployedContracts.programManagerProxyAddress) =
-        _deployFluidEPProgramManager(settings.deployer, settings.treasury, taxDistributionPool);
+        _deployFluidEPProgramManager(settings.deployer, settings.treasury, stakerDistributionPool);
 
     // Deploy the Fontaine Implementation and associated Beacon contract
     (deployedContracts.fontaineLogicAddress, deployedContracts.fontaineBeaconAddress) =
-        _deployFontaineBeacon(settings.fluid, taxDistributionPool, settings.governor);
+        _deployFontaineBeacon(settings.fluid, stakerDistributionPool, providerDistributionPool, settings.governor);
 
     // Deploy the Fluid Locker Implementation and associated Beacon contract
     (deployedContracts.lockerLogicAddress, deployedContracts.lockerBeaconAddress) = _deployLockerBeacon(

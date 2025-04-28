@@ -59,8 +59,11 @@ contract Fontaine is Initializable, IFontaine {
     /// @notice $FLUID SuperToken interface
     ISuperToken public immutable FLUID;
 
-    /// @notice Superfluid pool interface
-    ISuperfluidPool public immutable TAX_DISTRIBUTION_POOL;
+    /// @notice Superfluid pool interface for staker distribution
+    ISuperfluidPool public immutable STAKER_DISTRIBUTION_POOL;
+
+    /// @notice Superfluid pool interface for provider distribution
+    ISuperfluidPool public immutable PROVIDER_DISTRIBUTION_POOL;
 
     /// @notice Constant used to calculate the earliest date an unlock can be terminated
     uint256 public constant EARLY_END = 1 days;
@@ -86,15 +89,17 @@ contract Fontaine is Initializable, IFontaine {
     /**
      * @notice Fontaine contract constructor
      * @param fluid FLUID SuperToken interface
-     * @param taxDistributionPool Tax Distribution Pool GDA contract address
+     * @param stakerDistributionPool Tax Distribution Pool GDA contract address
+     * @param providerDistributionPool Provider Distribution Pool GDA contract address
      */
-    constructor(ISuperToken fluid, ISuperfluidPool taxDistributionPool) {
+    constructor(ISuperToken fluid, ISuperfluidPool stakerDistributionPool, ISuperfluidPool providerDistributionPool) {
         // Disable initializers to prevent implementation contract initalization
         _disableInitializers();
 
         // Sets immutable states
         FLUID = fluid;
-        TAX_DISTRIBUTION_POOL = taxDistributionPool;
+        STAKER_DISTRIBUTION_POOL = stakerDistributionPool;
+        PROVIDER_DISTRIBUTION_POOL = providerDistributionPool;
     }
 
     /// @inheritdoc IFontaine
@@ -118,7 +123,7 @@ contract Fontaine is Initializable, IFontaine {
         unlockFlowRate = uint96(targetUnlockFlowRate);
 
         // Distribute Tax flow to Staker GDA Pool
-        FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, targetTaxFlowRate);
+        FLUID.distributeFlow(address(this), STAKER_DISTRIBUTION_POOL, targetTaxFlowRate);
 
         // Create the unlocking flow from the Fontaine to the locker owner
         FLUID.flow(unlockRecipient, targetUnlockFlowRate);
@@ -138,12 +143,12 @@ contract Fontaine is Initializable, IFontaine {
         }
 
         // Stops the streams by updating the flowrates to 0
-        FLUID.distributeFlow(address(this), TAX_DISTRIBUTION_POOL, 0);
+        FLUID.distributeFlow(address(this), STAKER_DISTRIBUTION_POOL, 0);
         FLUID.flow(recipient, 0);
 
         // Transfer the remainders (tax + unlock)
         if (taxEarlyEndCompensation > 0) {
-            FLUID.distribute(address(this), TAX_DISTRIBUTION_POOL, taxEarlyEndCompensation);
+            FLUID.distribute(address(this), STAKER_DISTRIBUTION_POOL, taxEarlyEndCompensation);
         }
 
         uint256 leftoverBalance = FLUID.balanceOf(address(this));

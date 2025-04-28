@@ -56,11 +56,11 @@ contract FontaineTest is SFTest {
         assertEq(Fontaine(newFontaine).unlockFlowRate(), uint96(unlockFlowRate), "unlock flow rate incorreclty set");
 
         (, int96 actualTaxFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            newFontaine, Fontaine(newFontaine).TAX_DISTRIBUTION_POOL(), taxFlowRate
+            newFontaine, Fontaine(newFontaine).STAKER_DISTRIBUTION_POOL(), taxFlowRate
         );
 
         assertEq(
-            _fluid.getFlowDistributionFlowRate(newFontaine, Fontaine(newFontaine).TAX_DISTRIBUTION_POOL()),
+            _fluid.getFlowDistributionFlowRate(newFontaine, Fontaine(newFontaine).STAKER_DISTRIBUTION_POOL()),
             actualTaxFlowRate,
             "incorrect tax flowrate"
         );
@@ -173,7 +173,7 @@ contract FontaineTest is SFTest {
 }
 
 contract FontaineLayoutTest is Fontaine {
-    constructor() Fontaine(ISuperToken(address(0)), ISuperfluidPool(address(0))) { }
+    constructor() Fontaine(ISuperToken(address(0)), ISuperfluidPool(address(0)), ISuperfluidPool(address(0))) { }
 
     function testStorageLayout() external pure {
         uint256 slot;
