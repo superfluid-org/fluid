@@ -40,8 +40,10 @@ contract FontaineTest is SFTest {
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
         unlockAmount = bound(unlockAmount, 1e18, 100_000_000e18);
 
-        _helperBobStaking();
-        (int96 taxFlowRate, int96 unlockFlowRate) = _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
+        _helperLockerStake(address(bobLocker));
+
+        (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate) =
+            _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
 
         address newFontaine = _helperCreateFontaine();
 
@@ -49,20 +51,33 @@ contract FontaineTest is SFTest {
         vm.prank(FLUID_TREASURY);
         _fluid.transfer(newFontaine, unlockAmount);
 
-        IFontaine(newFontaine).initialize(user, unlockFlowRate, taxFlowRate, unlockPeriod);
+        IFontaine(newFontaine).initialize(user, unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod);
 
         assertEq(Fontaine(newFontaine).endDate(), uint128(block.timestamp) + unlockPeriod, "end date incorreclty set");
-        assertEq(Fontaine(newFontaine).taxFlowRate(), uint96(taxFlowRate), "tax flow rate incorreclty set");
+        assertEq(
+            Fontaine(newFontaine).providerFlowRate(), uint96(providerFlowRate), "provider flow rate incorreclty set"
+        );
+        assertEq(Fontaine(newFontaine).stakerFlowRate(), uint96(stakerFlowRate), "staker flow rate incorreclty set");
         assertEq(Fontaine(newFontaine).unlockFlowRate(), uint96(unlockFlowRate), "unlock flow rate incorreclty set");
 
-        (, int96 actualTaxFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            newFontaine, Fontaine(newFontaine).STAKER_DISTRIBUTION_POOL(), taxFlowRate
+        (, int96 actualStakerFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
+            newFontaine, Fontaine(newFontaine).STAKER_DISTRIBUTION_POOL(), stakerFlowRate
+        );
+
+        (, int96 actualProviderFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
+            newFontaine, Fontaine(newFontaine).PROVIDER_DISTRIBUTION_POOL(), providerFlowRate
         );
 
         assertEq(
             _fluid.getFlowDistributionFlowRate(newFontaine, Fontaine(newFontaine).STAKER_DISTRIBUTION_POOL()),
-            actualTaxFlowRate,
-            "incorrect tax flowrate"
+            actualStakerFlowRate,
+            "incorrect staker flowrate"
+        );
+
+        assertEq(
+            _fluid.getFlowDistributionFlowRate(newFontaine, Fontaine(newFontaine).PROVIDER_DISTRIBUTION_POOL()),
+            actualProviderFlowRate,
+            "incorrect provider flowrate"
         );
 
         assertEq(_fluid.getFlowRate(newFontaine, user), unlockFlowRate, "incorrect unlock flowrate");
@@ -79,23 +94,24 @@ contract FontaineTest is SFTest {
         terminationDelay = uint128(bound(terminationDelay, 4 hours, 1 days));
         tooEarlyDelay = uint128(bound(tooEarlyDelay, 25 hours, unlockPeriod));
 
-        _helperBobStaking();
+        _helperLockerStake(address(bobLocker));
 
         // Setup & Start Fontaine
-        (int96 taxFlowRate, int96 unlockFlowRate) = _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
+        (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate) =
+            _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
+
         address newFontaine = _helperCreateFontaine();
         address user = makeAddr("user");
+
         vm.prank(FLUID_TREASURY);
         _fluid.transfer(newFontaine, unlockAmount);
-        IFontaine(newFontaine).initialize(user, unlockFlowRate, taxFlowRate, unlockPeriod);
+        IFontaine(newFontaine).initialize(user, unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod);
 
-        uint256 expectedTaxBalance = uint96(taxFlowRate) * unlockPeriod;
-        uint256 expectedUserBalance = uint96(unlockFlowRate) * unlockPeriod;
+        uint256 expectedStakerBalance = uint96(stakerFlowRate) * unlockPeriod;
 
-        uint256 tooEarlyEndDate = block.timestamp + unlockPeriod - tooEarlyDelay;
         uint256 earlyEndDate = block.timestamp + unlockPeriod - terminationDelay;
 
-        vm.warp(tooEarlyEndDate);
+        vm.warp(block.timestamp + unlockPeriod - tooEarlyDelay);
         vm.expectRevert(IFontaine.TOO_EARLY_TO_TERMINATE_UNLOCK.selector);
         IFontaine(newFontaine).terminateUnlock();
 
@@ -103,10 +119,16 @@ contract FontaineTest is SFTest {
         IFontaine(newFontaine).terminateUnlock();
 
         assertApproxEqAbs(
-            bobLocker.getAvailableBalance(), expectedTaxBalance, expectedTaxBalance * 10 / 100, "invalid tax amount"
+            bobLocker.getAvailableBalance(),
+            uint96(providerFlowRate) * unlockPeriod,
+            bobLocker.getAvailableBalance() * 10 / 100,
+            "invalid provider amount"
         );
         assertApproxEqAbs(
-            _fluid.balanceOf(user), expectedUserBalance, expectedUserBalance * 10 / 100, "invalid unlocked amount"
+            _fluid.balanceOf(user),
+            uint96(unlockFlowRate) * unlockPeriod,
+            _fluid.balanceOf(user) * 10 / 100,
+            "invalid unlocked amount"
         );
     }
 
@@ -122,9 +144,19 @@ contract FontaineTest is SFTest {
 
         address user = makeAddr("user");
         (int96 unlockFlowRate, int96 taxFlowRate) = calculateVestUnlockFlowRates(unlockAmount, unlockPeriod);
-        assertEq(taxFlowRate, 0, "tax flow rate shall be 0");
 
-        IFontaine(newFontaine).initialize(user, unlockFlowRate, taxFlowRate, unlockPeriod);
+        // Calculate the tax allocation split between provider and staker
+        (, uint256 providerAllocation) = _stakingRewardController.getTaxAllocation();
+
+        int96 providerFlowRate =
+            (taxFlowRate * int256(providerAllocation).toInt96()) / int256(_BP_DENOMINATOR).toInt96();
+        int96 stakerFlowRate = taxFlowRate - providerFlowRate;
+
+        assertEq(taxFlowRate, 0, "tax flow rate shall be 0");
+        assertEq(stakerFlowRate, 0, "staker flow rate shall be 0");
+        assertEq(providerFlowRate, 0, "provider flow rate shall be 0");
+
+        IFontaine(newFontaine).initialize(user, unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod);
 
         uint256 halfwayUnlockPeriod = block.timestamp + 270 days;
         uint256 afterEndUnlockPeriod = block.timestamp + 542 days;
@@ -147,11 +179,12 @@ contract FontaineTest is SFTest {
         assertEq(_fluid.balanceOf(newFontaine), 0);
     }
 
-    function _helperBobStaking() internal {
-        _helperFundLocker(address(bobLocker), 10_000e18);
-        vm.prank(BOB);
-        bobLocker.stake(10_000e18);
-    }
+    //      __  __     __                   ______                 __  _
+    //     / / / /__  / /___  ___  _____   / ____/_  ______  _____/ /_(_)___  ____  _____
+    //    / /_/ / _ \/ / __ \/ _ \/ ___/  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //   / __  /  __/ / /_/ /  __/ /     / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    //  /_/ /_/\___/_/ .___/\___/_/     /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+    //              /_/
 
     function _helperCreateFontaine() internal returns (address newFontaine) {
         newFontaine = address(new BeaconProxy(address(_fontaineBeacon), ""));
@@ -159,8 +192,8 @@ contract FontaineTest is SFTest {
 
     function _helperCalculateUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)
         internal
-        pure
-        returns (int96 taxFlowRate, int96 unlockFlowRate)
+        view
+        returns (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate)
     {
         int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
 
@@ -168,7 +201,13 @@ contract FontaineTest is SFTest {
             (2_000 + ((8_000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(365 days * _SCALER)));
 
         unlockFlowRate = (globalFlowRate * int256(unlockingPercentageBP)).toInt96() / int256(_BP_DENOMINATOR).toInt96();
-        taxFlowRate = globalFlowRate - unlockFlowRate;
+        int96 taxFlowRate = globalFlowRate - unlockFlowRate;
+
+        // Calculate the tax allocation split between provider and staker
+        (, uint256 providerAllocation) = _stakingRewardController.getTaxAllocation();
+
+        providerFlowRate = (taxFlowRate * int256(providerAllocation).toInt96()) / int256(_BP_DENOMINATOR).toInt96();
+        stakerFlowRate = taxFlowRate - providerFlowRate;
     }
 }
 

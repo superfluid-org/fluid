@@ -29,7 +29,7 @@ import { TickMath } from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
 
-contract FluidLockerBaseTest is SFTest {
+abstract contract FluidLockerBaseTest is SFTest {
     uint256 public constant PROGRAM_0 = 1;
     uint256 public constant PROGRAM_1 = 2;
     uint256 public constant PROGRAM_2 = 3;
@@ -74,12 +74,6 @@ contract FluidLockerBaseTest is SFTest {
     //  /_/ /_/\___/_/ .___/\___/_/     /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
     //              /_/
 
-    function _helperBobStaking() internal {
-        _helperFundLocker(address(bobLocker), 10_000e18);
-        vm.prank(BOB);
-        bobLocker.stake(10_000e18);
-    }
-
     function _helperCalculateUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)
         internal
         pure
@@ -103,21 +97,6 @@ contract FluidLockerBaseTest is SFTest {
 
         (amount0, amount1) =
             LiquidityAmounts.getAmountsForLiquidity(sqrtPriceX96, sqrtRatioLowerX96, sqrtRatioHigherX96, liquidity);
-    }
-
-    function _helperCreatePosition(address locker, uint256 wethAmount, uint256 supPumpAmount, uint256 supAmount)
-        internal
-        returns (uint256 positionTokenId)
-    {
-        vm.prank(FLUID_TREASURY);
-        _fluidSuperToken.transfer(locker, supAmount);
-
-        vm.startPrank(FluidLocker(locker).lockerOwner());
-        FluidLocker(locker).provideLiquidity{ value: wethAmount }(wethAmount, supPumpAmount, supAmount);
-        vm.stopPrank();
-
-        positionTokenId =
-            _nonfungiblePositionManager.tokenOfOwnerByIndex(locker, FluidLocker(locker).activePositionCount() - 1);
     }
 
     function _helperBuySUP(address buyer, uint256 wethAmount) internal {
@@ -183,10 +162,6 @@ contract FluidLockerBaseTest is SFTest {
         amountToUser = amountToUnlock - amountToLP - amountToStaker;
 
         assertEq(amountToUser + amountToStaker + amountToLP, amountToUnlock, "invalid tax allocation split");
-    }
-
-    function _helperCarolProvideLiquidity() internal {
-        _helperCreatePosition(address(carolLocker), 1 ether, 199e18, 20000e18);
     }
 }
 
@@ -345,7 +320,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
         vm.expectRevert(IFluidLocker.STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
         aliceLocker.unlock(unlockAmount, 0, ALICE);
 
-        _helperBobStaking();
+        _helperLockerStake(address(bobLocker));
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.PROVIDER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
@@ -410,7 +385,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
         vm.expectRevert(IFluidLocker.STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
         aliceLocker.unlock(funding, unlockPeriod, ALICE);
 
-        _helperBobStaking();
+        _helperLockerStake(address(bobLocker));
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.PROVIDER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
@@ -578,6 +553,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
     }
 }
 
+// Note : this test the transition phase from non-unlockable to unlockable FluidLocker contract instances
 contract FluidLockerTTETest is FluidLockerBaseTest {
     address internal _nonUnlockableLockerLogic;
     address internal _unlockableLockerLogic;
@@ -693,13 +669,13 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         vm.expectRevert(IFluidLocker.STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
         aliceLocker.unlock(unlockAmount, 0, ALICE);
 
-        _helperBobStaking();
+        _helperLockerStake(address(bobLocker));
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.PROVIDER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
         aliceLocker.unlock(unlockAmount, 0, ALICE);
 
-        _helperCarolProvideLiquidity();
+        _helperLockerProvideLiquidity(address(carolLocker));
 
         uint256 bobLockerAvailableBalanceBefore = bobLocker.getAvailableBalance();
         uint256 carolLockerAvailableBalanceBefore = carolLocker.getAvailableBalance();
@@ -773,7 +749,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         vm.expectRevert(IFluidLocker.STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
         aliceLocker.unlock(funding, unlockPeriod, ALICE);
 
-        _helperBobStaking();
+        _helperLockerStake(address(bobLocker));
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.PROVIDER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);

@@ -289,4 +289,29 @@ contract SFTest is Test {
         vm.prank(FLUID_TREASURY);
         _fluidSuperToken.transfer(locker, amount);
     }
+
+    function _helperCreatePosition(address locker, uint256 wethAmount, uint256 supPumpAmount, uint256 supAmount)
+        internal
+        returns (uint256 positionTokenId)
+    {
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.transfer(locker, supAmount);
+
+        vm.startPrank(FluidLocker(locker).lockerOwner());
+        FluidLocker(locker).provideLiquidity{ value: wethAmount }(wethAmount, supPumpAmount, supAmount);
+        vm.stopPrank();
+
+        positionTokenId =
+            _nonfungiblePositionManager.tokenOfOwnerByIndex(locker, FluidLocker(locker).activePositionCount() - 1);
+    }
+
+    function _helperLockerProvideLiquidity(address locker) internal {
+        _helperCreatePosition(locker, 1 ether, 199e18, 20000e18);
+    }
+
+    function _helperLockerStake(address locker) internal {
+        _helperFundLocker(locker, 10_000e18);
+        vm.prank(BOB);
+        FluidLocker(locker).stake(10_000e18);
+    }
 }
