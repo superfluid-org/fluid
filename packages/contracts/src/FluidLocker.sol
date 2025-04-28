@@ -48,7 +48,6 @@ import { IEPProgramManager } from "./interfaces/IEPProgramManager.sol";
 import { IFluidLocker } from "./interfaces/IFluidLocker.sol";
 import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 import { IFontaine } from "./interfaces/IFontaine.sol";
-import { ILiquidityPoolController } from "./interfaces/ILiquidityPoolController.sol";
 
 /* Uniswap V3 Interfaces */
 import { IUniswapV3Pool } from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -190,6 +189,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @notice Stores the tax free withdraw timestamp for a given position token identifier
     mapping(uint256 positionTokenId => uint256 taxFreeWithdrawTimestamp) public positionExitTimestamps;
+
+    /// @notice Aggregated liquidity balance provided by this locker
+    uint256 private _liquidityBalance;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -648,11 +650,22 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         INonfungiblePositionManager.MintParams memory mintParams = _formatMintParams(zeroIsSup, ethAmount, supAmount);
 
         // Create the UniswapV3 position
-        (uint256 tokenId,, uint256 depositedAmount0, uint256 depositedAmount1) =
+        (uint256 tokenId, uint128 liquidity, uint256 depositedAmount0, uint256 depositedAmount1) =
             NONFUNGIBLE_POSITION_MANAGER.mint(mintParams);
 
         // Set the tax free withdraw timestamp
         positionExitTimestamps[tokenId] = block.timestamp + TAX_FREE_WITHDRAW_DELAY;
+
+        // Update the aggregated liquidity balance
+        _liquidityBalance += liquidity;
+
+        if (!FLUID.isMemberConnected(address(PROVIDER_DISTRIBUTION_POOL), address(this))) {
+            // Connect this locker to the LP Tax Distribution Pool
+            FLUID.connectPool(PROVIDER_DISTRIBUTION_POOL);
+        }
+
+        // Update the liquidity provider units
+        STAKING_REWARD_CONTROLLER.updateLiquidityProviderUnits(_liquidityBalance);
 
         (depositedSupAmount, depositedEthAmount) = _sortOutAmounts(zeroIsSup, depositedAmount0, depositedAmount1);
     }
@@ -689,6 +702,12 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         });
 
         NONFUNGIBLE_POSITION_MANAGER.decreaseLiquidity(params);
+
+        // Update the aggregated liquidity balance
+        _liquidityBalance -= liquidityToRemove;
+
+        // Update the liquidity provider units
+        STAKING_REWARD_CONTROLLER.updateLiquidityProviderUnits(_liquidityBalance);
 
         // Collect the tokens owed
         (uint256 withdrawnAmount0, uint256 withdrawnAmount1) = _collect(tokenId);
