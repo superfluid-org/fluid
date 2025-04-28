@@ -62,11 +62,17 @@ interface IFontaine {
      * @dev Fontaine contract initializer
      * @param unlockRecipient recipient account address
      * @param unlockFlowRate FLUID flow rate from this contract to the locker owner
-     * @param taxFlowRate FLUID flow rate from this contract to the tax distribution GDA pool
+     * @param targetProviderFlowRate FLUID flow rate from this contract to the provider distribution GDA pool
+     * @param targetStakerFlowRate FLUID flow rate from this contract to the staker distribution GDA pool
      * @param unlockPeriod the desired unlocking period
      */
-    function initialize(address unlockRecipient, int96 unlockFlowRate, int96 taxFlowRate, uint128 unlockPeriod)
-        external;
+    function initialize(
+        address unlockRecipient,
+        int96 unlockFlowRate,
+        int96 targetProviderFlowRate,
+        int96 targetStakerFlowRate,
+        uint128 unlockPeriod
+    ) external;
 
     /**
      * @notice Terminate the unlocking flows
