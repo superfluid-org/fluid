@@ -606,8 +606,14 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         fontaines[fontaineCount] = IFontaine(newFontaine);
         fontaineCount++;
 
+        // Calculate the tax allocation split between provider and staker
+        (, uint256 providerAllocation) = STAKING_REWARD_CONTROLLER.getTaxAllocation();
+
+        int96 providerFlowRate = (taxFlowRate * int256(providerAllocation).toInt96()) / int256(BP_DENOMINATOR).toInt96();
+        int96 stakerFlowRate = taxFlowRate - providerFlowRate;
+
         // Initialize the new Fontaine instance (this initiate the unlock process)
-        IFontaine(newFontaine).initialize(recipient, unlockFlowRate, taxFlowRate, unlockPeriod);
+        IFontaine(newFontaine).initialize(recipient, unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod);
 
         emit FluidUnlocked(unlockPeriod, amountToUnlock, recipient, newFontaine);
     }
