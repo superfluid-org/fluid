@@ -24,6 +24,7 @@ using SafeCast for int256;
 contract FontaineTest is SFTest {
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
     uint128 internal constant _MAX_UNLOCK_PERIOD = 365 days;
+    uint256 internal constant _EARLY_END_DELAY = 1 days;
     uint256 internal constant _BP_DENOMINATOR = 10_000;
     uint256 internal constant _SCALER = 1e18;
 
@@ -41,6 +42,7 @@ contract FontaineTest is SFTest {
     }
 
     function testInitialize(uint128 unlockPeriod, uint256 unlockAmount) external {
+        // Bound Fuzz Parameters
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
         unlockAmount = bound(unlockAmount, 1e18, 100_000_000e18);
 
@@ -93,25 +95,33 @@ contract FontaineTest is SFTest {
         uint128 terminationDelay,
         uint128 tooEarlyDelay
     ) external {
+        // Bound Fuzz Parameters
+        /// NOTE : issues will arise if the unlock amount is too low (less than 10 SUP)
+        unlockAmount = bound(unlockAmount, 10e18, 100_000_000e18);
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
-        unlockAmount = bound(unlockAmount, 1e18, 100_000_000e18);
-        terminationDelay = uint128(bound(terminationDelay, 4 hours, 1 days));
+        terminationDelay = uint128(bound(terminationDelay, 4 hours, _EARLY_END_DELAY));
         tooEarlyDelay = uint128(bound(tooEarlyDelay, 25 hours, unlockPeriod));
 
+        // Setup Stakers and Liquidity Providers
         _helperLockerStake(address(bobLocker));
+        _helperLockerProvideLiquidity(address(carolLocker));
 
         // Setup & Start Fontaine
         (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate) =
             _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
 
-        address newFontaine = _helperCreateFontaine();
-        address user = makeAddr("user");
+        uint256 expectedProviderBalance = carolLocker.getAvailableBalance() + (uint96(providerFlowRate) * unlockPeriod);
+        uint256 expectedStakerBalance = bobLocker.getAvailableBalance() + (uint96(stakerFlowRate) * unlockPeriod);
 
+        // Create and fund the Fontaine
+        address newFontaine = _helperCreateFontaine();
         vm.prank(FLUID_TREASURY);
         _fluid.transfer(newFontaine, unlockAmount);
-        IFontaine(newFontaine).initialize(user, unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod);
 
-        uint256 expectedStakerBalance = uint96(stakerFlowRate) * unlockPeriod;
+        // Initialize the Fontaine
+        IFontaine(newFontaine).initialize(
+            makeAddr("user"), unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod
+        );
 
         uint256 earlyEndDate = block.timestamp + unlockPeriod - terminationDelay;
 
@@ -124,15 +134,23 @@ contract FontaineTest is SFTest {
 
         assertApproxEqAbs(
             bobLocker.getAvailableBalance(),
-            uint96(providerFlowRate) * unlockPeriod,
-            bobLocker.getAvailableBalance() * 10 / 100,
-            "invalid provider amount"
+            expectedStakerBalance,
+            expectedStakerBalance * 10 / 100,
+            "Staker balance incorrect"
         );
+
         assertApproxEqAbs(
-            _fluid.balanceOf(user),
+            carolLocker.getAvailableBalance(),
+            expectedProviderBalance,
+            expectedProviderBalance * 10 / 100,
+            "Provider balance incorrect"
+        );
+
+        assertApproxEqAbs(
+            _fluid.balanceOf(makeAddr("user")),
             uint96(unlockFlowRate) * unlockPeriod,
-            _fluid.balanceOf(user) * 10 / 100,
-            "invalid unlocked amount"
+            (uint96(unlockFlowRate) * unlockPeriod) * 10 / 100,
+            "Unlocked amount incorrect"
         );
     }
 
