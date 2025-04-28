@@ -28,59 +28,63 @@ contract FontaineTest is SFTest {
     uint256 internal constant _SCALER = 1e18;
 
     IFluidLocker public bobLocker;
+    IFluidLocker public carolLocker;
 
     function setUp() public virtual override {
         super.setUp();
 
         vm.prank(BOB);
         bobLocker = IFluidLocker(_fluidLockerFactory.createLockerContract());
+
+        vm.prank(CAROL);
+        carolLocker = IFluidLocker(_fluidLockerFactory.createLockerContract());
     }
 
     function testInitialize(uint128 unlockPeriod, uint256 unlockAmount) external {
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
         unlockAmount = bound(unlockAmount, 1e18, 100_000_000e18);
 
+        // Setup Stakers and Liquidity Providers
         _helperLockerStake(address(bobLocker));
+        _helperLockerProvideLiquidity(address(carolLocker));
 
+        // Calculate the flow rates based on the unlock amount and period
         (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate) =
             _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
 
+        // Create and fund the Fontaine
         address newFontaine = _helperCreateFontaine();
-
-        address user = makeAddr("user");
         vm.prank(FLUID_TREASURY);
         _fluid.transfer(newFontaine, unlockAmount);
-
-        IFontaine(newFontaine).initialize(user, unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod);
-
-        assertEq(Fontaine(newFontaine).endDate(), uint128(block.timestamp) + unlockPeriod, "end date incorreclty set");
-        assertEq(
-            Fontaine(newFontaine).providerFlowRate(), uint96(providerFlowRate), "provider flow rate incorreclty set"
-        );
-        assertEq(Fontaine(newFontaine).stakerFlowRate(), uint96(stakerFlowRate), "staker flow rate incorreclty set");
-        assertEq(Fontaine(newFontaine).unlockFlowRate(), uint96(unlockFlowRate), "unlock flow rate incorreclty set");
 
         (, int96 actualStakerFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
             newFontaine, Fontaine(newFontaine).STAKER_DISTRIBUTION_POOL(), stakerFlowRate
         );
-
         (, int96 actualProviderFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
             newFontaine, Fontaine(newFontaine).PROVIDER_DISTRIBUTION_POOL(), providerFlowRate
         );
 
+        // Initialize the Fontaine
+        address user = makeAddr("user");
+        IFontaine(newFontaine).initialize(user, unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod);
+
+        // Assert the Fontaine is initialized correctly
+        assertEq(Fontaine(newFontaine).recipient(), user, "recipient incorrect");
+        assertEq(Fontaine(newFontaine).endDate(), uint128(block.timestamp) + unlockPeriod, "end date incorrect");
+        assertEq(Fontaine(newFontaine).unlockFlowRate(), uint96(unlockFlowRate), "unlock flow rate incorrect");
+        assertEq(Fontaine(newFontaine).stakerFlowRate(), uint96(stakerFlowRate), "staker flow rate incorrect");
+        assertEq(Fontaine(newFontaine).providerFlowRate(), uint96(providerFlowRate), "provider flow rate incorrect");
+        assertEq(_fluid.getFlowRate(newFontaine, user), unlockFlowRate, "incorrect unlock flowrate");
         assertEq(
             _fluid.getFlowDistributionFlowRate(newFontaine, Fontaine(newFontaine).STAKER_DISTRIBUTION_POOL()),
             actualStakerFlowRate,
             "incorrect staker flowrate"
         );
-
         assertEq(
             _fluid.getFlowDistributionFlowRate(newFontaine, Fontaine(newFontaine).PROVIDER_DISTRIBUTION_POOL()),
             actualProviderFlowRate,
             "incorrect provider flowrate"
         );
-
-        assertEq(_fluid.getFlowRate(newFontaine, user), unlockFlowRate, "incorrect unlock flowrate");
     }
 
     function testTerminateUnlock(
@@ -198,7 +202,7 @@ contract FontaineTest is SFTest {
         int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
 
         uint256 unlockingPercentageBP =
-            (2_000 + ((8_000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(365 days * _SCALER)));
+            (2_000 + ((8_000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(_MAX_UNLOCK_PERIOD * _SCALER)));
 
         unlockFlowRate = (globalFlowRate * int256(unlockingPercentageBP)).toInt96() / int256(_BP_DENOMINATOR).toInt96();
         int96 taxFlowRate = globalFlowRate - unlockFlowRate;
