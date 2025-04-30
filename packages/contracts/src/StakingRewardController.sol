@@ -70,8 +70,7 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     //  |___//____/  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
 
     /// @notice Value used to convert the provided liquidity amount into GDA pool units
-    // FIXME : investigate this value
-    uint128 private constant _LIQUIDITY_UNIT_DOWNSCALER = 1e10;
+    uint128 private constant _LIQUIDITY_UNIT_DOWNSCALER = 1e16;
 
     /// @notice Basis points denominator used for percentage calculations
     uint128 private constant _BP_DENOMINATOR = 10_000;
