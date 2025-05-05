@@ -179,6 +179,7 @@ contract SFTest is Test {
         _lockerBeacon = UpgradeableBeacon(deployedContracts.lockerBeaconAddress);
         _fontaineBeacon = UpgradeableBeacon(deployedContracts.fontaineBeaconAddress);
 
+
         vm.stopPrank();
 
         // FLUID Contracts Deployment End

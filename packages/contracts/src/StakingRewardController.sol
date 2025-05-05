@@ -63,12 +63,6 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     /// @notice Value used to convert staked amount into GDA pool units
     uint128 private constant _STAKING_UNIT_DOWNSCALER = 1e16;
 
-    //   _    __ ___     ____                          __        __    __         _____ __        __
-    //  | |  / /|__ \   /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__      / ___// /_____ _/ /____  _____
-    //  | | / /__/ /    / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
-    //  | |/ // __/   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
-    //  |___//____/  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
-
     /// @notice Value used to convert the provided liquidity amount into GDA pool units
     uint128 private constant _LIQUIDITY_UNIT_DOWNSCALER = 1e16;
 
@@ -134,12 +128,6 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
 
         // Create Staker Superfluid GDA Pool
         taxDistributionPool = FLUID.createPool(address(this), poolConfig);
-
-        // Create LP Superfluid GDA Pool
-        providerDistributionPool = FLUID.createPool(address(this), poolConfig);
-
-        taxAllocation.stakerAllocation = 1_000;
-        taxAllocation.liquidityProviderAllocation = 9_000;
     }
 
     //      ______     __                        __   ______                 __  _
@@ -202,6 +190,20 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
         });
 
         emit TaxAllocationUpdated(stakerAllocation, liquidityProviderAllocation);
+    }
+
+    /// @inheritdoc IStakingRewardController
+    function setupProviderDistributionPool() external onlyOwner {
+        if (address(providerDistributionPool) != address(0)) {
+            revert PROVIDER_DISTRIBUTION_POOL_ALREADY_SET();
+        }
+
+        // Superfluid GDA Pool configuration
+        PoolConfig memory poolConfig =
+            PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
+
+        // Create LP Superfluid GDA Pool
+        providerDistributionPool = FLUID.createPool(address(this), poolConfig);
     }
 
     /// @inheritdoc IStakingRewardController

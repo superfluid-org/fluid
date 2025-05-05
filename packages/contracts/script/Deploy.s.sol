@@ -89,6 +89,9 @@ function _deployStakingRewardController(ISuperToken fluid, address owner)
     );
 
     stakingRewardControllerProxyAddress = address(stakingRewardControllerProxy);
+
+    StakingRewardController(stakingRewardControllerProxyAddress).setupProviderDistributionPool();
+    StakingRewardController(stakingRewardControllerProxyAddress).setTaxAllocation(1000, 9000);
 }
 
 function _deployFluidEPProgramManager(address owner, address treasury, ISuperfluidPool taxDistributionPool)

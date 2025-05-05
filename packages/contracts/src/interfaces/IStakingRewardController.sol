@@ -98,6 +98,9 @@ interface IStakingRewardController {
     /// @notice Error thrown when passing an invalid parameter
     error INVALID_PARAMETER();
 
+    /// @notice Error thrown when the provider distribution pool is already set
+    error PROVIDER_DISTRIBUTION_POOL_ALREADY_SET();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
@@ -147,6 +150,12 @@ interface IStakingRewardController {
      * @param liquidityProviderAllocation liquidity provider allocation percentage (expressed in basis points)
      */
     function setTaxAllocation(uint128 stakerAllocation, uint128 liquidityProviderAllocation) external;
+
+    /**
+     * @notice Setup the provider distribution pool
+     * @dev Only the contract owner can perform this operation
+     */
+    function setupProviderDistributionPool() external;
 
     /**
      * @notice Distribute the adjustment tax amount to the staker and liquidity provider pools
