@@ -131,12 +131,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Scaler used for unlock percentage calculation
     uint256 private constant _PERCENT_TO_BP = 100;
 
-    //   _    __ ___     ____                          __        __    __         _____ __        __
-    //  | |  / /|__ \   /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__      / ___// /_____ _/ /____  _____
-    //  | | / /__/ /    / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
-    //  | |/ // __/   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
-    //  |___//____/  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
-
     /// @notice Uniswap V3 Router interface
     IV3SwapRouter public immutable SWAP_ROUTER;
 
