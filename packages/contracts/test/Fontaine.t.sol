@@ -248,16 +248,28 @@ contract FontaineLayoutTest is Fontaine {
         }
         require(slot == 0 && offset == 0, "recipient changed location");
 
-        // private state : _taxFlowRate
-        // slot = 0 - offset = 20
+        assembly {
+            slot := stakerFlowRate.slot
+            offset := stakerFlowRate.offset
+        }
+        require(slot == 0 && offset == 20, "stakerFlowRate changed location");
 
-        // private state : _unlockFlowRate
-        // slot = 1 - offset = 0
+        assembly {
+            slot := unlockFlowRate.slot
+            offset := unlockFlowRate.offset
+        }
+        require(slot == 1 && offset == 0, "unlockFlowRate changed location");
 
         assembly {
             slot := endDate.slot
             offset := endDate.offset
         }
-        require(slot == 1 && offset == 12, "stakingUnlocksAt changed location");
+        require(slot == 1 && offset == 12, "endDate changed location");
+
+        assembly {
+            slot := providerFlowRate.slot
+            offset := providerFlowRate.offset
+        }
+        require(slot == 2 && offset == 0, "providerFlowRate changed location");
     }
 }
