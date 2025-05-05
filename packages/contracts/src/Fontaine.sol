@@ -50,11 +50,11 @@ using SuperTokenV1Library for ISuperToken;
  *
  */
 contract Fontaine is Initializable, IFontaine {
-    //     _____ __        __
-    //    / ___// /_____ _/ /____  _____
-    //    \__ \/ __/ __ `/ __/ _ \/ ___/
-    //   ___/ / /_/ /_/ / /_/  __(__  )
-    //  /____/\__/\__,_/\__/\___/____/
+    //      ____                          __        __    __        _____ __        __
+    //     /  _/___ ___  ____ ___  __  __/ /_____ _/ /_  / /__     / ___// /_____ _/ /____  _____
+    //     / // __ `__ \/ __ `__ \/ / / / __/ __ `/ __ \/ / _ \    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   _/ // / / / / / / / / / / /_/ / /_/ /_/ / /_/ / /  __/   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /___/_/ /_/ /_/_/ /_/ /_/\__,_/\__/\__,_/_.___/_/\___/   /____/\__/\__,_/\__/\___/____/
 
     /// @notice $FLUID SuperToken interface
     ISuperToken public immutable FLUID;
@@ -68,11 +68,14 @@ contract Fontaine is Initializable, IFontaine {
     /// @notice Constant used to calculate the earliest date an unlock can be terminated
     uint256 public constant EARLY_END = 1 days;
 
+    //     _____ __        __
+    //    / ___// /_____ _/ /____  _____
+    //    \__ \/ __/ __ `/ __/ _ \/ ___/
+    //   ___/ / /_/ /_/ / /_/  __(__  )
+    //  /____/\__/\__,_/\__/\___/____/
+
     /// @notice Stream recipient address
     address public recipient;
-
-    /// @notice Flow rate between this Fontaine and the Provider Distribution Pool
-    uint96 public providerFlowRate;
 
     /// @notice Flow rate between this Fontaine and the Staker Distribution Pool
     uint96 public stakerFlowRate;
@@ -82,6 +85,9 @@ contract Fontaine is Initializable, IFontaine {
 
     /// @notice Date at which the unlock is completed
     uint128 public endDate;
+
+    /// @notice Flow rate between this Fontaine and the Provider Distribution Pool
+    uint96 public providerFlowRate;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
