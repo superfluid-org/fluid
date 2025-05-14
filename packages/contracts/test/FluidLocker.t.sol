@@ -976,7 +976,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         _fluidSuperToken.transfer(address(aliceLocker), 20000e18);
 
         vm.startPrank(ALICE);
-        aliceLocker.provideLiquidity{ value: 1 ether }(1 ether, 199e18, 19800e18);
+        aliceLocker.provideLiquidity{ value: 1 ether }(19800e18);
         vm.stopPrank();
 
         uint256 positionCount = FluidLocker(address(aliceLocker)).activePositionCount();
@@ -991,7 +991,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
     function testV2CollectFees() external {
         _helperUpgradeLocker();
-        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
+        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 20000e18);
 
         uint256 aliceWethBalanceBefore = _weth.balanceOf(address(ALICE));
         uint256 aliceSupBalanceBefore = _fluidSuperToken.balanceOf(address(ALICE));
@@ -1011,7 +1011,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
     function testV2withdrawLiquidity_removeAllLiquidity_beforeTaxFreeWithdrawDelay() external {
         _helperUpgradeLocker();
-        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
+        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 20000e18);
 
         _helperSellSUP(makeAddr("seller"), 200000e18);
 
@@ -1054,7 +1054,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
     function testV2withdrawLiquidity_removePartialLiquidity(uint256 liquidityPercentage) external {
         _helperUpgradeLocker();
-        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
+        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 20000e18);
 
         uint256 initialPositionExitTimestamp = FluidLocker(address(aliceLocker)).positionExitTimestamps(positionTokenId);
 
@@ -1095,7 +1095,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
     function testV2withdrawLiquidity_removeAllLiquidity_afterTaxFreeWithdrawDelay() external {
         _helperUpgradeLocker();
-        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
+        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 20000e18);
 
         _helperSellSUP(makeAddr("seller"), 200000e18);
 
@@ -1139,7 +1139,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 liquidityPercentage
     ) external {
         _helperUpgradeLocker();
-        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 199e18, 20000e18);
+        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 20000e18);
 
         _helperBuySUP(makeAddr("buyer"), 10 ether);
         _helperSellSUP(makeAddr("seller"), 200000e18);

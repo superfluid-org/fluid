@@ -179,7 +179,6 @@ contract SFTest is Test {
         _lockerBeacon = UpgradeableBeacon(deployedContracts.lockerBeaconAddress);
         _fontaineBeacon = UpgradeableBeacon(deployedContracts.fontaineBeaconAddress);
 
-
         vm.stopPrank();
 
         // FLUID Contracts Deployment End
@@ -291,7 +290,7 @@ contract SFTest is Test {
         _fluidSuperToken.transfer(locker, amount);
     }
 
-    function _helperCreatePosition(address locker, uint256 wethAmount, uint256 supPumpAmount, uint256 supAmount)
+    function _helperCreatePosition(address locker, uint256 wethAmount, uint256 supAmount)
         internal
         returns (uint256 positionTokenId)
     {
@@ -299,7 +298,7 @@ contract SFTest is Test {
         _fluidSuperToken.transfer(locker, supAmount);
 
         vm.startPrank(FluidLocker(locker).lockerOwner());
-        FluidLocker(locker).provideLiquidity{ value: wethAmount }(wethAmount, supPumpAmount, supAmount);
+        FluidLocker(locker).provideLiquidity{ value: wethAmount }(supAmount);
         vm.stopPrank();
 
         positionTokenId =
@@ -307,7 +306,7 @@ contract SFTest is Test {
     }
 
     function _helperLockerProvideLiquidity(address locker) internal {
-        _helperCreatePosition(locker, 1 ether, 199e18, 20000e18);
+        _helperCreatePosition(locker, 1 ether, 20000e18);
     }
 
     function _helperLockerStake(address locker) internal {

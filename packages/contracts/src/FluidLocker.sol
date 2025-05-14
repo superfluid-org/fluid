@@ -182,6 +182,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     uint256 public activePositionCount;
 
     /// @notice Stores the tax free withdraw timestamp for a given position token identifier
+    /// FIXME rename to taxFreeExitTimestamps
     mapping(uint256 positionTokenId => uint256 taxFreeWithdrawTimestamp) public positionExitTimestamps;
 
     /// @notice Aggregated liquidity balance provided by this locker
@@ -405,37 +406,34 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
     }
 
+    /// FIXME add new function to withdraw dust eth in the locker
+    function withdrawDustETH() external onlyLockerOwner { }
+
     /// @inheritdoc IFluidLocker
-    function provideLiquidity(uint256 ethAmount, uint256 supPumpAmountMin, uint256 supLPAmount)
-        external
-        payable
-        nonReentrant
-        onlyLockerOwner
-    {
+    function provideLiquidity(uint256 supAmount) external payable nonReentrant onlyLockerOwner {
         address weth = NONFUNGIBLE_POSITION_MANAGER.WETH9();
 
-        // Check that the amount of ETH sent is equal to the paired asset amount
-        if (msg.value != ethAmount) {
-            revert INSUFFICIENT_ETH_SENT();
-        }
+        uint256 ethAmount = msg.value;
 
         // Wrap ETH into WETH
         IWETH9(weth).deposit{ value: ethAmount }();
 
         // Pumponomics (market buy SUP with 1% of the provided paired asset)
-        _pump(weth, ethAmount * BP_PUMP_RATIO / BP_DENOMINATOR, supPumpAmountMin);
+        _pump(weth, ethAmount * BP_PUMP_RATIO / BP_DENOMINATOR);
 
         // Get the amount of paired asset tokens in the locker
         uint256 ethLPAmount = IERC20(weth).balanceOf(address(this));
 
         // Approve the locker to spend the paired asset and the $SUP tokens
         TransferHelper.safeApprove(weth, address(NONFUNGIBLE_POSITION_MANAGER), ethLPAmount);
-        TransferHelper.safeApprove(address(FLUID), address(NONFUNGIBLE_POSITION_MANAGER), supLPAmount);
+        TransferHelper.safeApprove(address(FLUID), address(NONFUNGIBLE_POSITION_MANAGER), supAmount);
 
         // Create a new Uniswap V3 position
-        _createPosition(ethLPAmount, supLPAmount);
+        _createPosition(ethLPAmount, supAmount);
 
         activePositionCount++;
+
+        /// FIXME : add event emit here
     }
 
     /// @inheritdoc IFluidLocker
@@ -457,6 +455,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         (, uint256 withdrawnSup) = _decreasePosition(tokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
 
         // transfer the withdrawn WETH back to the owner
+        /// FIXME unwrap weth here to keep consistency with the provideLiquidity Function (ETH In / ETH Out)
         TransferHelper.safeTransfer(weth, lockerOwner, IERC20(weth).balanceOf(address(this)));
 
         if (block.timestamp >= positionExitTimestamps[tokenId]) {
@@ -464,7 +463,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
 
         // Burn the position and delete position tokenId if all liquidity is removed
+        /// FIXME : test if the position has fees to collect and the position meant to be burned
         if (liquidityToRemove == positionLiquidity) {
+            // FIXME to potentially add
+            // _collect(tokenId);
             delete positionExitTimestamps[tokenId];
             activePositionCount--;
             NONFUNGIBLE_POSITION_MANAGER.burn(tokenId);
@@ -478,24 +480,21 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         onlyLockerOwner
         returns (uint256 collectedWeth, uint256 collectedSup)
     {
+        address weth = NONFUNGIBLE_POSITION_MANAGER.WETH9();
+
         // ensure the locker has a position
         if (!_positionExists(tokenId)) revert LOCKER_HAS_NO_POSITION();
 
         if (ETH_SUP_POOL.token0() == address(FLUID)) {
             // Collect the fees
             (collectedSup, collectedWeth) = _collect(tokenId);
-
-            // Transfer the paired asset tokens back to the owner
-            TransferHelper.safeTransfer(ETH_SUP_POOL.token1(), lockerOwner, collectedWeth);
         } else {
             // Collect the fees
             (collectedWeth, collectedSup) = _collect(tokenId);
-
-            // Transfer the paired asset tokens back to the owner
-            TransferHelper.safeTransfer(ETH_SUP_POOL.token0(), lockerOwner, collectedWeth);
         }
 
         // Transfer the collected fees to the locker owner
+        TransferHelper.safeTransfer(weth, lockerOwner, collectedWeth);
         TransferHelper.safeTransfer(address(FLUID), lockerOwner, collectedSup);
     }
 
@@ -616,18 +615,19 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      * @notice Swaps ETH for SUP tokens using Uniswap V3 (Pumponomics)
      * @param weth WETH address
      * @param ethAmount The amount of ETH to swap
-     * @param supAmountMinimum The minimum amount of SUP tokens to receive
      */
-    function _pump(address weth, uint256 ethAmount, uint256 supAmountMinimum) internal {
+    function _pump(address weth, uint256 ethAmount) internal {
         IERC20(weth).approve(address(SWAP_ROUTER), ethAmount);
 
+        // No need slippage protection here as it is
+        // implicitely covered by the `_createPosition` slippage protection
         IV3SwapRouter.ExactInputSingleParams memory swapParams = IV3SwapRouter.ExactInputSingleParams({
             tokenIn: weth,
             tokenOut: address(FLUID),
             fee: ETH_SUP_POOL.fee(),
             recipient: address(this),
             amountIn: ethAmount,
-            amountOutMinimum: supAmountMinimum,
+            amountOutMinimum: 0,
             sqrtPriceLimitX96: 0
         });
 

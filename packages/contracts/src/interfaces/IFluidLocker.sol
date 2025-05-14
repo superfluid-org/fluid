@@ -171,11 +171,9 @@ interface IFluidLocker {
 
     /**
      * @notice Provides liquidity to a liquidity pool by creating or increasing a position
-     * @param ethAmount The amount of ETH to contribute
-     * @param supPumpAmountMin The minimum amount of SUP tokens to receive from pumping using paired asset
-     * @param supLPAmount The amount of SUP tokens to provide as liquidity
+     * @param supAmount The amount of SUP tokens to provide as liquidity
      */
-    function provideLiquidity(uint256 ethAmount, uint256 supPumpAmountMin, uint256 supLPAmount) external payable;
+    function provideLiquidity(uint256 supAmount) external payable;
 
     /**
      * @notice Withdraws liquidity from a liquidity pool
