@@ -170,6 +170,36 @@ interface IFluidLocker {
     function unstake(uint256 amountToUnstake) external;
 
     /**
+     * @notice Provides liquidity to a liquidity pool by creating or increasing a position
+     * @param ethAmount The amount of ETH to contribute
+     * @param supPumpAmountMin The minimum amount of SUP tokens to receive from pumping using paired asset
+     * @param supLPAmount The amount of SUP tokens to provide as liquidity
+     */
+    function provideLiquidity(uint256 ethAmount, uint256 supPumpAmountMin, uint256 supLPAmount) external payable;
+
+    /**
+     * @notice Withdraws liquidity from a liquidity pool
+     * @param tokenId The token identifier of the position to withdraw liquidity from
+     * @param liquidityToRemove The amount of liquidity to remove from the position
+     * @param amount0ToRemove The amount of token0 to remove from the position
+     * @param amount1ToRemove The amount of token1 to remove from the position
+     */
+    function withdrawLiquidity(
+        uint256 tokenId,
+        uint128 liquidityToRemove,
+        uint256 amount0ToRemove,
+        uint256 amount1ToRemove
+    ) external;
+
+    /**
+     * @notice Collects accumulated fees from a Uniswap V3 position
+     * @param tokenId The token identifier of the position to collect fees from
+     * @return collectedWeth The amount of WETH tokens collected
+     * @return collectedSup The amount of SUP tokens collected
+     */
+    function collectFees(uint256 tokenId) external returns (uint256 collectedWeth, uint256 collectedSup);
+
+    /**
      * @notice Helper function to help the Locker connect to a program pool
      * @dev Only this Locker owner can call this function
      * @param programId program identifier corresponding to the pool to connect to
@@ -235,34 +265,4 @@ interface IFluidLocker {
      * @return fontaineBeaconImpl The fontaine beacon implementation contract address
      */
     function getFontaineBeaconImplementation() external view returns (address fontaineBeaconImpl);
-
-    /**
-     * @notice Provides liquidity to a liquidity pool by creating or increasing a position
-     * @param ethAmount The amount of ETH to contribute
-     * @param supPumpAmountMin The minimum amount of SUP tokens to receive from pumping using paired asset
-     * @param supLPAmount The amount of SUP tokens to provide as liquidity
-     */
-    function provideLiquidity(uint256 ethAmount, uint256 supPumpAmountMin, uint256 supLPAmount) external payable;
-
-    /**
-     * @notice Withdraws liquidity from a liquidity pool
-     * @param tokenId The token identifier of the position to withdraw liquidity from
-     * @param liquidityToRemove The amount of liquidity to remove from the position
-     * @param amount0ToRemove The amount of token0 to remove from the position
-     * @param amount1ToRemove The amount of token1 to remove from the position
-     */
-    function withdrawLiquidity(
-        uint256 tokenId,
-        uint128 liquidityToRemove,
-        uint256 amount0ToRemove,
-        uint256 amount1ToRemove
-    ) external;
-
-    /**
-     * @notice Collects accumulated fees from a Uniswap V3 position
-     * @param tokenId The token identifier of the position to collect fees from
-     * @return collectedWeth The amount of WETH tokens collected
-     * @return collectedSup The amount of SUP tokens collected
-     */
-    function collectFees(uint256 tokenId) external returns (uint256 collectedWeth, uint256 collectedSup);
 }
