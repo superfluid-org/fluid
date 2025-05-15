@@ -1046,7 +1046,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
         assertEq(FluidLocker(address(aliceLocker)).activePositionCount(), 0, "position count should be 0");
         assertEq(
-            FluidLocker(address(aliceLocker)).positionExitTimestamps(positionTokenId),
+            FluidLocker(address(aliceLocker)).taxFreeExitTimestamps(positionTokenId),
             0,
             "position exit timestamp should be 0"
         );
@@ -1056,7 +1056,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         _helperUpgradeLocker();
         uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 20000e18);
 
-        uint256 initialPositionExitTimestamp = FluidLocker(address(aliceLocker)).positionExitTimestamps(positionTokenId);
+        uint256 initialTaxFreeExitTimestamp = FluidLocker(address(aliceLocker)).taxFreeExitTimestamps(positionTokenId);
 
         _helperBuySUP(makeAddr("buyer"), 10 ether);
         _helperSellSUP(makeAddr("seller"), 200000e18);
@@ -1087,8 +1087,8 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         assertGt(supInLockerAfter, supInLockerBefore + expectedSupBackInLocker, "SUP balance in locker should increase");
         assertEq(FluidLocker(address(aliceLocker)).activePositionCount(), 1, "position count should still be 1");
         assertEq(
-            FluidLocker(address(aliceLocker)).positionExitTimestamps(positionTokenId),
-            initialPositionExitTimestamp,
+            FluidLocker(address(aliceLocker)).taxFreeExitTimestamps(positionTokenId),
+            initialTaxFreeExitTimestamp,
             "position exit timestamp should remain the same"
         );
     }
@@ -1097,6 +1097,49 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         _helperUpgradeLocker();
         uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 20000e18);
 
+        _helperSellSUP(makeAddr("seller"), 200000e18);
+
+        (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
+        (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, positionLiquidity);
+
+        uint256 expectedWethReceived = _pool.token0() == address(_weth) ? amount0ToRemove : amount1ToRemove;
+        uint256 expectedSupBack = _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
+
+        uint256 wethBalanceBefore = _weth.balanceOf(ALICE);
+        uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
+        uint256 supInAliceBefore = _fluidSuperToken.balanceOf(address(ALICE));
+
+        vm.warp(block.timestamp + FluidLocker(address(aliceLocker)).TAX_FREE_WITHDRAW_DELAY());
+
+        vm.prank(ALICE);
+        aliceLocker.withdrawLiquidity(positionTokenId, positionLiquidity, amount0ToRemove, amount1ToRemove);
+
+        uint256 wethBalanceAfter = _weth.balanceOf(ALICE);
+        uint256 supInLockerAfter = _fluidSuperToken.balanceOf(address(aliceLocker));
+        uint256 supInAliceAfter = _fluidSuperToken.balanceOf(address(ALICE));
+
+        assertApproxEqAbs(
+            wethBalanceAfter,
+            wethBalanceBefore + expectedWethReceived,
+            wethBalanceAfter * 10 / 10000, // 0.1% tolerance
+            "Alice WETH balance should increase"
+        );
+        assertApproxEqAbs(
+            supInAliceAfter,
+            supInAliceBefore + expectedSupBack,
+            supInAliceAfter * 10 / 10000, // 0.1% tolerance
+            "SUP balance in Alice wallet should increase"
+        );
+
+        assertEq(supInLockerAfter, supInLockerBefore, "SUP balance in locker should not change");
+        assertEq(FluidLocker(address(aliceLocker)).activePositionCount(), 0, "position count should be 0");
+    }
+
+    function testV2withdrawLiquidity_removeAllLiquidity_withFeeInPosition() external {
+        _helperUpgradeLocker();
+        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 20000e18);
+
+        _helperBuySUP(makeAddr("buyer"), 10 ether);
         _helperSellSUP(makeAddr("seller"), 200000e18);
 
         (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);

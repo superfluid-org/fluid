@@ -183,7 +183,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @notice Stores the tax free withdraw timestamp for a given position token identifier
     /// FIXME rename to taxFreeExitTimestamps
-    mapping(uint256 positionTokenId => uint256 taxFreeWithdrawTimestamp) public positionExitTimestamps;
+    mapping(uint256 positionTokenId => uint256 taxFreeWithdrawTimestamp) public taxFreeExitTimestamps;
 
     /// @notice Aggregated liquidity balance provided by this locker
     uint256 private _liquidityBalance;
@@ -458,7 +458,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         /// FIXME unwrap weth here to keep consistency with the provideLiquidity Function (ETH In / ETH Out)
         TransferHelper.safeTransfer(weth, lockerOwner, IERC20(weth).balanceOf(address(this)));
 
-        if (block.timestamp >= positionExitTimestamps[tokenId]) {
+        if (block.timestamp >= taxFreeExitTimestamps[tokenId]) {
             TransferHelper.safeTransfer(address(FLUID), lockerOwner, withdrawnSup);
         }
 
@@ -467,7 +467,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         if (liquidityToRemove == positionLiquidity) {
             // FIXME to potentially add
             // _collect(tokenId);
-            delete positionExitTimestamps[tokenId];
+            delete taxFreeExitTimestamps[tokenId];
             activePositionCount--;
             NONFUNGIBLE_POSITION_MANAGER.burn(tokenId);
         }
@@ -654,7 +654,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             NONFUNGIBLE_POSITION_MANAGER.mint(mintParams);
 
         // Set the tax free withdraw timestamp
-        positionExitTimestamps[tokenId] = block.timestamp + TAX_FREE_WITHDRAW_DELAY;
+        taxFreeExitTimestamps[tokenId] = block.timestamp + TAX_FREE_WITHDRAW_DELAY;
 
         // Update the aggregated liquidity balance
         _liquidityBalance += liquidity;
@@ -783,7 +783,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      * @return exists True if the locker owns the given tokenId, false otherwise
      */
     function _positionExists(uint256 tokenId) internal view returns (bool exists) {
-        exists = positionExitTimestamps[tokenId] > 0;
+        exists = taxFreeExitTimestamps[tokenId] > 0;
     }
 
     /**
