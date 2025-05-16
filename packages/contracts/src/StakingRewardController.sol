@@ -61,7 +61,7 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     ISuperToken public immutable FLUID;
 
     /// @notice Value used to convert staked amount into GDA pool units
-    uint128 private constant _STAKING_UNIT_DOWNSCALER = 1e16;
+    uint128 private constant _STAKING_UNIT_DOWNSCALER = 1e18;
 
     /// @notice Value used to convert the provided liquidity amount into GDA pool units
     uint128 private constant _LIQUIDITY_UNIT_DOWNSCALER = 1e16;
@@ -94,6 +94,7 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     TaxAllocation public taxAllocation;
 
     /// @notice Superfluid pool interface
+    /// FIXME rename to lpDistributionPool
     ISuperfluidPool public providerDistributionPool;
 
     //     ______                 __                  __

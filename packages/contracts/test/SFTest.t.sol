@@ -42,6 +42,9 @@ contract SFTest is Test {
     int24 internal constant _MIN_TICK = -887272;
     int24 internal constant _MAX_TICK = -_MIN_TICK;
 
+    // Units downscaler defined in StakingRewardController.sol
+    uint128 internal constant _STAKING_UNIT_DOWNSCALER = 1e18;
+
     // Initial Pool Price : 20000 SUP/ETH
     uint160 public constant INITIAL_SQRT_PRICEX96_SUP_PER_WETH = 11204554194957228397824552468480;
 

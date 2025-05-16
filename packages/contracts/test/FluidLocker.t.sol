@@ -469,7 +469,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
         assertEq(aliceLocker.getStakedBalance(), amountToStake1, "incorrect staked bal after op");
         assertEq(
             _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
-            amountToStake1 / 1e16,
+            amountToStake1 / _STAKING_UNIT_DOWNSCALER,
             "incorrect units"
         );
 
@@ -495,7 +495,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
         assertEq(aliceLocker.getStakedBalance(), amountToStake, "incorrect staked bal before op");
         assertEq(
             _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
-            amountToStake / 1e16,
+            amountToStake / _STAKING_UNIT_DOWNSCALER,
             "incorrect units before op"
         );
 
@@ -509,7 +509,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
         assertEq(aliceLocker.getStakedBalance(), amountToStake - amountToUnstake, "incorrect staked bal after op");
         assertEq(
             _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
-            (amountToStake - amountToUnstake) / 1e16,
+            (amountToStake - amountToUnstake) / _STAKING_UNIT_DOWNSCALER,
             "incorrect units after op"
         );
 
@@ -828,7 +828,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         assertEq(aliceLocker.getStakedBalance(), amountToStake1, "incorrect staked bal after op");
         assertEq(
             _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
-            amountToStake1 / 1e16,
+            amountToStake1 / _STAKING_UNIT_DOWNSCALER,
             "incorrect units"
         );
 
@@ -860,7 +860,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         assertEq(aliceLocker.getStakedBalance(), amountToStake, "incorrect staked bal before op");
         assertEq(
             _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
-            amountToStake / 1e16,
+            amountToStake / _STAKING_UNIT_DOWNSCALER,
             "incorrect units before op"
         );
 
@@ -874,7 +874,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         assertEq(aliceLocker.getStakedBalance(), amountToStake - amountToUnstake, "incorrect staked bal after op");
         assertEq(
             _stakingRewardController.taxDistributionPool().getUnits(address(aliceLocker)),
-            (amountToStake - amountToUnstake) / 1e16,
+            (amountToStake - amountToUnstake) / _STAKING_UNIT_DOWNSCALER,
             "incorrect units after op"
         );
 
