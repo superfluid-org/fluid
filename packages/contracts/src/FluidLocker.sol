@@ -408,9 +408,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
     }
 
-    /// FIXME add new function to withdraw dust eth in the locker
-    function withdrawDustETH() external onlyLockerOwner { }
-
     /// @inheritdoc IFluidLocker
     function provideLiquidity(uint256 supAmount) external payable nonReentrant onlyLockerOwner {
         address weth = NONFUNGIBLE_POSITION_MANAGER.WETH9();
@@ -496,6 +493,12 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             // Collect the fees
             (collectedWeth, collectedSup) = _collect(tokenId, lockerOwner);
         }
+    }
+
+    /// @inheritdoc IFluidLocker
+    function withdrawDustETH() external onlyLockerOwner {
+        // Transfer ETH to the locker owner
+        TransferHelper.safeTransferETH(lockerOwner, address(this).balance);
     }
 
     //   _    ___                 ______                 __  _

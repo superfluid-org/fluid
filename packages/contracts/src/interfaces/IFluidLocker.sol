@@ -205,6 +205,12 @@ interface IFluidLocker {
     function connectToPool(uint256 programId) external;
 
     /**
+     * @notice Withdraws dust ETH from the locker
+     * @dev Only this Locker owner can call this function
+     */
+    function withdrawDustETH() external;
+
+    /**
      * @notice Helper function to help the Locker disconnect from a program pool
      * @dev Only this Locker owner can call this function
      * @param programId program identifier corresponding to the pool to connect to

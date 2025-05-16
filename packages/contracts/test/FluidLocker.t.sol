@@ -1285,6 +1285,26 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         aliceLocker.withdrawLiquidity(inexistantPositionTokenId, positionLiquidity, amount0ToRemove, amount1ToRemove);
     }
 
+    function testV2withdrawDustETH(address _nonLockerOwner, uint256 ethAmount) external {
+        vm.assume(_nonLockerOwner != ALICE);
+        ethAmount = uint256(bound(ethAmount, 1, 1_000_000_000 ether));
+
+        _helperUpgradeLocker();
+
+        vm.deal(address(aliceLocker), ethAmount);
+
+        vm.prank(_nonLockerOwner);
+        vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
+        aliceLocker.withdrawDustETH();
+
+        uint256 ethBalanceBefore = ALICE.balance;
+        vm.prank(ALICE);
+        aliceLocker.withdrawDustETH();
+        uint256 ethBalanceAfter = ALICE.balance;
+
+        assertEq(ethBalanceAfter, ethBalanceBefore + ethAmount, "ETH balance in ALICE walletshould increase");
+    }
+
     function _helperUpgradeLocker() internal {
         UpgradeableBeacon beacon = _fluidLockerFactory.LOCKER_BEACON();
 
