@@ -297,9 +297,7 @@ contract SFTest is Test {
         internal
         returns (uint256 positionTokenId)
     {
-        vm.prank(FLUID_TREASURY);
-        _fluidSuperToken.transfer(locker, supAmount);
-
+        _helperFundLocker(locker, supAmount);
         vm.startPrank(FluidLocker(locker).lockerOwner());
         FluidLocker(locker).provideLiquidity{ value: wethAmount }(supAmount);
         vm.stopPrank();
@@ -312,9 +310,35 @@ contract SFTest is Test {
         _helperCreatePosition(locker, 1 ether, 20000e18);
     }
 
+    function _helperWithdrawLiquidity(
+        address locker,
+        uint256 tokenId,
+        uint128 liquidityToRemove,
+        uint256 wethAmountToRemove,
+        uint256 supAmountToRemove
+    ) internal {
+        vm.startPrank(FluidLocker(locker).lockerOwner());
+        FluidLocker(locker).withdrawLiquidity(tokenId, liquidityToRemove, wethAmountToRemove, supAmountToRemove);
+        vm.stopPrank();
+    }
+
+    function _helperLockerWithdrawLiquidity(address locker) internal {
+        uint256 tokenId =
+            _nonfungiblePositionManager.tokenOfOwnerByIndex(locker, FluidLocker(locker).activePositionCount() - 1);
+
+        (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(tokenId);
+
+        _helperWithdrawLiquidity(locker, tokenId, positionLiquidity, 1 ether, 20000e18);
+    }
+
     function _helperLockerStake(address locker) internal {
         _helperFundLocker(locker, 10_000e18);
-        vm.prank(BOB);
+        vm.prank(FluidLocker(locker).lockerOwner());
         FluidLocker(locker).stake(10_000e18);
+    }
+
+    function _helperLockerUnstake(address locker) internal {
+        vm.prank(FluidLocker(locker).lockerOwner());
+        FluidLocker(locker).unstake(10_000e18);
     }
 }
