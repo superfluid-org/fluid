@@ -11,7 +11,7 @@ Latest deployed contract address
 | FluidEPProgramManager (Proxy)   | 0x1e32cf099992E9D3b17eDdDFFfeb2D07AED95C6a | https://basescan.org/address/0x1e32cf099992E9D3b17eDdDFFfeb2D07AED95C6a |
 | StakingRewardController (Logic) | 0x4f69302E435f6D6c9eD40719098B13265027D8C2 | https://basescan.org/address/0x4f69302E435f6D6c9eD40719098B13265027D8C2 |
 | StakingRewardController (Proxy) | 0xb19Ae25A98d352B36CED60F93db926247535048b | https://basescan.org/address/0xb19Ae25A98d352B36CED60F93db926247535048b |
-| FluidLocker (Logic)             | 0xFfc5222f21170a1609af02A3e81f5a5C7b486C5A | https://basescan.org/address/0xFfc5222f21170a1609af02A3e81f5a5C7b486C5A |
+| FluidLocker (Logic)             | 0x939659D22aC378426EdF5e71Fc9bD5B89065F8A4 | https://basescan.org/address/0x939659D22aC378426EdF5e71Fc9bD5B89065F8A4 |
 | FluidLocker (Beacon)            | 0x664161f0974F5B17FB1fD3FDcE5D1679E829176c | https://basescan.org/address/0x664161f0974F5B17FB1fD3FDcE5D1679E829176c |
 | Fontaine (Logic)                | 0xbFe2ceE2Cc266f26Aaf434Ef69e390FC2a0033fA | https://basescan.org/address/0xbFe2ceE2Cc266f26Aaf434Ef69e390FC2a0033fA |
 | Fontaine (Beacon)               | 0xA26FbA47Da24F7DF11b3E4CF60Dcf7D1691Ae47d | https://basescan.org/address/0xA26FbA47Da24F7DF11b3E4CF60Dcf7D1691Ae47d |
@@ -53,7 +53,7 @@ Latest deployed contract address
 | FluidLocker (Beacon)            | 0xf2880c6D68080393C1784f978417a96ab4f37c38 | https://sepolia.basescan.org/address/0xf2880c6D68080393C1784f978417a96ab4f37c38 |
 | Fontaine (Logic)                | 0x360FD6B9395c0f3A5FFd0Cc8bc00E5c4C159591c | https://sepolia.basescan.org/address/0x360FD6B9395c0f3A5FFd0Cc8bc00E5c4C159591c |
 | Fontaine (Beacon)               | 0xeBfA246A0BAd08A2A3ffB137ed75601AA41867dE | https://sepolia.basescan.org/address/0xeBfA246A0BAd08A2A3ffB137ed75601AA41867dE |
-| FluidLockerFactory (Logic)      | 0x4Fd60B2F8486459a3aa5a7F73178CCE7AA1A58BD | https://sepolia.basescan.org/address/0x4Fd60B2F8486459a3aa5a7F73178CCE7AA1A58BD |
+| FluidLockerFactory (Logic)      | 0x600750b3D8bf754E72aDE2738aFBe4189281B8B0 | https://sepolia.basescan.org/address/0x4Fd60B2F8486459a3aa5a7F73178CCE7AA1A58BD |
 | FluidLockerFactory (Proxy)      | 0x897D343D24Ac5b84838B976Cf37036EDEfe3E967 | https://sepolia.basescan.org/address/0x897D343D24Ac5b84838B976Cf37036EDEfe3E967 |
 
 ## Test Coverage :
