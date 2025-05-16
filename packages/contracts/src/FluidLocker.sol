@@ -248,6 +248,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     //   / /____>  </ /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
+    receive() external payable { }
+    fallback() external payable { }
+
     /// @inheritdoc IFluidLocker
     function claim(uint256 programId, uint256 totalProgramUnits, uint256 nonce, bytes memory stackSignature)
         external
@@ -456,9 +459,13 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         (, uint256 withdrawnSup) = _decreasePosition(tokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
 
-        // transfer the withdrawn WETH back to the owner
-        /// FIXME unwrap weth here to keep consistency with the provideLiquidity Function (ETH In / ETH Out)
-        TransferHelper.safeTransfer(weth, lockerOwner, IERC20(weth).balanceOf(address(this)));
+        // Unwrap the withdrawn WETH
+        IWETH9(weth).withdraw(IERC20(weth).balanceOf(address(this)));
+
+        // Transfer ETH to the locker owner
+        TransferHelper.safeTransferETH(lockerOwner, address(this).balance);
+
+        // TransferHelper.safeTransfer(weth, lockerOwner, IERC20(weth).balanceOf(address(this)));
 
         if (block.timestamp >= taxFreeExitTimestamps[tokenId]) {
             TransferHelper.safeTransfer(address(FLUID), lockerOwner, withdrawnSup);

@@ -176,7 +176,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
 
     function testInitialize(address owner) external virtual {
         vm.expectRevert();
-        FluidLocker(address(aliceLocker)).initialize(owner);
+        FluidLocker(payable(address(aliceLocker))).initialize(owner);
     }
 
     function testClaim(uint256 units) external virtual {
@@ -385,9 +385,9 @@ contract FluidLockerTest is FluidLockerBaseTest {
         _helperFundLocker(address(aliceLocker), unlockAmount);
 
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), unlockAmount, "incorrect Locker bal before op");
-        assertEq(FluidLocker(address(aliceLocker)).fontaineCount(), 0, "incorrect fontaine count");
+        assertEq(FluidLocker(payable(address(aliceLocker))).fontaineCount(), 0, "incorrect fontaine count");
         assertEq(
-            address(FluidLocker(address(aliceLocker)).fontaines(0)),
+            address(FluidLocker(payable(address(aliceLocker))).fontaines(0)),
             address(IFontaine(address(0))),
             "incorrect fontaine address"
         );
@@ -410,13 +410,13 @@ contract FluidLockerTest is FluidLockerBaseTest {
         vm.prank(ALICE);
         aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
 
-        IFontaine newFontaine = FluidLocker(address(aliceLocker)).fontaines(0);
+        IFontaine newFontaine = FluidLocker(payable(address(aliceLocker))).fontaines(0);
 
         (, int96 actualStakerFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(newFontaine), FluidLocker(address(aliceLocker)).STAKER_DISTRIBUTION_POOL(), stakerFlowRate
+            address(newFontaine), FluidLocker(payable(address(aliceLocker))).STAKER_DISTRIBUTION_POOL(), stakerFlowRate
         );
         (, int96 actualProviderFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(newFontaine), FluidLocker(address(aliceLocker)).LP_DISTRIBUTION_POOL(), providerFlowRate
+            address(newFontaine), FluidLocker(payable(address(aliceLocker))).LP_DISTRIBUTION_POOL(), providerFlowRate
         );
 
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
@@ -426,12 +426,12 @@ contract FluidLockerTest is FluidLockerBaseTest {
             "incorrect unlock flowrate"
         );
         assertEq(
-            FluidLocker(address(aliceLocker)).STAKER_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
+            FluidLocker(payable(address(aliceLocker))).STAKER_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
             actualStakerFlowRate,
             "incorrect staker flowrate"
         );
         assertEq(
-            FluidLocker(address(aliceLocker)).LP_DISTRIBUTION_POOL().getMemberFlowRate(address(carolLocker)),
+            FluidLocker(payable(address(aliceLocker))).LP_DISTRIBUTION_POOL().getMemberFlowRate(address(carolLocker)),
             actualProviderFlowRate,
             "incorrect provider flowrate"
         );
@@ -500,7 +500,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
         vm.expectRevert(IFluidLocker.STAKING_COOLDOWN_NOT_ELAPSED.selector);
         aliceLocker.unstake(amountToUnstake);
 
-        vm.warp(uint256(FluidLocker(address(aliceLocker)).stakingUnlocksAt()) + 1);
+        vm.warp(uint256(FluidLocker(payable(address(aliceLocker))).stakingUnlocksAt()) + 1);
         aliceLocker.unstake(amountToUnstake);
 
         assertEq(aliceLocker.getAvailableBalance(), amountToUnstake, "incorrect available bal after op");
@@ -747,9 +747,9 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         _helperFundLocker(address(aliceLocker), unlockAmount);
 
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), unlockAmount, "incorrect Locker bal before op");
-        assertEq(FluidLocker(address(aliceLocker)).fontaineCount(), 0, "incorrect fontaine count");
+        assertEq(FluidLocker(payable(address(aliceLocker))).fontaineCount(), 0, "incorrect fontaine count");
         assertEq(
-            address(FluidLocker(address(aliceLocker)).fontaines(0)),
+            address(FluidLocker(payable(address(aliceLocker))).fontaines(0)),
             address(IFontaine(address(0))),
             "incorrect fontaine address"
         );
@@ -778,13 +778,13 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         vm.prank(ALICE);
         aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
 
-        IFontaine newFontaine = FluidLocker(address(aliceLocker)).fontaines(0);
+        IFontaine newFontaine = FluidLocker(payable(address(aliceLocker))).fontaines(0);
 
         (, int96 actualStakerFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(newFontaine), FluidLocker(address(aliceLocker)).STAKER_DISTRIBUTION_POOL(), stakerFlowRate
+            address(newFontaine), FluidLocker(payable(address(aliceLocker))).STAKER_DISTRIBUTION_POOL(), stakerFlowRate
         );
         (, int96 actualProviderFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(newFontaine), FluidLocker(address(aliceLocker)).LP_DISTRIBUTION_POOL(), providerFlowRate
+            address(newFontaine), FluidLocker(payable(address(aliceLocker))).LP_DISTRIBUTION_POOL(), providerFlowRate
         );
 
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
@@ -794,12 +794,12 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
             "incorrect unlock flowrate"
         );
         assertEq(
-            FluidLocker(address(aliceLocker)).STAKER_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
+            FluidLocker(payable(address(aliceLocker))).STAKER_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
             actualStakerFlowRate,
             "incorrect staker flowrate"
         );
         assertEq(
-            FluidLocker(address(aliceLocker)).LP_DISTRIBUTION_POOL().getMemberFlowRate(address(carolLocker)),
+            FluidLocker(payable(address(aliceLocker))).LP_DISTRIBUTION_POOL().getMemberFlowRate(address(carolLocker)),
             actualProviderFlowRate,
             "incorrect provider flowrate"
         );
@@ -865,7 +865,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         vm.expectRevert(IFluidLocker.STAKING_COOLDOWN_NOT_ELAPSED.selector);
         aliceLocker.unstake(amountToUnstake);
 
-        vm.warp(uint256(FluidLocker(address(aliceLocker)).stakingUnlocksAt()) + 1);
+        vm.warp(uint256(FluidLocker(payable(address(aliceLocker))).stakingUnlocksAt()) + 1);
         aliceLocker.unstake(amountToUnstake);
 
         assertEq(aliceLocker.getAvailableBalance(), amountToUnstake, "incorrect available bal after op");
@@ -977,7 +977,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         aliceLocker.provideLiquidity{ value: 1 ether }(19800e18);
         vm.stopPrank();
 
-        uint256 positionCount = FluidLocker(address(aliceLocker)).activePositionCount();
+        uint256 positionCount = FluidLocker(payable(address(aliceLocker))).activePositionCount();
         assertEq(positionCount, 1, "position count should be 1");
         assertGt(
             _nonfungiblePositionManager.tokenOfOwnerByIndex(address(aliceLocker), positionCount - 1),
@@ -1042,9 +1042,9 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
             "SUP balance in locker should increase"
         );
 
-        assertEq(FluidLocker(address(aliceLocker)).activePositionCount(), 0, "position count should be 0");
+        assertEq(FluidLocker(payable(address(aliceLocker))).activePositionCount(), 0, "position count should be 0");
         assertEq(
-            FluidLocker(address(aliceLocker)).taxFreeExitTimestamps(positionTokenId),
+            FluidLocker(payable(address(aliceLocker))).taxFreeExitTimestamps(positionTokenId),
             0,
             "position exit timestamp should be 0"
         );
@@ -1054,7 +1054,8 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         _helperUpgradeLocker();
         uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 20000e18);
 
-        uint256 initialTaxFreeExitTimestamp = FluidLocker(address(aliceLocker)).taxFreeExitTimestamps(positionTokenId);
+        uint256 initialTaxFreeExitTimestamp =
+            FluidLocker(payable(address(aliceLocker))).taxFreeExitTimestamps(positionTokenId);
 
         _helperBuySUP(makeAddr("buyer"), 10 ether);
         _helperSellSUP(makeAddr("seller"), 200000e18);
@@ -1072,17 +1073,22 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 expectedSupBackInLocker =
             _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
 
-        uint256 wethBalanceBefore = _weth.balanceOf(ALICE);
+        uint256 ethBalanceBefore = ALICE.balance;
         uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
 
         vm.prank(ALICE);
         aliceLocker.withdrawLiquidity(positionTokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
 
-        uint256 wethBalanceAfter = _weth.balanceOf(ALICE);
+        uint256 ethBalanceAfter = ALICE.balance;
         uint256 supInLockerAfter = _fluidSuperToken.balanceOf(address(aliceLocker));
 
-        // Gt because of the fees
-        assertGt(wethBalanceAfter, wethBalanceBefore + expectedWethReceived, "WETH balance should increase");
+        // Eq because of the fees are accounted in WETH
+        assertApproxEqAbs(
+            ethBalanceAfter,
+            ethBalanceBefore + expectedWethReceived,
+            ethBalanceAfter * 10 / 1000,
+            "WETH balance should increase"
+        );
 
         // Eq because the fees are collected in the locker owner address
         assertApproxEqAbs(
@@ -1091,9 +1097,11 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
             supInLockerAfter * 10 / 10000, // 0.1% tolerance
             "SUP balance in locker should increase"
         );
-        assertEq(FluidLocker(address(aliceLocker)).activePositionCount(), 1, "position count should still be 1");
         assertEq(
-            FluidLocker(address(aliceLocker)).taxFreeExitTimestamps(positionTokenId),
+            FluidLocker(payable(address(aliceLocker))).activePositionCount(), 1, "position count should still be 1"
+        );
+        assertEq(
+            FluidLocker(payable(address(aliceLocker))).taxFreeExitTimestamps(positionTokenId),
             initialTaxFreeExitTimestamp,
             "position exit timestamp should remain the same"
         );
@@ -1115,7 +1123,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
         uint256 supInAliceBefore = _fluidSuperToken.balanceOf(address(ALICE));
 
-        vm.warp(block.timestamp + FluidLocker(address(aliceLocker)).TAX_FREE_WITHDRAW_DELAY());
+        vm.warp(block.timestamp + FluidLocker(payable(address(aliceLocker))).TAX_FREE_WITHDRAW_DELAY());
 
         vm.prank(ALICE);
         aliceLocker.withdrawLiquidity(positionTokenId, positionLiquidity, amount0ToRemove, amount1ToRemove);
@@ -1138,7 +1146,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         );
 
         assertEq(supInLockerAfter, supInLockerBefore, "SUP balance in locker should not change");
-        assertEq(FluidLocker(address(aliceLocker)).activePositionCount(), 0, "position count should be 0");
+        assertEq(FluidLocker(payable(address(aliceLocker))).activePositionCount(), 0, "position count should be 0");
     }
 
     function testV2withdrawLiquidity_removeAllLiquidity_withFeeInPosition() external {
@@ -1158,7 +1166,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
         uint256 supInAliceBefore = _fluidSuperToken.balanceOf(address(ALICE));
 
-        vm.warp(block.timestamp + FluidLocker(address(aliceLocker)).TAX_FREE_WITHDRAW_DELAY());
+        vm.warp(block.timestamp + FluidLocker(payable(address(aliceLocker))).TAX_FREE_WITHDRAW_DELAY());
 
         vm.prank(ALICE);
         aliceLocker.withdrawLiquidity(positionTokenId, positionLiquidity, amount0ToRemove, amount1ToRemove);
@@ -1181,7 +1189,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         );
 
         assertEq(supInLockerAfter, supInLockerBefore, "SUP balance in locker should not change");
-        assertEq(FluidLocker(address(aliceLocker)).activePositionCount(), 0, "position count should be 0");
+        assertEq(FluidLocker(payable(address(aliceLocker))).activePositionCount(), 0, "position count should be 0");
     }
 
     function testV2withdrawLiquidity_removePartialLiquidity_beforeAndAfterTaxFreeWithdrawDelay(
@@ -1205,17 +1213,22 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 expectedWethReceived = _pool.token0() == address(_weth) ? amount0ToRemove : amount1ToRemove;
         uint256 expectedSupBack = _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
 
-        uint256 wethBalanceBefore = _weth.balanceOf(ALICE);
+        uint256 ethBalanceBefore = ALICE.balance;
         uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
 
         vm.prank(ALICE);
         aliceLocker.withdrawLiquidity(positionTokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
 
-        uint256 wethBalanceAfter = _weth.balanceOf(ALICE);
+        uint256 ethBalanceAfter = ALICE.balance;
         uint256 supInLockerAfter = _fluidSuperToken.balanceOf(address(aliceLocker));
 
-        // Gt because of the fees
-        assertGt(wethBalanceAfter, wethBalanceBefore + expectedWethReceived, "WETH balance should increase");
+        // Eq because the fees are collected in the locker owner address
+        assertApproxEqAbs(
+            ethBalanceAfter,
+            ethBalanceBefore + expectedWethReceived,
+            ethBalanceAfter * 10 / 1000,
+            "WETH balance should increase"
+        );
 
         // Eq because the fees are collected in the locker owner address
         assertApproxEqAbs(
@@ -1232,23 +1245,23 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         expectedWethReceived = _pool.token0() == address(_weth) ? amount0ToRemove : amount1ToRemove;
         expectedSupBack = _pool.token0() == address(_fluidSuperToken) ? amount0ToRemove : amount1ToRemove;
 
-        wethBalanceBefore = _weth.balanceOf(ALICE);
+        ethBalanceBefore = ALICE.balance;
         supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
         uint256 supInAliceBefore = _fluidSuperToken.balanceOf(address(ALICE));
 
-        vm.warp(block.timestamp + FluidLocker(address(aliceLocker)).TAX_FREE_WITHDRAW_DELAY());
+        vm.warp(block.timestamp + FluidLocker(payable(address(aliceLocker))).TAX_FREE_WITHDRAW_DELAY());
 
         vm.prank(ALICE);
         aliceLocker.withdrawLiquidity(positionTokenId, positionLiquidity, amount0ToRemove, amount1ToRemove);
 
-        wethBalanceAfter = _weth.balanceOf(ALICE);
+        ethBalanceAfter = ALICE.balance;
         supInLockerAfter = _fluidSuperToken.balanceOf(address(aliceLocker));
         uint256 supInAliceAfter = _fluidSuperToken.balanceOf(address(ALICE));
 
         assertApproxEqAbs(
-            wethBalanceAfter,
-            wethBalanceBefore + expectedWethReceived,
-            wethBalanceAfter * 10 / 10000,
+            ethBalanceAfter,
+            ethBalanceBefore + expectedWethReceived,
+            ethBalanceAfter * 10 / 10000,
             "WETH balance should increase after tax free withdraw"
         );
         assertEq(supInLockerAfter, supInLockerBefore, "SUP balance in locker should not change after tax free withdraw");
@@ -1258,7 +1271,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
             supInAliceAfter * 10 / 10000,
             "SUP balance in Alice wallet should increase after tax free withdraw"
         );
-        assertEq(FluidLocker(address(aliceLocker)).activePositionCount(), 0, "position count should be 0");
+        assertEq(FluidLocker(payable(address(aliceLocker))).activePositionCount(), 0, "position count should be 0");
     }
 
     function testV2withdrawLiquidity_lockerHasNoPosition(uint256 inexistantPositionTokenId) external {
