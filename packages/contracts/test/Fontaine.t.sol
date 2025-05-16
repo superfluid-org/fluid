@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import { console2 } from "forge-std/Test.sol";
-
 import { SFTest } from "./SFTest.t.sol";
 import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
@@ -150,6 +148,65 @@ contract FontaineTest is SFTest {
             _fluid.balanceOf(makeAddr("user")),
             uint96(unlockFlowRate) * unlockPeriod,
             (uint96(unlockFlowRate) * unlockPeriod) * 10 / 100,
+            "Unlocked amount incorrect"
+        );
+    }
+
+    function testTerminateUnlock_noStaker(
+        uint128 unlockPeriod,
+        uint256 unlockAmount,
+        uint128 terminationDelay,
+        uint128 tooEarlyDelay
+    ) external {
+        // Bound Fuzz Parameters
+        /// NOTE : issues will arise if the unlock amount is too low (less than 10 SUP)
+        unlockAmount = bound(unlockAmount, 10e18, 100_000_000e18);
+        unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
+        terminationDelay = uint128(bound(terminationDelay, 4 hours, _EARLY_END_DELAY));
+        tooEarlyDelay = uint128(bound(tooEarlyDelay, 25 hours, unlockPeriod));
+
+        // Setup Stakers and Liquidity Providers
+        _helperLockerStake(address(bobLocker));
+        _helperLockerProvideLiquidity(address(carolLocker));
+
+        (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate) =
+            _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
+
+        uint256 expectedStakerBalance =
+            _fluid.balanceOf(address(bobLocker)) + (uint96(stakerFlowRate) * (unlockPeriod - terminationDelay));
+
+        // Create and fund the Fontaine
+        address newFontaine = _helperCreateFontaine();
+        vm.prank(FLUID_TREASURY);
+        _fluid.transfer(newFontaine, unlockAmount);
+
+        // Initialize the Fontaine
+        IFontaine(newFontaine).initialize(
+            makeAddr("user"), unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod
+        );
+
+        uint256 earlyEndDate = block.timestamp + unlockPeriod - terminationDelay;
+
+        vm.warp(block.timestamp + unlockPeriod - tooEarlyDelay);
+        vm.expectRevert(IFontaine.TOO_EARLY_TO_TERMINATE_UNLOCK.selector);
+        IFontaine(newFontaine).terminateUnlock();
+
+        vm.warp(earlyEndDate);
+
+        _helperLockerUnstake(address(bobLocker));
+        IFontaine(newFontaine).terminateUnlock();
+
+        assertApproxEqAbs(
+            _fluid.balanceOf(address(bobLocker)),
+            expectedStakerBalance,
+            expectedStakerBalance * 10 / 100,
+            "Staker balance incorrect"
+        );
+
+        assertApproxEqAbs(
+            _fluid.balanceOf(makeAddr("user")),
+            (uint96(unlockFlowRate) * unlockPeriod) + (uint96(stakerFlowRate) * terminationDelay),
+            _fluid.balanceOf(makeAddr("user")) * 10 / 100,
             "Unlocked amount incorrect"
         );
     }

@@ -141,6 +141,7 @@ contract Fontaine is Initializable, IFontaine {
         FLUID.flow(unlockRecipient, targetUnlockFlowRate);
     }
 
+    /// @inheritdoc IFontaine
     function terminateUnlock() external {
         // Validate early end date
         if (block.timestamp < endDate - EARLY_END) {
