@@ -182,7 +182,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     uint256 public activePositionCount;
 
     /// @notice Stores the tax free withdraw timestamp for a given position token identifier
-    /// FIXME rename to taxFreeExitTimestamps
     mapping(uint256 positionTokenId => uint256 taxFreeWithdrawTimestamp) public taxFreeExitTimestamps;
 
     /// @notice Aggregated liquidity balance provided by this locker
@@ -466,7 +465,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
 
         // Burn the position and delete position tokenId if all liquidity is removed
-        /// FIXME : test if the position has fees to collect and the position meant to be burned
         if (liquidityToRemove == positionLiquidity) {
             delete taxFreeExitTimestamps[tokenId];
             activePositionCount--;
@@ -541,6 +539,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
+    function getLiquidityBalance() public view returns (uint256 lBalance) {
+        lBalance = _liquidityBalance;
+    }
+
+    /// @inheritdoc IFluidLocker
     function getAvailableBalance() public view returns (uint256 aBalance) {
         aBalance = FLUID.balanceOf(address(this)) - _stakedBalance;
     }
@@ -548,6 +551,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @inheritdoc IFluidLocker
     function getFontaineBeaconImplementation() public view returns (address fontaineBeaconImpl) {
         fontaineBeaconImpl = FONTAINE_BEACON.implementation();
+    }
+
+    /// @inheritdoc IFluidLocker
+    function getPositionLiquidity(uint256 tokenId) public view returns (uint128 liquidity) {
+        (,,,,,,, liquidity,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(tokenId);
     }
 
     //      ____      __                        __   ______                 __  _
@@ -563,9 +571,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         (, uint256 providerAllocation) = STAKING_REWARD_CONTROLLER.getTaxAllocation();
 
         // Distribute penalty to provider (connected to the LP_DISTRIBUTION_POOL)
-        uint256 actualProviderDistributionAmount = FLUID.distribute(
-            address(this), LP_DISTRIBUTION_POOL, penaltyAmount * providerAllocation / BP_DENOMINATOR
-        );
+        uint256 actualProviderDistributionAmount =
+            FLUID.distribute(address(this), LP_DISTRIBUTION_POOL, penaltyAmount * providerAllocation / BP_DENOMINATOR);
 
         // Distribute penalty to staker (connected to the STAKER_DISTRIBUTION_POOL)
         uint256 actualStakerDistributionAmount =

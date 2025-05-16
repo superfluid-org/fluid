@@ -252,6 +252,12 @@ interface IFluidLocker {
     function getStakedBalance() external view returns (uint256 sBalance);
 
     /**
+     * @notice Returns this Lockers' Uniswap V3 Liquidity balance in the SUP/ETH pool
+     * @return lBalance Uniswap V3 Liquidity balance in the SUP/ETH pool
+     */
+    function getLiquidityBalance() external view returns (uint256 lBalance);
+
+    /**
      * @notice Returns this Lockers' available FLUID Token balance
      * @dev Available balance is the total balance minus the staked balance
      * @return aBalance amount of FLUID Token available in this Locker
@@ -263,4 +269,11 @@ interface IFluidLocker {
      * @return fontaineBeaconImpl The fontaine beacon implementation contract address
      */
     function getFontaineBeaconImplementation() external view returns (address fontaineBeaconImpl);
+
+    /**
+     * @notice Returns the liquidity of the position for the given token identifier
+     * @param tokenId The token identifier of the position to query
+     * @return liquidity the liquidity of the position for the given token identifier
+     */
+    function getPositionLiquidity(uint256 tokenId) external view returns (uint128 liquidity);
 }
