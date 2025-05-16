@@ -96,7 +96,7 @@ interface IFluidLocker {
     error STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS();
 
     /// @notice Error thrown when attempting to unlock while the Provider Distribution Pool did not distribute units
-    error PROVIDER_DISTRIBUTION_POOL_HAS_NO_UNITS();
+    error LP_DISTRIBUTION_POOL_HAS_NO_UNITS();
 
     /// @notice Error thrown when attempting to provide liquidity with an amount greater than the available balance
     error INSUFFICIENT_BALANCE();

@@ -90,7 +90,7 @@ function _deployStakingRewardController(ISuperToken fluid, address owner)
 
     stakingRewardControllerProxyAddress = address(stakingRewardControllerProxy);
 
-    StakingRewardController(stakingRewardControllerProxyAddress).setupProviderDistributionPool();
+    StakingRewardController(stakingRewardControllerProxyAddress).setupLPDistributionPool();
     StakingRewardController(stakingRewardControllerProxyAddress).setTaxAllocation(1000, 9000);
 }
 
@@ -147,7 +147,7 @@ function _deployAll(DeploySettings memory settings) returns (DeployedContracts m
         StakingRewardController(deployedContracts.stakingRewardControllerProxyAddress).taxDistributionPool();
 
     ISuperfluidPool providerDistributionPool =
-        StakingRewardController(deployedContracts.stakingRewardControllerProxyAddress).providerDistributionPool();
+        StakingRewardController(deployedContracts.stakingRewardControllerProxyAddress).lpDistributionPool();
 
     // Deploy Ecosystem Partner Program Manager
     (deployedContracts.programManagerLogicAddress, deployedContracts.programManagerProxyAddress) =

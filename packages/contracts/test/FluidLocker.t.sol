@@ -156,9 +156,7 @@ abstract contract FluidLockerBaseTest is SFTest {
         uint256 totalPenaltyAmount = (amountToUnlock * _INSTANT_UNLOCK_PENALTY_BP) / _BP_DENOMINATOR;
 
         amountToLP = ISuperToken(address(_fluidSuperToken)).estimateDistributionActualAmount(
-            locker,
-            _stakingRewardController.providerDistributionPool(),
-            (totalPenaltyAmount * lpAllocation) / _BP_DENOMINATOR
+            locker, _stakingRewardController.lpDistributionPool(), (totalPenaltyAmount * lpAllocation) / _BP_DENOMINATOR
         );
 
         amountToStaker = ISuperToken(address(_fluidSuperToken)).estimateDistributionActualAmount(
@@ -329,7 +327,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
         _helperLockerStake(address(bobLocker));
 
         vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.PROVIDER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        vm.expectRevert(IFluidLocker.LP_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
         aliceLocker.unlock(unlockAmount, 0, ALICE);
 
         _helperLockerProvideLiquidity(address(carolLocker));
@@ -404,7 +402,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
         _helperLockerStake(address(bobLocker));
 
         vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.PROVIDER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        vm.expectRevert(IFluidLocker.LP_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
         aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
 
         _helperLockerProvideLiquidity(address(carolLocker));
@@ -418,7 +416,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
             address(newFontaine), FluidLocker(address(aliceLocker)).STAKER_DISTRIBUTION_POOL(), stakerFlowRate
         );
         (, int96 actualProviderFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(newFontaine), FluidLocker(address(aliceLocker)).PROVIDER_DISTRIBUTION_POOL(), providerFlowRate
+            address(newFontaine), FluidLocker(address(aliceLocker)).LP_DISTRIBUTION_POOL(), providerFlowRate
         );
 
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
@@ -433,7 +431,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
             "incorrect staker flowrate"
         );
         assertEq(
-            FluidLocker(address(aliceLocker)).PROVIDER_DISTRIBUTION_POOL().getMemberFlowRate(address(carolLocker)),
+            FluidLocker(address(aliceLocker)).LP_DISTRIBUTION_POOL().getMemberFlowRate(address(carolLocker)),
             actualProviderFlowRate,
             "incorrect provider flowrate"
         );
@@ -691,7 +689,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         _helperLockerStake(address(bobLocker));
 
         vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.PROVIDER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        vm.expectRevert(IFluidLocker.LP_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
         aliceLocker.unlock(unlockAmount, instantUnlockPeriod, ALICE);
 
         _helperLockerProvideLiquidity(address(carolLocker));
@@ -772,7 +770,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         _helperLockerStake(address(bobLocker));
 
         vm.prank(ALICE);
-        vm.expectRevert(IFluidLocker.PROVIDER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
+        vm.expectRevert(IFluidLocker.LP_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
         aliceLocker.unlock(unlockAmount, unlockPeriod, ALICE);
 
         _helperLockerProvideLiquidity(address(carolLocker));
@@ -786,7 +784,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
             address(newFontaine), FluidLocker(address(aliceLocker)).STAKER_DISTRIBUTION_POOL(), stakerFlowRate
         );
         (, int96 actualProviderFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(newFontaine), FluidLocker(address(aliceLocker)).PROVIDER_DISTRIBUTION_POOL(), providerFlowRate
+            address(newFontaine), FluidLocker(address(aliceLocker)).LP_DISTRIBUTION_POOL(), providerFlowRate
         );
 
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
@@ -801,7 +799,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
             "incorrect staker flowrate"
         );
         assertEq(
-            FluidLocker(address(aliceLocker)).PROVIDER_DISTRIBUTION_POOL().getMemberFlowRate(address(carolLocker)),
+            FluidLocker(address(aliceLocker)).LP_DISTRIBUTION_POOL().getMemberFlowRate(address(carolLocker)),
             actualProviderFlowRate,
             "incorrect provider flowrate"
         );

@@ -95,7 +95,7 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
 
     /// @notice Superfluid pool interface
     /// FIXME rename to lpDistributionPool
-    ISuperfluidPool public providerDistributionPool;
+    ISuperfluidPool public lpDistributionPool;
 
     //     ______                 __                  __
     //    / ____/___  ____  _____/ /________  _______/ /_____  _____
@@ -146,9 +146,7 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
 
     /// @inheritdoc IStakingRewardController
     function updateLiquidityProviderUnits(uint256 lockerLiquidityBalance) external onlyApprovedLocker {
-        providerDistributionPool.updateMemberUnits(
-            msg.sender, uint128(lockerLiquidityBalance) / _LIQUIDITY_UNIT_DOWNSCALER
-        );
+        lpDistributionPool.updateMemberUnits(msg.sender, uint128(lockerLiquidityBalance) / _LIQUIDITY_UNIT_DOWNSCALER);
 
         emit UpdatedLiquidityProviderUnits(msg.sender, uint128(lockerLiquidityBalance) / _LIQUIDITY_UNIT_DOWNSCALER);
     }
@@ -194,9 +192,9 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     }
 
     /// @inheritdoc IStakingRewardController
-    function setupProviderDistributionPool() external onlyOwner {
-        if (address(providerDistributionPool) != address(0)) {
-            revert PROVIDER_DISTRIBUTION_POOL_ALREADY_SET();
+    function setupLPDistributionPool() external onlyOwner {
+        if (address(lpDistributionPool) != address(0)) {
+            revert LP_DISTRIBUTION_POOL_ALREADY_SET();
         }
 
         // Superfluid GDA Pool configuration
@@ -204,7 +202,7 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
             PoolConfig({ transferabilityForUnitsOwner: false, distributionFromAnyAddress: true });
 
         // Create LP Superfluid GDA Pool
-        providerDistributionPool = FLUID.createPool(address(this), poolConfig);
+        lpDistributionPool = FLUID.createPool(address(this), poolConfig);
     }
 
     /// @inheritdoc IStakingRewardController
@@ -222,7 +220,7 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
 
         // Perform an instant distribution of the adjustment tax amount to the staker and liquidity provider pools
         FLUID.distribute(taxDistributionPool, stakerTaxAmount);
-        FLUID.distribute(providerDistributionPool, liquidityProviderTaxAmount);
+        FLUID.distribute(lpDistributionPool, liquidityProviderTaxAmount);
     }
 
     //   _    ___                 ______                 __  _

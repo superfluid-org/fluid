@@ -102,7 +102,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     ISuperfluidPool public immutable STAKER_DISTRIBUTION_POOL;
 
     /// @notice Superfluid GDA Provider Distribution Pool interface
-    ISuperfluidPool public immutable PROVIDER_DISTRIBUTION_POOL;
+    ISuperfluidPool public immutable LP_DISTRIBUTION_POOL;
 
     /// @notice Distribution Program Manager interface
     IEPProgramManager public immutable EP_PROGRAM_MANAGER;
@@ -223,7 +223,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         FLUID = fluid;
         EP_PROGRAM_MANAGER = programManager;
         STAKING_REWARD_CONTROLLER = stakingRewardController;
-        PROVIDER_DISTRIBUTION_POOL = stakingRewardController.providerDistributionPool();
+        LP_DISTRIBUTION_POOL = stakingRewardController.lpDistributionPool();
         STAKER_DISTRIBUTION_POOL = stakingRewardController.taxDistributionPool();
 
         // Sets the Fontaine beacon address
@@ -328,8 +328,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
                 revert STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS();
             }
 
-            if (PROVIDER_DISTRIBUTION_POOL.getTotalUnits() == 0) {
-                revert PROVIDER_DISTRIBUTION_POOL_HAS_NO_UNITS();
+            if (LP_DISTRIBUTION_POOL.getTotalUnits() == 0) {
+                revert LP_DISTRIBUTION_POOL_HAS_NO_UNITS();
             }
         }
 
@@ -562,9 +562,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         (, uint256 providerAllocation) = STAKING_REWARD_CONTROLLER.getTaxAllocation();
 
-        // Distribute penalty to provider (connected to the PROVIDER_DISTRIBUTION_POOL)
+        // Distribute penalty to provider (connected to the LP_DISTRIBUTION_POOL)
         uint256 actualProviderDistributionAmount = FLUID.distribute(
-            address(this), PROVIDER_DISTRIBUTION_POOL, penaltyAmount * providerAllocation / BP_DENOMINATOR
+            address(this), LP_DISTRIBUTION_POOL, penaltyAmount * providerAllocation / BP_DENOMINATOR
         );
 
         // Distribute penalty to staker (connected to the STAKER_DISTRIBUTION_POOL)
@@ -654,9 +654,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Update the aggregated liquidity balance
         _liquidityBalance += liquidity;
 
-        if (!FLUID.isMemberConnected(address(PROVIDER_DISTRIBUTION_POOL), address(this))) {
+        if (!FLUID.isMemberConnected(address(LP_DISTRIBUTION_POOL), address(this))) {
             // Connect this locker to the LP Tax Distribution Pool
-            FLUID.connectPool(PROVIDER_DISTRIBUTION_POOL);
+            FLUID.connectPool(LP_DISTRIBUTION_POOL);
         }
 
         // Update the liquidity provider units

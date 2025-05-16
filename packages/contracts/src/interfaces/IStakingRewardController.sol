@@ -76,7 +76,9 @@ interface IStakingRewardController {
      * @param liquidityProviderAllocation liquidity provider allocation (expressed in basis points)
      */
     struct TaxAllocation {
+        /// FIXME rename to stakerAllocationBP
         uint128 stakerAllocation;
+        /// FIXME rename to liquidityProviderAllocationBP
         uint128 liquidityProviderAllocation;
     }
 
@@ -99,7 +101,7 @@ interface IStakingRewardController {
     error INVALID_PARAMETER();
 
     /// @notice Error thrown when the provider distribution pool is already set
-    error PROVIDER_DISTRIBUTION_POOL_ALREADY_SET();
+    error LP_DISTRIBUTION_POOL_ALREADY_SET();
 
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -155,7 +157,7 @@ interface IStakingRewardController {
      * @notice Setup the provider distribution pool
      * @dev Only the contract owner can perform this operation
      */
-    function setupProviderDistributionPool() external;
+    function setupLPDistributionPool() external;
 
     /**
      * @notice Distribute the adjustment tax amount to the staker and liquidity provider pools
@@ -183,7 +185,7 @@ interface IStakingRewardController {
 
     /**
      * @notice Get the provider distribution pool
-     * @return providerDistributionPool provider distribution pool
+     * @return lpDistributionPool provider distribution pool
      */
-    function providerDistributionPool() external view returns (ISuperfluidPool providerDistributionPool);
+    function lpDistributionPool() external view returns (ISuperfluidPool lpDistributionPool);
 }
