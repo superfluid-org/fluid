@@ -1083,8 +1083,16 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 wethBalanceAfter = _weth.balanceOf(ALICE);
         uint256 supInLockerAfter = _fluidSuperToken.balanceOf(address(aliceLocker));
 
+        // Gt because of the fees
         assertGt(wethBalanceAfter, wethBalanceBefore + expectedWethReceived, "WETH balance should increase");
-        assertGt(supInLockerAfter, supInLockerBefore + expectedSupBackInLocker, "SUP balance in locker should increase");
+
+        // Eq because the fees are collected in the locker owner address
+        assertApproxEqAbs(
+            supInLockerAfter,
+            supInLockerBefore + expectedSupBackInLocker,
+            supInLockerAfter * 10 / 10000, // 0.1% tolerance
+            "SUP balance in locker should increase"
+        );
         assertEq(FluidLocker(address(aliceLocker)).activePositionCount(), 1, "position count should still be 1");
         assertEq(
             FluidLocker(address(aliceLocker)).taxFreeExitTimestamps(positionTokenId),
@@ -1208,8 +1216,16 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 wethBalanceAfter = _weth.balanceOf(ALICE);
         uint256 supInLockerAfter = _fluidSuperToken.balanceOf(address(aliceLocker));
 
+        // Gt because of the fees
         assertGt(wethBalanceAfter, wethBalanceBefore + expectedWethReceived, "WETH balance should increase");
-        assertGt(supInLockerAfter, supInLockerBefore + expectedSupBack, "SUP balance in locker should increase");
+
+        // Eq because the fees are collected in the locker owner address
+        assertApproxEqAbs(
+            supInLockerAfter,
+            supInLockerBefore + expectedSupBack,
+            supInLockerAfter * 10 / 10000, // 0.1% tolerance
+            "SUP balance in locker should increase"
+        );
 
         (,,,,,,, positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
 

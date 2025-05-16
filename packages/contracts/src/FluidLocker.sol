@@ -448,6 +448,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             revert LOCKER_HAS_NO_POSITION();
         }
 
+        // Collect the fees
+        _collect(tokenId, lockerOwner);
+
         address weth = NONFUNGIBLE_POSITION_MANAGER.WETH9();
 
         (,,,,,,, uint128 positionLiquidity,,,,) = NONFUNGIBLE_POSITION_MANAGER.positions(tokenId);
@@ -465,8 +468,6 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Burn the position and delete position tokenId if all liquidity is removed
         /// FIXME : test if the position has fees to collect and the position meant to be burned
         if (liquidityToRemove == positionLiquidity) {
-            // FIXME to potentially add
-            // _collect(tokenId);
             delete taxFreeExitTimestamps[tokenId];
             activePositionCount--;
             NONFUNGIBLE_POSITION_MANAGER.burn(tokenId);
@@ -480,22 +481,16 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         onlyLockerOwner
         returns (uint256 collectedWeth, uint256 collectedSup)
     {
-        address weth = NONFUNGIBLE_POSITION_MANAGER.WETH9();
-
         // ensure the locker has a position
         if (!_positionExists(tokenId)) revert LOCKER_HAS_NO_POSITION();
 
         if (ETH_SUP_POOL.token0() == address(FLUID)) {
             // Collect the fees
-            (collectedSup, collectedWeth) = _collect(tokenId);
+            (collectedSup, collectedWeth) = _collect(tokenId, lockerOwner);
         } else {
             // Collect the fees
-            (collectedWeth, collectedSup) = _collect(tokenId);
+            (collectedWeth, collectedSup) = _collect(tokenId, lockerOwner);
         }
-
-        // Transfer the collected fees to the locker owner
-        TransferHelper.safeTransfer(weth, lockerOwner, collectedWeth);
-        TransferHelper.safeTransfer(address(FLUID), lockerOwner, collectedSup);
     }
 
     //   _    ___                 ______                 __  _
@@ -710,7 +705,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         STAKING_REWARD_CONTROLLER.updateLiquidityProviderUnits(_liquidityBalance);
 
         // Collect the tokens owed
-        (uint256 withdrawnAmount0, uint256 withdrawnAmount1) = _collect(tokenId);
+        (uint256 withdrawnAmount0, uint256 withdrawnAmount1) = _collect(tokenId, address(this));
 
         (withdrawnSupAmount, withdrawnPairedAssetAmount) =
             _sortOutAmounts(zeroIsSup, withdrawnAmount0, withdrawnAmount1);
@@ -722,10 +717,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      * @return amount0 The amount of token0 fees collected
      * @return amount1 The amount of token1 fees collected
      */
-    function _collect(uint256 tokenId) internal returns (uint256 amount0, uint256 amount1) {
+    function _collect(uint256 tokenId, address recipient) internal returns (uint256 amount0, uint256 amount1) {
         INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager.CollectParams({
             tokenId: tokenId,
-            recipient: address(this),
+            recipient: recipient,
             amount0Max: type(uint128).max,
             amount1Max: type(uint128).max
         });
