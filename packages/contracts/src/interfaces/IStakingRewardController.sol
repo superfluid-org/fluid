@@ -61,7 +61,7 @@ interface IStakingRewardController {
     event LockerApproved(address indexed approvedLocker);
 
     /// @notice Event emitted when the tax allocation is updated
-    event TaxAllocationUpdated(uint128 stakerAllocation, uint128 liquidityProviderAllocation);
+    event TaxAllocationUpdated(uint128 stakerAllocationBP, uint128 liquidityProviderAllocationBP);
 
     //      ____        __        __
     //     / __ \____ _/ /_____ _/ /___  ______  ___  _____
@@ -72,14 +72,12 @@ interface IStakingRewardController {
 
     /**
      * @notice Tax Allocation Data Type
-     * @param stakerAllocation staker allocation (expressed in basis points)
-     * @param liquidityProviderAllocation liquidity provider allocation (expressed in basis points)
+     * @param stakerAllocationBP staker allocation (expressed in basis points)
+     * @param liquidityProviderAllocationBP liquidity provider allocation (expressed in basis points)
      */
     struct TaxAllocation {
-        /// FIXME rename to stakerAllocationBP
-        uint128 stakerAllocation;
-        /// FIXME rename to liquidityProviderAllocationBP
-        uint128 liquidityProviderAllocation;
+        uint128 stakerAllocationBP;
+        uint128 liquidityProviderAllocationBP;
     }
 
     //     ______           __                     ______
@@ -148,10 +146,10 @@ interface IStakingRewardController {
     /**
      * @notice Set the tax allocation
      * @dev Only the contract owner can perform this operation
-     * @param stakerAllocation staker allocation percentage (expressed in basis points)
-     * @param liquidityProviderAllocation liquidity provider allocation percentage (expressed in basis points)
+     * @param stakerAllocationBP staker allocation percentage (expressed in basis points)
+     * @param liquidityProviderAllocationBP liquidity provider allocation percentage (expressed in basis points)
      */
-    function setTaxAllocation(uint128 stakerAllocation, uint128 liquidityProviderAllocation) external;
+    function setTaxAllocation(uint128 stakerAllocationBP, uint128 liquidityProviderAllocationBP) external;
 
     /**
      * @notice Setup the provider distribution pool
@@ -172,10 +170,10 @@ interface IStakingRewardController {
 
     /**
      * @notice Get the tax allocation
-     * @return stakerAllocation staker allocation percentage (expressed in basis points)
-     * @return liquidityProviderAllocation liquidity provider allocation percentage (expressed in basis points)
+     * @return stakerAllocationBP staker allocation percentage (expressed in basis points)
+     * @return liquidityProviderAllocationBP liquidity provider allocation percentage (expressed in basis points)
      */
-    function getTaxAllocation() external view returns (uint128 stakerAllocation, uint128 liquidityProviderAllocation);
+    function getTaxAllocation() external view returns (uint128 stakerAllocationBP, uint128 liquidityProviderAllocationBP);
 
     /**
      * @notice Get the tax distribution pool

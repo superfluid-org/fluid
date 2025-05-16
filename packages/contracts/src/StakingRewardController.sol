@@ -94,7 +94,6 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     TaxAllocation public taxAllocation;
 
     /// @notice Superfluid pool interface
-    /// FIXME rename to lpDistributionPool
     ISuperfluidPool public lpDistributionPool;
 
     //     ______                 __                  __
@@ -176,19 +175,19 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     }
 
     /// @inheritdoc IStakingRewardController
-    function setTaxAllocation(uint128 stakerAllocation, uint128 liquidityProviderAllocation) external onlyOwner {
+    function setTaxAllocation(uint128 stakerAllocationBP, uint128 liquidityProviderAllocationBP) external onlyOwner {
         // Ensure the sum of the allocations is 100%
-        if (stakerAllocation + liquidityProviderAllocation != _BP_DENOMINATOR) {
+        if (stakerAllocationBP + liquidityProviderAllocationBP != _BP_DENOMINATOR) {
             revert INVALID_PARAMETER();
         }
 
         // Set the tax allocation
         taxAllocation = TaxAllocation({
-            stakerAllocation: stakerAllocation,
-            liquidityProviderAllocation: liquidityProviderAllocation
+            stakerAllocationBP: stakerAllocationBP,
+            liquidityProviderAllocationBP: liquidityProviderAllocationBP
         });
 
-        emit TaxAllocationUpdated(stakerAllocation, liquidityProviderAllocation);
+        emit TaxAllocationUpdated(stakerAllocationBP, liquidityProviderAllocationBP);
     }
 
     /// @inheritdoc IStakingRewardController
@@ -215,7 +214,7 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
 
         // Calculate the allocations for stakers and liquidity providers
         uint256 liquidityProviderTaxAmount =
-            (adjustmentAmount * taxAllocation.liquidityProviderAllocation) / _BP_DENOMINATOR;
+            (adjustmentAmount * taxAllocation.liquidityProviderAllocationBP) / _BP_DENOMINATOR;
         uint256 stakerTaxAmount = adjustmentAmount - liquidityProviderTaxAmount;
 
         // Perform an instant distribution of the adjustment tax amount to the staker and liquidity provider pools
@@ -230,9 +229,13 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     //  |___/_/\___/|__/|__/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc IStakingRewardController
-    function getTaxAllocation() external view returns (uint128 stakerAllocation, uint128 liquidityProviderAllocation) {
-        stakerAllocation = taxAllocation.stakerAllocation;
-        liquidityProviderAllocation = taxAllocation.liquidityProviderAllocation;
+    function getTaxAllocation()
+        external
+        view
+        returns (uint128 stakerAllocationBP, uint128 liquidityProviderAllocationBP)
+    {
+        stakerAllocationBP = taxAllocation.stakerAllocationBP;
+        liquidityProviderAllocationBP = taxAllocation.liquidityProviderAllocationBP;
     }
 
     //      __  ___          ___ _____
