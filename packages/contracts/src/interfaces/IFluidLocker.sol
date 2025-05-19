@@ -110,6 +110,9 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to provide liquidity with an amount of ETH sent different than the paired asset amount
     error INSUFFICIENT_ETH_SENT();
 
+    /// @notice Error thrown when attempting to unlock an amount of SUP less than the minimum unlock amount
+    error INSUFFICIENT_UNLOCK_AMOUNT();
+
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
     //    / __/ | |/_/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/

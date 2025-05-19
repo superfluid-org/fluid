@@ -152,6 +152,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     /// @notice Tax free withdraw delay
     uint256 public constant TAX_FREE_WITHDRAW_DELAY = 180 days;
 
+    /// @notice Minimum SUP unlock amount
+    uint256 public constant MIN_UNLOCK_AMOUNT = 10 ether;
+
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -311,6 +314,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Enforce unlock period validity
         if (unlockPeriod != 0 && (unlockPeriod < _MIN_UNLOCK_PERIOD || unlockPeriod > _MAX_UNLOCK_PERIOD)) {
             revert INVALID_UNLOCK_PERIOD();
+        }
+
+        // Enforce unlock amount validity
+        if (unlockAmount < MIN_UNLOCK_AMOUNT) {
+            revert INSUFFICIENT_UNLOCK_AMOUNT();
         }
 
         // Ensure recipient is not the zero-address
