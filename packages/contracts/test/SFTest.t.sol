@@ -129,8 +129,8 @@ contract SFTest is Test {
 
         // Provide liquidity to the pool (from the treasury)
         vm.startPrank(FLUID_TREASURY);
-        uint256 wethAmountToDeposit = 100 ether;
-        uint256 supAmountToDeposit = 2_000_000 ether;
+        uint256 wethAmountToDeposit = 1000 ether;
+        uint256 supAmountToDeposit = 20_000_000 ether;
 
         _weth.approve(address(_nonfungiblePositionManager), wethAmountToDeposit);
         _fluidSuperToken.approve(address(_nonfungiblePositionManager), supAmountToDeposit);
@@ -302,8 +302,9 @@ contract SFTest is Test {
         FluidLocker(payable(locker)).provideLiquidity{ value: wethAmount }(supAmount);
         vm.stopPrank();
 
-        positionTokenId =
-            _nonfungiblePositionManager.tokenOfOwnerByIndex(locker, FluidLocker(payable(locker)).activePositionCount() - 1);
+        positionTokenId = _nonfungiblePositionManager.tokenOfOwnerByIndex(
+            locker, FluidLocker(payable(locker)).activePositionCount() - 1
+        );
     }
 
     function _helperLockerProvideLiquidity(address locker) internal {
@@ -318,13 +319,16 @@ contract SFTest is Test {
         uint256 supAmountToRemove
     ) internal {
         vm.startPrank(FluidLocker(payable(locker)).lockerOwner());
-        FluidLocker(payable(locker)).withdrawLiquidity(tokenId, liquidityToRemove, wethAmountToRemove, supAmountToRemove);
+        FluidLocker(payable(locker)).withdrawLiquidity(
+            tokenId, liquidityToRemove, wethAmountToRemove, supAmountToRemove
+        );
         vm.stopPrank();
     }
 
     function _helperLockerWithdrawLiquidity(address locker) internal {
-        uint256 tokenId =
-            _nonfungiblePositionManager.tokenOfOwnerByIndex(locker, FluidLocker(payable(locker)).activePositionCount() - 1);
+        uint256 tokenId = _nonfungiblePositionManager.tokenOfOwnerByIndex(
+            locker, FluidLocker(payable(locker)).activePositionCount() - 1
+        );
 
         (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(tokenId);
 
