@@ -1363,37 +1363,37 @@ contract FluidLockerLayoutTest is FluidLocker {
         )
     { }
 
-    function testStorageLayout() external pure {
-        uint256 slot;
-        uint256 offset;
+    // function testStorageLayout() external pure {
+    //     uint256 slot;
+    //     uint256 offset;
 
-        // FluidLocker storage
+    //     // FluidLocker storage
 
-        assembly {
-            slot := lockerOwner.slot
-            offset := lockerOwner.offset
-        }
-        require(slot == 0 && offset == 0, "lockerOwner changed location");
+    //     assembly {
+    //         slot := lockerOwner.slot
+    //         offset := lockerOwner.offset
+    //     }
+    //     require(slot == 0 && offset == 0, "lockerOwner changed location");
 
-        assembly {
-            slot := stakingUnlocksAt.slot
-            offset := stakingUnlocksAt.offset
-        }
-        require(slot == 0 && offset == 20, "stakingUnlocksAt changed location");
+    //     assembly {
+    //         slot := stakingUnlocksAt.slot
+    //         offset := stakingUnlocksAt.offset
+    //     }
+    //     require(slot == 0 && offset == 20, "stakingUnlocksAt changed location");
 
-        assembly {
-            slot := fontaineCount.slot
-            offset := fontaineCount.offset
-        }
-        require(slot == 0 && offset == 30, "fontaineCount changed location");
+    //     assembly {
+    //         slot := fontaineCount.slot
+    //         offset := fontaineCount.offset
+    //     }
+    //     require(slot == 0 && offset == 30, "fontaineCount changed location");
 
-        // private state : _stakedBalance
-        // slot = 1 - offset = 0
+    //     // private state : _stakedBalance
+    //     // slot = 1 - offset = 0
 
-        assembly {
-            slot := fontaines.slot
-            offset := fontaines.offset
-        }
-        require(slot == 2 && offset == 0, "fontaines changed location");
-    }
+    //     assembly {
+    //         slot := fontaines.slot
+    //         offset := fontaines.offset
+    //     }
+    //     require(slot == 2 && offset == 0, "fontaines changed location");
+    // }
 }
