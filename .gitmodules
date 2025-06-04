@@ -24,4 +24,4 @@
 	url = https://github.com/Uniswap/v3-periphery
 [submodule "packages/contracts/lib/swap-router-contracts"]
 	path = packages/contracts/lib/swap-router-contracts
-	url = https://github.com/@uniswap/swap-router-contracts
+	url = https://github.com/Uniswap/swap-router-contracts
