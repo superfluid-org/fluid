@@ -581,7 +581,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     function _instantUnlock(uint256 amountToUnlock, address recipient) internal {
         // Calculate instant unlock penalty amount
-        uint256 taxAmount = (amountToUnlock * _INSTANT_UNLOCK_PENALTY_BP) / BP_DENOMINATOR;
+        uint256 taxAmount = Math.mulDiv(amountToUnlock, _INSTANT_UNLOCK_PENALTY_BP, BP_DENOMINATOR);
 
         // Transfer the tax amount to the Staking Reward Controller
         FLUID.transfer(address(STAKING_REWARD_CONTROLLER), taxAmount);
