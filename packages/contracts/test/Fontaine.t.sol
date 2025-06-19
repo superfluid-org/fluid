@@ -14,7 +14,7 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 import { IFluidLocker } from "../src/FluidLocker.sol";
 import { IFontaine } from "../src/interfaces/IFontaine.sol";
 import { Fontaine } from "../src/Fontaine.sol";
-import { calculateVestUnlockFlowRates } from "../src/FluidLocker.sol";
+import { calculateVestUnlockAmounts } from "../src/FluidLocker.sol";
 
 using SuperTokenV1Library for ISuperToken;
 using SafeCast for int256;
@@ -44,47 +44,22 @@ contract FontaineTest is SFTest {
         unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
         unlockAmount = bound(unlockAmount, 1e18, 100_000_000e18);
 
-        // Setup Stakers and Liquidity Providers
-        _helperLockerStake(address(bobLocker));
-        _helperLockerProvideLiquidity(address(carolLocker));
-
-        // Calculate the flow rates based on the unlock amount and period
-        (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate) =
-            _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
+        int96 unlockFlowRate = int256(unlockAmount / unlockPeriod).toInt96();
 
         // Create and fund the Fontaine
         address newFontaine = _helperCreateFontaine();
         vm.prank(FLUID_TREASURY);
         _fluid.transfer(newFontaine, unlockAmount);
 
-        (, int96 actualStakerFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            newFontaine, Fontaine(newFontaine).STAKER_DISTRIBUTION_POOL(), stakerFlowRate
-        );
-        (, int96 actualProviderFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            newFontaine, Fontaine(newFontaine).PROVIDER_DISTRIBUTION_POOL(), providerFlowRate
-        );
-
         // Initialize the Fontaine
         address user = makeAddr("user");
-        IFontaine(newFontaine).initialize(user, unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod);
+        IFontaine(newFontaine).initialize(user, unlockFlowRate, unlockPeriod);
 
         // Assert the Fontaine is initialized correctly
         assertEq(Fontaine(newFontaine).recipient(), user, "recipient incorrect");
         assertEq(Fontaine(newFontaine).endDate(), uint128(block.timestamp) + unlockPeriod, "end date incorrect");
         assertEq(Fontaine(newFontaine).unlockFlowRate(), uint96(unlockFlowRate), "unlock flow rate incorrect");
-        assertEq(Fontaine(newFontaine).stakerFlowRate(), uint96(stakerFlowRate), "staker flow rate incorrect");
-        assertEq(Fontaine(newFontaine).providerFlowRate(), uint96(providerFlowRate), "provider flow rate incorrect");
         assertEq(_fluid.getFlowRate(newFontaine, user), unlockFlowRate, "incorrect unlock flowrate");
-        assertEq(
-            _fluid.getFlowDistributionFlowRate(newFontaine, Fontaine(newFontaine).STAKER_DISTRIBUTION_POOL()),
-            actualStakerFlowRate,
-            "incorrect staker flowrate"
-        );
-        assertEq(
-            _fluid.getFlowDistributionFlowRate(newFontaine, Fontaine(newFontaine).PROVIDER_DISTRIBUTION_POOL()),
-            actualProviderFlowRate,
-            "incorrect provider flowrate"
-        );
     }
 
     function testTerminateUnlock(
@@ -100,16 +75,8 @@ contract FontaineTest is SFTest {
         terminationDelay = uint128(bound(terminationDelay, 4 hours, _EARLY_END_DELAY));
         tooEarlyDelay = uint128(bound(tooEarlyDelay, 25 hours, unlockPeriod));
 
-        // Setup Stakers and Liquidity Providers
-        _helperLockerStake(address(bobLocker));
-        _helperLockerProvideLiquidity(address(carolLocker));
-
         // Setup & Start Fontaine
-        (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate) =
-            _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
-
-        uint256 expectedProviderBalance = carolLocker.getAvailableBalance() + (uint96(providerFlowRate) * unlockPeriod);
-        uint256 expectedStakerBalance = bobLocker.getAvailableBalance() + (uint96(stakerFlowRate) * unlockPeriod);
+        int96 unlockFlowRate = int256(unlockAmount / unlockPeriod).toInt96();
 
         // Create and fund the Fontaine
         address newFontaine = _helperCreateFontaine();
@@ -117,9 +84,7 @@ contract FontaineTest is SFTest {
         _fluid.transfer(newFontaine, unlockAmount);
 
         // Initialize the Fontaine
-        IFontaine(newFontaine).initialize(
-            makeAddr("user"), unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod
-        );
+        IFontaine(newFontaine).initialize(makeAddr("user"), unlockFlowRate, unlockPeriod);
 
         uint256 earlyEndDate = block.timestamp + unlockPeriod - terminationDelay;
 
@@ -129,20 +94,6 @@ contract FontaineTest is SFTest {
 
         vm.warp(earlyEndDate);
         IFontaine(newFontaine).terminateUnlock();
-
-        assertApproxEqAbs(
-            bobLocker.getAvailableBalance(),
-            expectedStakerBalance,
-            expectedStakerBalance * 10 / 100,
-            "Staker balance incorrect"
-        );
-
-        assertApproxEqAbs(
-            carolLocker.getAvailableBalance(),
-            expectedProviderBalance,
-            expectedProviderBalance * 10 / 100,
-            "Provider balance incorrect"
-        );
 
         assertApproxEqAbs(
             _fluid.balanceOf(makeAddr("user")),
@@ -150,65 +101,8 @@ contract FontaineTest is SFTest {
             (uint96(unlockFlowRate) * unlockPeriod) * 10 / 100,
             "Unlocked amount incorrect"
         );
-    }
 
-    function testTerminateUnlock_noStaker(
-        uint128 unlockPeriod,
-        uint256 unlockAmount,
-        uint128 terminationDelay,
-        uint128 tooEarlyDelay
-    ) external {
-        // Bound Fuzz Parameters
-        /// NOTE : issues will arise if the unlock amount is too low (less than 10 SUP)
-        unlockAmount = bound(unlockAmount, 10e18, 100_000_000e18);
-        unlockPeriod = uint128(bound(unlockPeriod, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD));
-        terminationDelay = uint128(bound(terminationDelay, 4 hours, _EARLY_END_DELAY));
-        tooEarlyDelay = uint128(bound(tooEarlyDelay, 25 hours, unlockPeriod));
-
-        // Setup Stakers and Liquidity Providers
-        _helperLockerStake(address(bobLocker));
-        _helperLockerProvideLiquidity(address(carolLocker));
-
-        (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate) =
-            _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
-
-        uint256 expectedStakerBalance =
-            _fluid.balanceOf(address(bobLocker)) + (uint96(stakerFlowRate) * (unlockPeriod - terminationDelay));
-
-        // Create and fund the Fontaine
-        address newFontaine = _helperCreateFontaine();
-        vm.prank(FLUID_TREASURY);
-        _fluid.transfer(newFontaine, unlockAmount);
-
-        // Initialize the Fontaine
-        IFontaine(newFontaine).initialize(
-            makeAddr("user"), unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod
-        );
-
-        uint256 earlyEndDate = block.timestamp + unlockPeriod - terminationDelay;
-
-        vm.warp(block.timestamp + unlockPeriod - tooEarlyDelay);
-        vm.expectRevert(IFontaine.TOO_EARLY_TO_TERMINATE_UNLOCK.selector);
-        IFontaine(newFontaine).terminateUnlock();
-
-        vm.warp(earlyEndDate);
-
-        _helperLockerUnstake(address(bobLocker));
-        IFontaine(newFontaine).terminateUnlock();
-
-        assertApproxEqAbs(
-            _fluid.balanceOf(address(bobLocker)),
-            expectedStakerBalance,
-            expectedStakerBalance * 10 / 100,
-            "Staker balance incorrect"
-        );
-
-        assertApproxEqAbs(
-            _fluid.balanceOf(makeAddr("user")),
-            (uint96(unlockFlowRate) * unlockPeriod) + (uint96(stakerFlowRate) * terminationDelay),
-            _fluid.balanceOf(makeAddr("user")) * 10 / 100,
-            "Unlocked amount incorrect"
-        );
+        assertEq(_fluid.balanceOf(newFontaine), 0, "Fontaine balance should be 0");
     }
 
     function testAccidentalStreamCancel() external {
@@ -222,20 +116,9 @@ contract FontaineTest is SFTest {
         _fluid.transfer(newFontaine, unlockAmount);
 
         address user = makeAddr("user");
-        (int96 unlockFlowRate, int96 taxFlowRate) = calculateVestUnlockFlowRates(unlockAmount, unlockPeriod);
+        int96 unlockFlowRate = int256(unlockAmount / unlockPeriod).toInt96();
 
-        // Calculate the tax allocation split between provider and staker
-        (, uint256 providerAllocation) = _stakingRewardController.getTaxAllocation();
-
-        int96 providerFlowRate =
-            (taxFlowRate * int256(providerAllocation).toInt96()) / int256(_BP_DENOMINATOR).toInt96();
-        int96 stakerFlowRate = taxFlowRate - providerFlowRate;
-
-        assertEq(taxFlowRate, 0, "tax flow rate shall be 0");
-        assertEq(stakerFlowRate, 0, "staker flow rate shall be 0");
-        assertEq(providerFlowRate, 0, "provider flow rate shall be 0");
-
-        IFontaine(newFontaine).initialize(user, unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod);
+        IFontaine(newFontaine).initialize(user, unlockFlowRate, unlockPeriod);
 
         uint256 halfwayUnlockPeriod = block.timestamp + 270 days;
         uint256 afterEndUnlockPeriod = block.timestamp + 542 days;
@@ -277,7 +160,7 @@ contract FontaineTest is SFTest {
         int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
 
         uint256 unlockingPercentageBP =
-            (2_000 + ((8_000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(_MAX_UNLOCK_PERIOD * _SCALER)));
+            (2000 + ((8000 * Math.sqrt(unlockPeriod * _SCALER)) / Math.sqrt(_MAX_UNLOCK_PERIOD * _SCALER)));
 
         unlockFlowRate = (globalFlowRate * int256(unlockingPercentageBP)).toInt96() / int256(_BP_DENOMINATOR).toInt96();
         int96 taxFlowRate = globalFlowRate - unlockFlowRate;
@@ -291,7 +174,7 @@ contract FontaineTest is SFTest {
 }
 
 contract FontaineLayoutTest is Fontaine {
-    constructor() Fontaine(ISuperToken(address(0)), ISuperfluidPool(address(0)), ISuperfluidPool(address(0))) { }
+    constructor() Fontaine(ISuperToken(address(0))) { }
 
     function testStorageLayout() external pure {
         uint256 slot;
@@ -306,27 +189,15 @@ contract FontaineLayoutTest is Fontaine {
         require(slot == 0 && offset == 0, "recipient changed location");
 
         assembly {
-            slot := stakerFlowRate.slot
-            offset := stakerFlowRate.offset
-        }
-        require(slot == 0 && offset == 20, "stakerFlowRate changed location");
-
-        assembly {
             slot := unlockFlowRate.slot
             offset := unlockFlowRate.offset
         }
-        require(slot == 1 && offset == 0, "unlockFlowRate changed location");
+        require(slot == 0 && offset == 20, "unlockFlowRate changed location");
 
         assembly {
             slot := endDate.slot
             offset := endDate.offset
         }
-        require(slot == 1 && offset == 12, "endDate changed location");
-
-        assembly {
-            slot := providerFlowRate.slot
-            offset := providerFlowRate.offset
-        }
-        require(slot == 2 && offset == 0, "providerFlowRate changed location");
+        require(slot == 1 && offset == 0, "endDate changed location");
     }
 }
