@@ -30,6 +30,7 @@ pragma solidity ^0.8.23;
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import { ERC1967Utils } from "@openzeppelin-v5/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import { SafeCast } from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 
 /* Superfluid Protocol Contracts & Interfaces */
 import {
@@ -43,6 +44,8 @@ import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/cont
 import { IStakingRewardController } from "./interfaces/IStakingRewardController.sol";
 
 using SuperTokenV1Library for ISuperToken;
+using SafeCast for int256;
+using SafeCast for int128;
 
 /**
  * @title Staking Reward Controller Contract
@@ -68,6 +71,9 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
 
     /// @notice Basis points denominator used for percentage calculations
     uint128 private constant _BP_DENOMINATOR = 10_000;
+
+    /// @notice Duration of the tax distribution flow
+    uint256 private constant _TAX_DISTRIBUTION_FLOW_DURATION = 180 days;
 
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
@@ -205,21 +211,18 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
     }
 
     /// @inheritdoc IStakingRewardController
-    function distributeTaxAdjustment() external {
-        uint256 adjustmentAmount = FLUID.balanceOf(address(this));
+    function refreshTaxDistributionFlow() external {
+        // Calculate the global tax flow rate on a 6 months sliding window
+        int96 taxFlowRate = int256(FLUID.balanceOf(address(this)) / _TAX_DISTRIBUTION_FLOW_DURATION).toInt96();
 
-        if (adjustmentAmount == 0) {
-            return;
-        }
+        // Apply Staker VS LP tax allocation
+        int96 liquidityProviderFlowRate = (taxFlowRate * int128(taxAllocation.liquidityProviderAllocationBP).toInt96())
+            / int128(_BP_DENOMINATOR).toInt96();
+        int96 stakerFlowRate = taxFlowRate - liquidityProviderFlowRate;
 
-        // Calculate the allocations for stakers and liquidity providers
-        uint256 liquidityProviderTaxAmount =
-            (adjustmentAmount * taxAllocation.liquidityProviderAllocationBP) / _BP_DENOMINATOR;
-        uint256 stakerTaxAmount = adjustmentAmount - liquidityProviderTaxAmount;
-
-        // Perform an instant distribution of the adjustment tax amount to the staker and liquidity provider pools
-        FLUID.distribute(taxDistributionPool, stakerTaxAmount);
-        FLUID.distribute(lpDistributionPool, liquidityProviderTaxAmount);
+        // Distribute the tax flow to the staker and liquidity provider pools
+        FLUID.distributeFlow(address(this), taxDistributionPool, stakerFlowRate);
+        FLUID.distributeFlow(address(this), lpDistributionPool, liquidityProviderFlowRate);
     }
 
     //   _    ___                 ______                 __  _

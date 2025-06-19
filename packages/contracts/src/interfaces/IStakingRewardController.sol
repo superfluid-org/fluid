@@ -158,9 +158,12 @@ interface IStakingRewardController {
     function setupLPDistributionPool() external;
 
     /**
-     * @notice Distribute the adjustment tax amount to the staker and liquidity provider pools
+     * @notice Recalculate and redistribute the tax distribution flow to the staker and liquidity provider pools
+     * @dev The taxes are distributed over a 6 months sliding window
+     * @dev Every new call to this function will reevaluate the flow rates so that the distribution can last 6 months
+     * @dev Since the StakingRewardController is the pool admin, adjustment flow rate will also be distributed via these flow distributions
      */
-    function distributeTaxAdjustment() external;
+    function refreshTaxDistributionFlow() external;
 
     //   _    ___                 ______                 __  _
     //  | |  / (_)__ _      __   / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -173,7 +176,10 @@ interface IStakingRewardController {
      * @return stakerAllocationBP staker allocation percentage (expressed in basis points)
      * @return liquidityProviderAllocationBP liquidity provider allocation percentage (expressed in basis points)
      */
-    function getTaxAllocation() external view returns (uint128 stakerAllocationBP, uint128 liquidityProviderAllocationBP);
+    function getTaxAllocation()
+        external
+        view
+        returns (uint128 stakerAllocationBP, uint128 liquidityProviderAllocationBP);
 
     /**
      * @notice Get the tax distribution pool
