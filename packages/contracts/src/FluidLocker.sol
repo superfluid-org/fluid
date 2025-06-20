@@ -330,12 +330,14 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         // Check if there will be a tax distribution event
         if (unlockPeriod < _MAX_UNLOCK_PERIOD) {
-            // Ensure that the tax distribution pools have at least one unit distributed
-            if (STAKER_DISTRIBUTION_POOL.getTotalUnits() == 0) {
+            (uint256 stakerAllocation, uint256 providerAllocation) = STAKING_REWARD_CONTROLLER.getTaxAllocation();
+
+            // Ensure that the tax distribution pools have at least one unit distributed (if the tax allocation is greater than 0)
+            if (STAKER_DISTRIBUTION_POOL.getTotalUnits() == 0 && stakerAllocation > 0) {
                 revert STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS();
             }
 
-            if (LP_DISTRIBUTION_POOL.getTotalUnits() == 0) {
+            if (LP_DISTRIBUTION_POOL.getTotalUnits() == 0 && providerAllocation > 0) {
                 revert LP_DISTRIBUTION_POOL_HAS_NO_UNITS();
             }
         }
