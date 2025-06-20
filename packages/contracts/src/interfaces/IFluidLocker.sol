@@ -80,7 +80,7 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to unstake from locker that does not have staked $FLUID
     error NO_FLUID_TO_UNSTAKE();
 
-    /// @notice Error thrown when attempting to stake from locker that does not have enough available $FLUID
+    /// @notice Error thrown when attempting to stake or to LP from locker that does not have enough available $FLUID
     error INSUFFICIENT_AVAILABLE_BALANCE();
 
     /// @notice Error thrown when attempting to unstake from locker that does not have enough staked $FLUID

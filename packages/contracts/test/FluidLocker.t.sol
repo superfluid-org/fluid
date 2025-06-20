@@ -41,6 +41,7 @@ abstract contract FluidLockerBaseTest is SFTest {
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
     uint128 internal constant _MAX_UNLOCK_PERIOD = 365 days;
     uint256 internal constant _TAX_DISTRIBUTION_FLOW_DURATION = 180 days;
+    uint80 internal constant _STAKING_COOLDOWN_PERIOD = 3 days;
 
     ISuperfluidPool[] public programPools;
 
@@ -1358,6 +1359,33 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 ethBalanceAfter = ALICE.balance;
 
         assertEq(ethBalanceAfter, ethBalanceBefore + ethAmount, "ETH balance in ALICE walletshould increase");
+    }
+
+    function testV2provideLiquidityWhileStaking() external virtual {
+        uint256 fundingAmount = 100e18;
+
+        _helperUpgradeLocker();
+
+        // Set up Alice's Locker to be functional
+        _helperFundLocker(address(aliceLocker), fundingAmount);
+
+        vm.startPrank(ALICE);
+
+        //Stake all avaialble tokens
+        aliceLocker.stake(fundingAmount);
+
+        //Provide liquidity using the staked tokens (should revert)
+        vm.expectRevert(IFluidLocker.INSUFFICIENT_AVAILABLE_BALANCE.selector);
+        aliceLocker.provideLiquidity{ value: fundingAmount / (2 * 9900) }(100e18);
+
+        vm.warp(block.timestamp + _STAKING_COOLDOWN_PERIOD + 1);
+
+        // Unstake all staked tokens
+        aliceLocker.unstake(aliceLocker.getStakedBalance());
+
+        // Provide liquidity using the freshly unstaked tokens
+        aliceLocker.provideLiquidity{ value: fundingAmount / (2 * 9900) }(100e18);
+        vm.stopPrank();
     }
 
     function _helperUpgradeLocker() internal {
