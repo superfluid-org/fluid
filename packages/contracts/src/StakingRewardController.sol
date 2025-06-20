@@ -212,10 +212,10 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
 
     /// @inheritdoc IStakingRewardController
     function refreshTaxDistributionFlow() external {
-        // Calculate the global tax flow rate on a 6 months sliding window
+        // Recalculate the global tax flow rate on a 6 months sliding window
         int96 taxFlowRate = int256(FLUID.balanceOf(address(this)) / _TAX_DISTRIBUTION_FLOW_DURATION).toInt96();
 
-        // Apply Staker VS LP tax allocation
+        // Apply Staker and LP tax allocations
         int96 liquidityProviderFlowRate = (taxFlowRate * int128(taxAllocation.liquidityProviderAllocationBP).toInt96())
             / int128(_BP_DENOMINATOR).toInt96();
         int96 stakerFlowRate = taxFlowRate - liquidityProviderFlowRate;
@@ -223,6 +223,8 @@ contract StakingRewardController is Initializable, OwnableUpgradeable, IStakingR
         // Distribute the tax flow to the staker and liquidity provider pools
         FLUID.distributeFlow(address(this), taxDistributionPool, stakerFlowRate);
         FLUID.distributeFlow(address(this), lpDistributionPool, liquidityProviderFlowRate);
+
+        emit TaxDistributionFlowUpdated(liquidityProviderFlowRate, stakerFlowRate);
     }
 
     //   _    ___                 ______                 __  _
