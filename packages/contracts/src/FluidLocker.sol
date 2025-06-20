@@ -422,8 +422,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Wrap ETH into WETH
         IWETH9(weth).deposit{ value: ethAmount }();
 
+        uint256 ethPumpAmount = ethAmount * BP_PUMP_RATIO / BP_DENOMINATOR;
+
         // Pumponomics (market buy SUP with 1% of the provided paired asset)
-        _pump(weth, ethAmount * BP_PUMP_RATIO / BP_DENOMINATOR);
+        _pump(weth, ethPumpAmount);
 
         // Ensure that the locker has enough available balance to provide liquidity
         if (getAvailableBalance() < supAmount) {
@@ -431,7 +433,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         }
 
         // Get the amount of paired asset tokens in the locker
-        uint256 ethLPAmount = IERC20(weth).balanceOf(address(this));
+        uint256 ethLPAmount = ethAmount - ethPumpAmount;
 
         // Approve the locker to spend the paired asset and the $SUP tokens
         TransferHelper.safeApprove(weth, address(NONFUNGIBLE_POSITION_MANAGER), ethLPAmount);
