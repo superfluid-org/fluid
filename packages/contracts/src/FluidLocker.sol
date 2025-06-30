@@ -416,7 +416,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function provideLiquidity(uint256 supAmount) external payable nonReentrant onlyLockerOwner {
+    function provideLiquidity(uint256 supAmount) external payable nonReentrant onlyLockerOwner unlockAvailable {
         address weth = NONFUNGIBLE_POSITION_MANAGER.WETH9();
 
         uint256 ethAmount = msg.value;
@@ -455,7 +455,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         uint128 liquidityToRemove,
         uint256 amount0ToRemove,
         uint256 amount1ToRemove
-    ) external nonReentrant onlyLockerOwner {
+    ) external nonReentrant onlyLockerOwner unlockAvailable {
         // ensure the locker has a position
         if (!_positionExists(tokenId)) {
             revert LOCKER_HAS_NO_POSITION();
@@ -495,6 +495,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         external
         nonReentrant
         onlyLockerOwner
+        unlockAvailable
         returns (uint256 collectedWeth, uint256 collectedSup)
     {
         // ensure the locker has a position
