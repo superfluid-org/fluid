@@ -114,7 +114,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     bool public immutable UNLOCK_AVAILABLE;
 
     /// @notice Staking cooldown period
-    uint80 private constant _STAKING_COOLDOWN_PERIOD = 3 days;
+    uint80 private constant _STAKING_COOLDOWN_PERIOD = 7 days;
+
+    /// @notice LP cooldown period
+    uint80 private constant _LP_COOLDOWN_PERIOD = 7 days;
 
     /// @notice Minimum unlock period allowed (1 week)
     uint128 private constant _MIN_UNLOCK_PERIOD = 7 days;
@@ -183,6 +186,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @notice Stores the tax free withdraw timestamp for a given position token identifier
     mapping(uint256 positionTokenId => uint256 taxFreeWithdrawTimestamp) public taxFreeExitTimestamps;
+
+    /// @notice Stores the LP cooldown timestamp for a given position token identifier
+    mapping(uint256 positionTokenId => uint256 lpCooldownTimestamp) public lpCooldownTimestamps;
 
     /// @notice Aggregated liquidity balance provided by this locker
     uint256 private _liquidityBalance;
@@ -442,7 +448,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         TransferHelper.safeApprove(address(FLUID), address(NONFUNGIBLE_POSITION_MANAGER), supAmount);
 
         // Create a new Uniswap V3 position
-        _createPosition(ethLPAmount, supAmount);
+        (uint256 positionTokenId,,) = _createPosition(ethLPAmount, supAmount);
+
+        lpCooldownTimestamps[positionTokenId] = uint80(block.timestamp) + _LP_COOLDOWN_PERIOD;
 
         activePositionCount++;
 
@@ -459,6 +467,11 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // ensure the locker has a position
         if (!_positionExists(tokenId)) {
             revert LOCKER_HAS_NO_POSITION();
+        }
+
+        // Enforce LP cooldown
+        if (block.timestamp < lpCooldownTimestamps[tokenId]) {
+            revert LP_COOLDOWN_NOT_ELAPSED();
         }
 
         // Collect the fees
@@ -661,12 +674,13 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      * @notice Creates a new Uniswap V3 position with the specified amounts of tokens
      * @param ethAmount The desired amount of ETH to add as liquidity
      * @param supAmount The desired amount of SUP to add as liquidity
+     * @return positionTokenId The token identifier of the newly created position
      * @return depositedEthAmount The actual amount of ETH deposited as liquidity
      * @return depositedSupAmount The actual amount of SUP deposited as liquidity
      */
     function _createPosition(uint256 ethAmount, uint256 supAmount)
         internal
-        returns (uint256 depositedEthAmount, uint256 depositedSupAmount)
+        returns (uint256 positionTokenId, uint256 depositedEthAmount, uint256 depositedSupAmount)
     {
         bool zeroIsSup = ETH_SUP_POOL.token0() == address(FLUID);
 
@@ -691,6 +705,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         STAKING_REWARD_CONTROLLER.updateLiquidityProviderUnits(_liquidityBalance);
 
         (depositedSupAmount, depositedEthAmount) = _sortOutAmounts(zeroIsSup, depositedAmount0, depositedAmount1);
+
+        positionTokenId = tokenId;
     }
 
     /**

@@ -98,7 +98,8 @@ Staking allows you to earn rewards from the penalties collected when other users
 
 - You must have available SUP tokens in your locker
 
-**Note**: After staking, there's a 7-day cooldown before you can unstake
+**Note**: After staking, there's a 7-days cooldown before you can unstake
+**Note**: The 7-days cooldown period is reset at every staking event
 
 #### How to Unstake
 
@@ -125,6 +126,7 @@ Every time you provide liquidity a new Uniswap V3 position is created. The corre
 - Have enough SUP tokens in your locker
 
 **Note**: After providing liquidity, there's a 7-day cooldown before you can withdraw your liquidity
+**Note**: The 7-days cooldown is position specific (i.e. different positions may have different cooldown end dates)
 
 #### How to Collect Fees
 

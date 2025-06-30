@@ -41,7 +41,8 @@ abstract contract FluidLockerBaseTest is SFTest {
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
     uint128 internal constant _MAX_UNLOCK_PERIOD = 365 days;
     uint256 internal constant _TAX_DISTRIBUTION_FLOW_DURATION = 180 days;
-    uint80 internal constant _STAKING_COOLDOWN_PERIOD = 3 days;
+    uint80 internal constant _STAKING_COOLDOWN_PERIOD = 7 days;
+    uint80 internal constant _LP_COOLDOWN_PERIOD = 7 days;
 
     ISuperfluidPool[] public programPools;
 
@@ -1063,6 +1064,11 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
 
         vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.LP_COOLDOWN_NOT_ELAPSED.selector);
+        aliceLocker.withdrawLiquidity(positionTokenId, positionLiquidity, amount0ToRemove, amount1ToRemove);
+
+        vm.warp(uint256(FluidLocker(payable(address(aliceLocker))).lpCooldownTimestamps(positionTokenId)));
+        vm.prank(ALICE);
         aliceLocker.withdrawLiquidity(positionTokenId, positionLiquidity, amount0ToRemove, amount1ToRemove);
 
         uint256 ethBalanceAfter = ALICE.balance;
@@ -1120,6 +1126,11 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 ethBalanceBefore = ALICE.balance;
         uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
 
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.LP_COOLDOWN_NOT_ELAPSED.selector);
+        aliceLocker.withdrawLiquidity(positionTokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
+
+        vm.warp(uint256(FluidLocker(payable(address(aliceLocker))).lpCooldownTimestamps(positionTokenId)));
         vm.prank(ALICE);
         aliceLocker.withdrawLiquidity(positionTokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
 
@@ -1272,6 +1283,11 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 ethBalanceBefore = ALICE.balance;
         uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
 
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.LP_COOLDOWN_NOT_ELAPSED.selector);
+        aliceLocker.withdrawLiquidity(positionTokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
+
+        vm.warp(uint256(FluidLocker(payable(address(aliceLocker))).lpCooldownTimestamps(positionTokenId)));
         vm.prank(ALICE);
         aliceLocker.withdrawLiquidity(positionTokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
 

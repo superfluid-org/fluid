@@ -89,6 +89,9 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to unstake while the staking cooldown is not yet elapsed
     error STAKING_COOLDOWN_NOT_ELAPSED();
 
+    /// @notice Error thrown when attempting to withdraw liquidity while the cooldown is not yet elapsed
+    error LP_COOLDOWN_NOT_ELAPSED();
+
     /// @notice Error thrown when attempting to unlock or stake while this operation is not yet available
     error TTE_NOT_ACTIVATED();
 
