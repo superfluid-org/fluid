@@ -1,43 +1,46 @@
-# SPR SUP Locker System - User Guide
+# SPR SUP Reserve System - User Guide
 
 ## Overview
 
-The Streaming Programmatic Reward (SPR) SUP Locker System is a comprehensive platform built on Superfluid that allows users to earn SUP tokens. The system provides multiple ways to earn rewards through participation in ecosystem partner programs staking and liquidity provision.
+This document provides a technical overview of the Reserve mechanism.
 
-## What is SUP Token?
+## Definitions
 
-SUP is the native token of the Superfluid ecosystem. It is a SuperToken (an ERC-20 token with streaming capabilities) that can be used for governance and protocol decisions
+- [SUP Token](https://forum.superfluid.org/t/superfluid-dao-governance-and-tokenomics/69)
+- [SPR](https://forum.superfluid.org/t/superfluid-dao-governance-and-tokenomics/69)
+- [Reserves](https://forum.superfluid.org/t/superfluid-dao-governance-and-tokenomics/69)
+- [Community Charge](https://forum.superfluid.org/t/superfluid-dao-governance-and-tokenomics/69)
 
 ## System Architecture
 
-The SPR SUP Locker System consists of several key components:
+The SPR SUP Reserve System consists of several key components:
 
 ### Core Contracts
 
-1. **FluidLockerFactory** - Creates individual locker contracts for users
-2. **FluidLocker** - Personal locker where users store and manage their SUP tokens
-3. **StakingRewardController** - Manages staking rewards and tax distribution
+1. **FluidLockerFactory** - Creates individual reserve contracts for users
+2. **FluidLocker** - Personal reserve where users store and manage their SUP tokens
+3. **StakingRewardController** - Manages staking rewards and Community Charge distribution
 4. **FluidEPProgramManager** - Administers ecosystem partner reward programs
-5. **Fontaine** - Handles gradual token unlocking through streaming
+5. **Fontaine** - Handles gradual token withdrawal through streaming
 
 ### Key Features
 
 - **Reward Programs**: Participate in ecosystem partner programs
 - **Liquidity Provision**: Provide liquidity to earn rewards & trading fees
 - **Staking**: Earn rewards by staking SUP tokens
-- **Vest Unlocking**: Unlock tokens over time with reduced penalties
-- **Instant Unlocking**: Unlock tokens instantly with high penalty
+- **Vest Withdrawing**: Withdraw tokens over time with reduced penalties
+- **Instant Withdrawing**: Withdraw tokens instantly with high penalty
 - **Token Locking**: Get yield from your SUP tokens
 
 ## Getting Started
 
-### Step 1: Create Your Locker
+### Step 1: Create Your Reserve
 
-Before you can use the SPR SUP Locker System, you need to create your personal locker.
+Before you can use the SPR SUP Reserve System, you need to create your personal reserve.
 
-**Cost**: A small fee is required to create a locker (set by governance)
+**Cost**: A small fee is required to create a reserve (set by governance)
 
-**Result**: You get a unique locker contract address that only you can control
+**Result**: You get a unique reserve contract address that only you can control
 
 ### Step 2: Participate in Reward Programs
 
@@ -45,7 +48,7 @@ You can participate in reward programs to earn SUP tokens. Use the ecosystem par
 
 ### Step 3: Lock Your SUP Tokens (optional)
 
-Once you have a locker, you can lock additional SUP tokens to earn additional rewards
+Once you have a reserve, you can lock additional SUP tokens to earn additional rewards
 
 **Benefits of Locking**:
 
@@ -60,25 +63,25 @@ The system supports ecosystem partner programs where you can earn SUP tokens.
 You can participate in the currently live campaigns on [Superfluid Claim App](https://claim.superfluid.org).
 As your participation in the campaigns increases, you are entitled to claim a higher SUP flow rate by claiming it daily.
 
-### Unlocking SUP Tokens
+### Withdrawing SUP Tokens
 
-You can unlock your SUP tokens in two ways:
+You can withdraw your SUP tokens in two ways:
 
-#### 1. Instant Unlock (High Penalty)
+#### 1. Instant Withdraw (High Penalty)
 
-You can unlock your SUP tokens instantly. Chosing this option will allow you to get your SUP tokens instantly to your wallet, however you will have to pay a high penalty.
+You can withdraw your SUP tokens instantly. Chosing this option will allow you to get your SUP tokens instantly to your wallet, however you will have to pay a high penalty.
 
-**Penalty**: 80% of the unlocked amount goes to stakers and liquidity providers
+**Penalty**: 80% of the withdrawn amount goes to stakers and liquidity providers
 
-#### 2. Vest Unlock (Reduced Penalty)
+#### 2. Vest Withdraw (Reduced Penalty)
 
-You can unlock your SUP tokens gradually. Chosing this option will allow you to get your SUP tokens streamed to your wallet over the period of your choice. You will be subject to penalty based on the duration of the chosen unlock period.
+You can withdraw your SUP tokens gradually. Chosing this option will allow you to get your SUP tokens streamed to your wallet over the period of your choice. You will be subject to penalty based on the duration of the chosen withdraw period.
 
 **Penalty Calculation**:
 
-- Minimum Unlock Period: 7 days
-- Maximum Unlock Period: 365 days
-- Penalty decreases with longer unlock periods
+- Minimum Withdraw Period: 7 days
+- Maximum Withdraw Period: 365 days
+- Penalty decreases with longer withdraw periods
 
 **Example Penalties**:
 
@@ -90,13 +93,13 @@ You can unlock your SUP tokens gradually. Chosing this option will allow you to 
 
 ### Staking
 
-Staking allows you to earn rewards from the penalties collected when other users unlock their tokens.
+Staking allows you to earn rewards from the penalties collected when other users withdraw their tokens.
 
 #### How to Stake
 
 **Requirements**:
 
-- You must have available SUP tokens in your locker
+- You must have available SUP tokens in your Reserve
 
 **Note**: After staking, there's a 7-days cooldown before you can unstake
 **Note**: The 7-days cooldown period is reset at every staking event
@@ -109,21 +112,21 @@ Staking allows you to earn rewards from the penalties collected when other users
 
 #### How to Claim Staking Rewards
 
-Staking rewards are streamed directly to your locker. You do not have to claim them, however, you may have to stake them to increase your share of the rewards.
+Staking rewards are streamed directly to your Reserve. You do not have to claim them, however, you may have to stake them to increase your share of the rewards.
 
 ### Liquidity Provision
 
-You can provide liquidity to the ETH/SUP Uniswap V3 pool to earn trading fees and a share of the penalties collected when other users unlock their tokens.
+You can provide liquidity to the ETH/SUP Uniswap V3 pool to earn trading fees and a share of the penalties collected when other users withdraw their tokens.
 
 #### How to Provide Liquidity
 
-You can provide liquidity by sender ETH to your locker and calling the provide liquidity function.
-Every time you provide liquidity a new Uniswap V3 position is created. The corresponding NFT is stored in your locker.
+You can provide liquidity by sender ETH to your Reserve and calling the provide liquidity function.
+Every time you provide liquidity a new Uniswap V3 position is created. The corresponding NFT is stored in your Reserve.
 
 **Requirements**:
 
 - Send the required ETH amount along with the transaction
-- Have enough SUP tokens in your locker
+- Have enough SUP tokens in your Reserve
 
 **Note**: After providing liquidity, there's a 7-day cooldown before you can withdraw your liquidity
 **Note**: The 7-days cooldown is position specific (i.e. different positions may have different cooldown end dates)
@@ -134,44 +137,44 @@ You can collect fees from your liquidity positions at any time. The fees generat
 
 #### How to Withdraw Liquidity
 
-You can withdraw your locker's Uniswap V3 position either partially or fully.
+You can withdraw your Reserve's Uniswap V3 position either partially or fully.
 
 **Requirements**:
 
 - 7-day cooldown period must have elapsed
 
-##### Tax-Free Withdrawals (Liquidity Provision)
+##### Community Charge-Free Withdrawals (Liquidity Provision)
 
-After providing liquidity for 180 days, you can withdraw your position and get your SUP (and ETH) tokens directly to your wallet without paying the Locker unlock tax.
+After providing liquidity for 180 days, you can withdraw your position and get your SUP (and ETH) tokens directly to your wallet without paying the Reserve Community Charge.
 
-###### How Tax-Free Withdrawals Work
+###### How Community Charge-Free Withdrawals Work
 
-When you provide liquidity to the ETH/SUP Uniswap V3 pool through your locker, a timestamp is recorded for that position. After 180 days (6 months) from the initial liquidity provision, you become eligible for tax-free withdrawals.
+When you provide liquidity to the ETH/SUP Uniswap V3 pool through your Reserve, a timestamp is recorded for that position. After 180 days (6 months) from the initial liquidity provision, you become eligible for Community Charge-free withdrawals.
 
 **Key Benefits:**
 
-- **No Penalty**: Withdraw your SUP tokens without paying the usual unlock penalties
+- **No Penalty**: Withdraw your SUP tokens without paying the usual Community Charge
 - **Full Value**: Get the complete value of your position without deductions
 - **Reward Retention**: Keep all accumulated trading fees and rewards
 
 **Requirements:**
 
 - Position must have been created at least 180 days ago
-- You must be the owner of the locker that created the position
+- You must be the owner of the Reserve that created the position
 - Position must still exist and be active
 
 **Important Notes:**
 
 - The 180-day timer starts from when you first provide liquidity to a position
 - Each position has its own independent 180-day timer
-- Tax-free withdrawal only applies to the SUP tokens in your liquidity position, not to staked tokens
-- You can still collect trading fees at any time without affecting the tax-free withdrawal eligibility
+- Community Charge-free withdrawal only applies to the SUP tokens in your liquidity position, not to staked tokens
+- You can still collect trading fees at any time without affecting the Community Charge-free withdrawal eligibility
 
 **Example Timeline:**
 
 1. **Day 0**: Provide liquidity to ETH/SUP pool
-2. **Day 1-179**: Collect trading fees, position not eligible for tax-free withdrawal
-3. **Day 180+**: Position becomes eligible for tax-free withdrawal
+2. **Day 1-179**: Collect trading fees, position not eligible for Community Charge-free withdrawal
+3. **Day 180+**: Position becomes eligible for Community Charge-free withdrawal
 4. **Any time after Day 180**: Withdraw your SUP tokens directly to your wallet without penalties
 
 ## Token Management
@@ -182,7 +185,7 @@ Your available balance is the amount of SUP tokens you can use for:
 
 - Staking
 - Providing liquidity
-- Unlocking
+- Withdrawing
 
 ### Staked Balance
 
@@ -190,29 +193,29 @@ Your staked balance represents tokens that are earning staking rewards but canno
 
 ### Liquidity Balance
 
-Your liquidity balance represents the size of all your lockers' liquidity positions in the ETH/SUP pool.
+Your liquidity balance represents the size of all your Reserves' liquidity positions in the ETH/SUP pool.
 
 ## Important Considerations
 
 ### Security
 
-- Only you can control your locker
-- All operations on your locker require your signature
+- Only you can control your Reserve
+- All operations on your Reserve require your signature
 
 ### Fees and Penalties
 
-- **Locker Creation**: One-time fee set by governance
-- **Instant Unlock**: 80% penalty
-- **Gradual Unlock**: Variable penalty based on duration
+- **Reserve Creation**: One-time fee set by governance
+- **Instant Withdraw**: 80% penalty
+- **Gradual Withdraw**: Variable penalty based on duration
 
 ### Limitations
 
-- **Minimum Unlock Amount**: 10 SUP tokens
-- **Minimum Unlock Period**: 7 days
-- **Maximum Unlock Period**: 365 days
+- **Minimum Withdraw Amount**: 10 SUP tokens
+- **Minimum Withdraw Period**: 7 days
+- **Maximum Withdraw Period**: 365 days
 - **Unstaking Cooldown**: 7 days after last staking event
 - **Liquidity Provision Withdrawal**: 7 days after providing liquidity
 
 ---
 
-_This guide covers the main user interactions with the SPR SUP Locker System. For technical details and contract specifications, refer to the contract source code and interfaces._
+_This guide covers the main user interactions with the SPR SUP Reserve System. For technical details and contract specifications, refer to the contract source code and interfaces._
