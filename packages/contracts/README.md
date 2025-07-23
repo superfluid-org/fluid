@@ -198,8 +198,6 @@ forge script script/vesting/DeployVesting.s.sol:DeployVestingScript --ffi --rpc-
 ### Step 3 :
 
 - Execute script to create SupVesting contract for each insiders.
-- Note : Currently, the `SupVestingFactory` contract allows prefunding of the `SupVesting` contracts.
-  We must remain consistent and either prefund or not prefund every `SupVesting` contracts.
 
 ### Step 4 :
 
