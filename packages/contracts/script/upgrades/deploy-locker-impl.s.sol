@@ -6,8 +6,12 @@ import { Script, console2 } from "forge-std/Script.sol";
 import { IStakingRewardController } from "src/interfaces/IStakingRewardController.sol";
 import { IEPProgramManager } from "src/interfaces/IEPProgramManager.sol";
 import { ISuperToken } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperToken.sol";
-import { ISuperfluidPool } from
-    "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluidPool.sol";
+import {
+    ISuperfluid,
+    ISuperfluidPool,
+    ISuperToken
+} from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
+
 import { FluidLocker } from "src/FluidLocker.sol";
 
 /*
@@ -46,7 +50,7 @@ contract DeployFluidLockerImplementation is Script {
                 programManager,
                 stakingRewardController,
                 fontaineBeaconAddress,
-                settings.unlockStatus
+                isUnlockAvailable
             )
         );
 
