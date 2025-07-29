@@ -80,17 +80,41 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to unstake from locker that does not have staked $FLUID
     error NO_FLUID_TO_UNSTAKE();
 
-    /// @notice Error thrown when attempting to stake from locker that does not have available $FLUID
-    error NO_FLUID_TO_STAKE();
+    /// @notice Error thrown when attempting to stake or to LP from locker that does not have enough available $FLUID
+    error INSUFFICIENT_AVAILABLE_BALANCE();
+
+    /// @notice Error thrown when attempting to unstake from locker that does not have enough staked $FLUID
+    error INSUFFICIENT_STAKED_BALANCE();
 
     /// @notice Error thrown when attempting to unstake while the staking cooldown is not yet elapsed
     error STAKING_COOLDOWN_NOT_ELAPSED();
 
+    /// @notice Error thrown when attempting to withdraw liquidity while the cooldown is not yet elapsed
+    error LP_COOLDOWN_NOT_ELAPSED();
+
     /// @notice Error thrown when attempting to unlock or stake while this operation is not yet available
     error TTE_NOT_ACTIVATED();
 
-    /// @notice Error thrown when attempting to unlock while the Tax Distribution Pool did not distribute units
-    error TAX_DISTRIBUTION_POOL_HAS_NO_UNITS();
+    /// @notice Error thrown when attempting to unlock while the Staker Distribution Pool did not distribute units
+    error STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS();
+
+    /// @notice Error thrown when attempting to unlock while the Provider Distribution Pool did not distribute units
+    error LP_DISTRIBUTION_POOL_HAS_NO_UNITS();
+
+    /// @notice Error thrown when attempting to provide liquidity with an amount greater than the available balance
+    error INSUFFICIENT_BALANCE();
+
+    /// @notice Error thrown when attempting to collect fees or withdrawing liquidity while the locker has no position
+    error LOCKER_HAS_NO_POSITION();
+
+    /// @notice Error thrown when attempting to provide liquidity to a Uniswap Pool that is not approved
+    error LIQUIDITY_POOL_NOT_APPROVED();
+
+    /// @notice Error thrown when attempting to provide liquidity with an amount of ETH sent different than the paired asset amount
+    error INSUFFICIENT_ETH_SENT();
+
+    /// @notice Error thrown when attempting to unlock an amount of SUP less than the minimum unlock amount
+    error INSUFFICIENT_UNLOCK_AMOUNT();
 
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -131,22 +155,53 @@ interface IFluidLocker {
     /**
      * @notice Unlock the available FLUID Token from this locker
      * @dev Only this Locker owner can call this function
+     * @param unlockAmount the amount of FLUID Token to unlock
      * @param unlockPeriod the desired unlocking period (instant unlock if sets to 0)
      * @param recipient account to receive the unlocked FLUID tokens
      */
-    function unlock(uint128 unlockPeriod, address recipient) external;
+    function unlock(uint256 unlockAmount, uint128 unlockPeriod, address recipient) external;
 
     /**
      * @notice Stake all the available FLUID Token of this locker
      * @dev Only this Locker owner can call this function
+     * @param amountToStake amount of FLUID Token to stake
      */
-    function stake() external;
+    function stake(uint256 amountToStake) external;
 
     /**
      * @notice Unstake all the staked FLUID Token of this locker
      * @dev Only this Locker owner can call this function
+     * @param amountToUnstake amount of FLUID Token to unstake
      */
-    function unstake() external;
+    function unstake(uint256 amountToUnstake) external;
+
+    /**
+     * @notice Provides liquidity to a liquidity pool by creating or increasing a position
+     * @param supAmount The amount of SUP tokens to provide as liquidity
+     */
+    function provideLiquidity(uint256 supAmount) external payable;
+
+    /**
+     * @notice Withdraws liquidity from a liquidity pool
+     * @param tokenId The token identifier of the position to withdraw liquidity from
+     * @param liquidityToRemove The amount of liquidity to remove from the position
+     * @param amount0ToRemove The amount of token0 to remove from the position
+     * @param amount1ToRemove The amount of token1 to remove from the position
+     */
+    function withdrawLiquidity(
+        uint256 tokenId,
+        uint128 liquidityToRemove,
+        uint256 amount0ToRemove,
+        uint256 amount1ToRemove
+    ) external;
+
+    /**
+     * @notice Collects accumulated fees from a Uniswap V3 position
+     * @param tokenId The token identifier of the position to collect fees from
+     * @return collectedWeth The amount of WETH tokens collected
+     * @return collectedSup The amount of SUP tokens collected
+     */
+    function collectFees(uint256 tokenId) external returns (uint256 collectedWeth, uint256 collectedSup);
 
     /**
      * @notice Helper function to help the Locker connect to a program pool
@@ -154,6 +209,12 @@ interface IFluidLocker {
      * @param programId program identifier corresponding to the pool to connect to
      */
     function connectToPool(uint256 programId) external;
+
+    /**
+     * @notice Withdraws dust ETH from the locker
+     * @dev Only this Locker owner can call this function
+     */
+    function withdrawDustETH() external;
 
     /**
      * @notice Helper function to help the Locker disconnect from a program pool
@@ -203,6 +264,12 @@ interface IFluidLocker {
     function getStakedBalance() external view returns (uint256 sBalance);
 
     /**
+     * @notice Returns this Lockers' Uniswap V3 Liquidity balance in the SUP/ETH pool
+     * @return lBalance Uniswap V3 Liquidity balance in the SUP/ETH pool
+     */
+    function getLiquidityBalance() external view returns (uint256 lBalance);
+
+    /**
      * @notice Returns this Lockers' available FLUID Token balance
      * @dev Available balance is the total balance minus the staked balance
      * @return aBalance amount of FLUID Token available in this Locker
@@ -214,4 +281,11 @@ interface IFluidLocker {
      * @return fontaineBeaconImpl The fontaine beacon implementation contract address
      */
     function getFontaineBeaconImplementation() external view returns (address fontaineBeaconImpl);
+
+    /**
+     * @notice Returns the liquidity of the position for the given token identifier
+     * @param tokenId The token identifier of the position to query
+     * @return liquidity the liquidity of the position for the given token identifier
+     */
+    function getPositionLiquidity(uint256 tokenId) external view returns (uint128 liquidity);
 }

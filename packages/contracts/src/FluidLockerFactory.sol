@@ -191,7 +191,7 @@ contract FluidLockerFactory is Initializable, IFluidLockerFactory {
         _lockers[lockerOwner] = lockerInstance;
 
         // Initialize the new Locker instance
-        FluidLocker(lockerInstance).initialize(lockerOwner);
+        FluidLocker(payable(lockerInstance)).initialize(lockerOwner);
 
         // Approve the newly created locker to interact with the Staking Reward Controller
         STAKING_REWARD_CONTROLLER.approveLocker(lockerInstance);
