@@ -137,6 +137,97 @@ contract SupVestingFactoryTest is SFTest {
         assertEq(supVestingFactory.totalSupply(), supplyBefore + totalAmount, "Total supply should be updated");
     }
 
+    function testCreateSupVestingContract_batch_reverts() public {
+        // Recipient length != amounts & cliffAmounts length
+        {
+            address[] memory vestingRecipients = new address[](2);
+            vestingRecipients[0] = makeAddr("recipient0");
+            vestingRecipients[1] = makeAddr("recipient1");
+
+            uint256[] memory amounts = new uint256[](3);
+            amounts[0] = 1 ether;
+            amounts[1] = 1000 ether;
+            amounts[2] = 100_000 ether;
+
+            uint256[] memory cliffAmounts = new uint256[](3);
+            cliffAmounts[0] = 0.3 ether;
+            cliffAmounts[1] = 300 ether;
+            cliffAmounts[2] = 30_000 ether;
+
+            vm.prank(FLUID_TREASURY);
+            _fluidSuperToken.approve(address(supVestingFactory), type(uint256).max);
+
+            vm.prank(ADMIN);
+            vm.expectRevert(ISupVestingFactory.INVALID_PARAMETER.selector);
+            supVestingFactory.createSupVestingContract(
+                vestingRecipients,
+                amounts,
+                cliffAmounts,
+                uint32(block.timestamp + CLIFF_PERIOD),
+                uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            );
+        }
+        // CliffAmounts length != recipients length
+        {
+            address[] memory vestingRecipients = new address[](3);
+            vestingRecipients[0] = makeAddr("recipient0");
+            vestingRecipients[1] = makeAddr("recipient1");
+            vestingRecipients[2] = makeAddr("recipient2");
+
+            uint256[] memory amounts = new uint256[](3);
+            amounts[0] = 1 ether;
+            amounts[1] = 1000 ether;
+            amounts[2] = 100_000 ether;
+
+            uint256[] memory cliffAmounts = new uint256[](2);
+            cliffAmounts[0] = 0.3 ether;
+            cliffAmounts[1] = 300 ether;
+
+            vm.prank(FLUID_TREASURY);
+            _fluidSuperToken.approve(address(supVestingFactory), type(uint256).max);
+
+            vm.prank(ADMIN);
+            vm.expectRevert(ISupVestingFactory.INVALID_PARAMETER.selector);
+            supVestingFactory.createSupVestingContract(
+                vestingRecipients,
+                amounts,
+                cliffAmounts,
+                uint32(block.timestamp + CLIFF_PERIOD),
+                uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            );
+        }
+
+        // Amounts length != recipients length
+        {
+            address[] memory vestingRecipients = new address[](3);
+            vestingRecipients[0] = makeAddr("recipient0");
+            vestingRecipients[1] = makeAddr("recipient1");
+            vestingRecipients[2] = makeAddr("recipient2");
+
+            uint256[] memory amounts = new uint256[](2);
+            amounts[0] = 1 ether;
+            amounts[1] = 1000 ether;
+
+            uint256[] memory cliffAmounts = new uint256[](3);
+            cliffAmounts[0] = 0.3 ether;
+            cliffAmounts[1] = 300 ether;
+            cliffAmounts[2] = 3000 ether;
+
+            vm.prank(FLUID_TREASURY);
+            _fluidSuperToken.approve(address(supVestingFactory), type(uint256).max);
+
+            vm.prank(ADMIN);
+            vm.expectRevert(ISupVestingFactory.INVALID_PARAMETER.selector);
+            supVestingFactory.createSupVestingContract(
+                vestingRecipients,
+                amounts,
+                cliffAmounts,
+                uint32(block.timestamp + CLIFF_PERIOD),
+                uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+            );
+        }
+    }
+
     function testSetTreasury(address newTreasury, address nonTreasury) public {
         vm.assume(nonTreasury != address(FLUID_TREASURY));
         vm.assume(newTreasury != address(FLUID_TREASURY));
