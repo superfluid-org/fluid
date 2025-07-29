@@ -80,7 +80,7 @@ interface IFluidLocker {
     /// @notice Error thrown when attempting to unstake from locker that does not have staked $FLUID
     error NO_FLUID_TO_UNSTAKE();
 
-    /// @notice Error thrown when attempting to stake from locker that does not have enough available $FLUID
+    /// @notice Error thrown when attempting to stake or to LP from locker that does not have enough available $FLUID
     error INSUFFICIENT_AVAILABLE_BALANCE();
 
     /// @notice Error thrown when attempting to unstake from locker that does not have enough staked $FLUID
@@ -88,6 +88,9 @@ interface IFluidLocker {
 
     /// @notice Error thrown when attempting to unstake while the staking cooldown is not yet elapsed
     error STAKING_COOLDOWN_NOT_ELAPSED();
+
+    /// @notice Error thrown when attempting to withdraw liquidity while the cooldown is not yet elapsed
+    error LP_COOLDOWN_NOT_ELAPSED();
 
     /// @notice Error thrown when attempting to unlock or stake while this operation is not yet available
     error TTE_NOT_ACTIVATED();

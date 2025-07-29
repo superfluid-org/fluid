@@ -36,14 +36,11 @@ struct DeploySettings {
     IUniswapV3Pool ethSupPool;
 }
 
-function _deployFontaineBeacon(
-    ISuperToken fluid,
-    ISuperfluidPool stakerDistributionPool,
-    ISuperfluidPool providerDistributionPool,
-    address governor
-) returns (address fontaineLogicAddress, address fontaineBeaconAddress) {
+function _deployFontaineBeacon(ISuperToken fluid, address governor)
+    returns (address fontaineLogicAddress, address fontaineBeaconAddress)
+{
     // Deploy the Fontaine Implementation and associated Beacon contract
-    fontaineLogicAddress = address(new Fontaine(fluid, stakerDistributionPool, providerDistributionPool));
+    fontaineLogicAddress = address(new Fontaine(fluid));
     UpgradeableBeacon fontaineBeacon = new UpgradeableBeacon(fontaineLogicAddress);
     fontaineBeaconAddress = address(fontaineBeacon);
 
@@ -146,16 +143,12 @@ function _deployAll(DeploySettings memory settings) returns (DeployedContracts m
     ISuperfluidPool stakerDistributionPool =
         StakingRewardController(deployedContracts.stakingRewardControllerProxyAddress).taxDistributionPool();
 
-    ISuperfluidPool providerDistributionPool =
-        StakingRewardController(deployedContracts.stakingRewardControllerProxyAddress).lpDistributionPool();
-
-    // Deploy Ecosystem Partner Program Manager
     (deployedContracts.programManagerLogicAddress, deployedContracts.programManagerProxyAddress) =
         _deployFluidEPProgramManager(settings.deployer, settings.treasury, stakerDistributionPool);
 
     // Deploy the Fontaine Implementation and associated Beacon contract
     (deployedContracts.fontaineLogicAddress, deployedContracts.fontaineBeaconAddress) =
-        _deployFontaineBeacon(settings.fluid, stakerDistributionPool, providerDistributionPool, settings.governor);
+        _deployFontaineBeacon(settings.fluid, settings.governor);
 
     // Deploy the Fluid Locker Implementation and associated Beacon contract
     (deployedContracts.lockerLogicAddress, deployedContracts.lockerBeaconAddress) = _deployLockerBeacon(

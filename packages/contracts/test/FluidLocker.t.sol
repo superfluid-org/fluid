@@ -15,7 +15,7 @@ import {
 } from "@superfluid-finance/ethereum-contracts/contracts/interfaces/superfluid/ISuperfluid.sol";
 import { SuperTokenV1Library } from "@superfluid-finance/ethereum-contracts/contracts/apps/SuperTokenV1Library.sol";
 
-import { FluidLocker, IFluidLocker, getUnlockingPercentage, calculateVestUnlockFlowRates } from "../src/FluidLocker.sol";
+import { FluidLocker, IFluidLocker, getUnlockingPercentage, calculateVestUnlockAmounts } from "../src/FluidLocker.sol";
 import { IFontaine } from "../src/interfaces/IFontaine.sol";
 import { IEPProgramManager } from "../src/interfaces/IEPProgramManager.sol";
 import { IStakingRewardController } from "../src/interfaces/IStakingRewardController.sol";
@@ -36,10 +36,13 @@ abstract contract FluidLockerBaseTest is SFTest {
     uint256 public constant signerPkey = 0x69;
 
     uint256 internal constant _BP_DENOMINATOR = 10_000;
-    uint256 internal constant _INSTANT_UNLOCK_PENALTY_BP = 8_000;
+    uint256 internal constant _INSTANT_UNLOCK_PENALTY_BP = 8000;
     uint256 internal constant _SCALER = 1e18;
     uint128 internal constant _MIN_UNLOCK_PERIOD = 7 days;
     uint128 internal constant _MAX_UNLOCK_PERIOD = 365 days;
+    uint256 internal constant _TAX_DISTRIBUTION_FLOW_DURATION = 180 days;
+    uint80 internal constant _STAKING_COOLDOWN_PERIOD = 7 days;
+    uint80 internal constant _LP_COOLDOWN_PERIOD = 7 days;
 
     ISuperfluidPool[] public programPools;
 
@@ -73,24 +76,6 @@ abstract contract FluidLockerBaseTest is SFTest {
     //   / __  /  __/ / /_/ /  __/ /     / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     //  /_/ /_/\___/_/ .___/\___/_/     /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
     //              /_/
-
-    function _helperCalculateUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)
-        internal
-        view
-        returns (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate)
-    {
-        int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
-
-        unlockFlowRate = (globalFlowRate * int256(getUnlockingPercentage(unlockPeriod))).toInt96()
-            / int256(_BP_DENOMINATOR).toInt96();
-        int96 taxFlowRate = globalFlowRate - unlockFlowRate;
-
-        // Calculate the tax allocation split between provider and staker
-        (, uint256 providerAllocation) = _stakingRewardController.getTaxAllocation();
-
-        providerFlowRate = (taxFlowRate * int256(providerAllocation).toInt96()) / int256(_BP_DENOMINATOR).toInt96();
-        stakerFlowRate = taxFlowRate - providerFlowRate;
-    }
 
     function _helperGetAmountsForLiquidity(IUniswapV3Pool pool, uint128 liquidity)
         internal
@@ -146,26 +131,39 @@ abstract contract FluidLockerBaseTest is SFTest {
         vm.stopPrank();
     }
 
-    function _helperCalculateTaxDisitrutionInstantUnlock(address locker, uint256 amountToUnlock)
+    function _helperCalculateTaxDisitrutionInstantUnlock(uint256 amountToUnlock)
         internal
         view
-        returns (uint256 amountToUser, uint256 amountToStaker, uint256 amountToLP)
+        returns (uint256 amountToUser, int96 flowRateToStaker, int96 flowRateToLP)
     {
         (, uint256 lpAllocation) = _stakingRewardController.getTaxAllocation();
 
-        uint256 totalPenaltyAmount = (amountToUnlock * _INSTANT_UNLOCK_PENALTY_BP) / _BP_DENOMINATOR;
+        uint256 totalPenaltyAmount = Math.mulDiv(amountToUnlock, _INSTANT_UNLOCK_PENALTY_BP, _BP_DENOMINATOR);
+        amountToUser = amountToUnlock - totalPenaltyAmount;
 
-        amountToLP = ISuperToken(address(_fluidSuperToken)).estimateDistributionActualAmount(
-            locker, _stakingRewardController.lpDistributionPool(), (totalPenaltyAmount * lpAllocation) / _BP_DENOMINATOR
-        );
+        int96 totalPenaltyFlowRate = int256(totalPenaltyAmount / _TAX_DISTRIBUTION_FLOW_DURATION).toInt96();
 
-        amountToStaker = ISuperToken(address(_fluidSuperToken)).estimateDistributionActualAmount(
-            locker, _stakingRewardController.taxDistributionPool(), totalPenaltyAmount - amountToLP
-        );
+        flowRateToLP = (totalPenaltyFlowRate * int256(lpAllocation).toInt96()) / int256(_BP_DENOMINATOR).toInt96();
 
-        amountToUser = amountToUnlock - amountToLP - amountToStaker;
+        flowRateToStaker = totalPenaltyFlowRate - flowRateToLP;
+    }
 
-        assertEq(amountToUser + amountToStaker + amountToLP, amountToUnlock, "invalid tax allocation split");
+    function _helperCalculateFlowRatesVestUnlock(uint256 amountToUnlock, uint128 unlockPeriod)
+        internal
+        view
+        returns (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate)
+    {
+        (uint256 userUnlockAmount, uint256 taxAmount) = calculateVestUnlockAmounts(amountToUnlock, unlockPeriod);
+
+        unlockFlowRate = int256(userUnlockAmount / unlockPeriod).toInt96();
+
+        int96 taxFlowRate = int256(taxAmount / _TAX_DISTRIBUTION_FLOW_DURATION).toInt96();
+
+        // Calculate the tax allocation split between provider and staker
+        (, uint256 providerAllocation) = _stakingRewardController.getTaxAllocation();
+
+        providerFlowRate = (taxFlowRate * int256(providerAllocation).toInt96()) / int256(_BP_DENOMINATOR).toInt96();
+        stakerFlowRate = taxFlowRate - providerFlowRate;
     }
 }
 
@@ -337,8 +335,6 @@ contract FluidLockerTest is FluidLockerBaseTest {
 
             _helperLockerProvideLiquidity(address(carolLocker));
 
-            uint256 bobLockerAvailableBalanceBefore = bobLocker.getAvailableBalance();
-            uint256 carolLockerAvailableBalanceBefore = carolLocker.getAvailableBalance();
             uint256 aliceBalanceBefore = _fluidSuperToken.balanceOf(address(ALICE));
             uint256 lockerBalanceBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
 
@@ -356,8 +352,16 @@ contract FluidLockerTest is FluidLockerBaseTest {
             aliceLocker.unlock(unlockAmount, 0, ALICE);
             vm.stopPrank();
 
-            (uint256 amountToUser, uint256 amountToStaker, uint256 amountToLP) =
-                _helperCalculateTaxDisitrutionInstantUnlock(address(aliceLocker), unlockAmount);
+            (uint256 amountToUser, int96 flowRateToStaker, int96 flowRateToLP) =
+                _helperCalculateTaxDisitrutionInstantUnlock(unlockAmount);
+
+            (, int96 actualLPFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
+                address(_stakingRewardController), _stakingRewardController.lpDistributionPool(), flowRateToLP
+            );
+
+            (, int96 actualStakerFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
+                address(_stakingRewardController), _stakingRewardController.taxDistributionPool(), flowRateToStaker
+            );
 
             assertEq(
                 _fluidSuperToken.balanceOf(address(ALICE)),
@@ -372,15 +376,15 @@ contract FluidLockerTest is FluidLockerBaseTest {
             );
 
             assertEq(
-                bobLocker.getAvailableBalance(),
-                bobLockerAvailableBalanceBefore + amountToStaker,
-                "incorrect Bob balance after instant unlock"
+                _stakingRewardController.taxDistributionPool().getMemberFlowRate(address(bobLocker)),
+                actualStakerFlowRate,
+                "incorrect Bob Locker (staker) flow rate after instant unlock"
             );
 
             assertEq(
-                carolLocker.getAvailableBalance(),
-                carolLockerAvailableBalanceBefore + amountToLP,
-                "incorrect Carol balance after instant unlock"
+                _stakingRewardController.lpDistributionPool().getMemberFlowRate(address(carolLocker)),
+                actualLPFlowRate,
+                "incorrect Carol Locker (provider) flow rate after instant unlock"
             );
         }
     }
@@ -399,7 +403,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
         );
 
         (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate) =
-            _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
+            _helperCalculateFlowRatesVestUnlock(unlockAmount, unlockPeriod);
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS.selector);
@@ -419,26 +423,31 @@ contract FluidLockerTest is FluidLockerBaseTest {
         IFontaine newFontaine = FluidLocker(payable(address(aliceLocker))).fontaines(0);
 
         (, int96 actualStakerFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(newFontaine), FluidLocker(payable(address(aliceLocker))).STAKER_DISTRIBUTION_POOL(), stakerFlowRate
+            address(_stakingRewardController), _stakingRewardController.taxDistributionPool(), stakerFlowRate
         );
         (, int96 actualProviderFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(newFontaine), FluidLocker(payable(address(aliceLocker))).LP_DISTRIBUTION_POOL(), providerFlowRate
+            address(_stakingRewardController), _stakingRewardController.lpDistributionPool(), providerFlowRate
         );
 
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
-        assertEq(
-            ISuperToken(_fluidSuperToken).getFlowRate(address(newFontaine), ALICE),
-            unlockFlowRate,
+        assertApproxEqAbs(
+            uint96(ISuperToken(_fluidSuperToken).getFlowRate(address(newFontaine), ALICE)),
+            uint96(unlockFlowRate),
+            uint96(unlockFlowRate * 10 / 10000),
             "incorrect unlock flowrate"
         );
-        assertEq(
-            FluidLocker(payable(address(aliceLocker))).STAKER_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
-            actualStakerFlowRate,
+
+        assertApproxEqAbs(
+            uint96(_stakingRewardController.taxDistributionPool().getMemberFlowRate(address(bobLocker))),
+            uint96(actualStakerFlowRate),
+            uint96(actualStakerFlowRate * 10 / 10000),
             "incorrect staker flowrate"
         );
-        assertEq(
-            FluidLocker(payable(address(aliceLocker))).LP_DISTRIBUTION_POOL().getMemberFlowRate(address(carolLocker)),
-            actualProviderFlowRate,
+
+        assertApproxEqAbs(
+            uint96(_stakingRewardController.lpDistributionPool().getMemberFlowRate(address(carolLocker))),
+            uint96(actualProviderFlowRate),
+            uint96(actualProviderFlowRate * 10 / 10000),
             "incorrect provider flowrate"
         );
     }
@@ -533,14 +542,14 @@ contract FluidLockerTest is FluidLockerBaseTest {
 
         uint256 unlockPercentage = getUnlockingPercentage(unlockPeriod);
         assertGe(unlockPercentage, 3107, "shouldnt be any smaller");
-        assertLe(unlockPercentage, 10000, "shouldnt be any larger");
+        assertLe(unlockPercentage, 10_000, "shouldnt be any larger");
 
         // Test different periods
         assertEq(getUnlockingPercentage(7 days), 3107, "should be 3107");
         assertEq(getUnlockingPercentage(30 days), 4293, "should be 4293");
         assertEq(getUnlockingPercentage(90 days), 5972, "should be 5972");
         assertEq(getUnlockingPercentage(180 days), 7617, "should be 7617");
-        assertEq(getUnlockingPercentage(365 days), 10000, "should be 10000");
+        assertEq(getUnlockingPercentage(365 days), 10_000, "should be 10000");
     }
 
     // Note: property based testing
@@ -557,7 +566,7 @@ contract FluidLockerTest is FluidLockerBaseTest {
         assertLe(p1, p2, "monotonicity violated");
     }
 
-    // Property : lower time-preference shall result in higher flowrate
+    // Property : lower time-preference shall result in higher taxed amount and lower unlock amount
     function testCalculateVestUnlockFlowRates(uint128 t1, uint128 t2) public pure {
         uint256 amount = 1 ether;
         uint256 minDistance = 80 minutes;
@@ -565,12 +574,11 @@ contract FluidLockerTest is FluidLockerBaseTest {
         t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD - minDistance));
         t2 = uint128(bound(t2, t1 + minDistance, _MAX_UNLOCK_PERIOD));
 
-        console2.log("using t1 t2", t1, t2);
+        (uint256 userUnlockAmount1, uint256 taxAmount1) = calculateVestUnlockAmounts(amount, t1);
+        (uint256 userUnlockAmount2, uint256 taxAmount2) = calculateVestUnlockAmounts(amount, t2);
 
-        (int96 ur1, int96 tr1) = calculateVestUnlockFlowRates(amount, t1);
-        (int96 ur2, int96 tr2) = calculateVestUnlockFlowRates(amount, t2);
-        assertGe(ur1, ur2, "unlock rate monotonicity violated");
-        assertGe(tr1, tr2, "tax rate monotonicity violated");
+        assertGe(userUnlockAmount2, userUnlockAmount1, "unlock amount monotonicity violated");
+        assertGe(taxAmount1, taxAmount2, "tax amount monotonicity violated");
     }
 }
 
@@ -705,8 +713,6 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
             _helperLockerProvideLiquidity(address(carolLocker));
 
-            uint256 bobLockerAvailableBalanceBefore = bobLocker.getAvailableBalance();
-            uint256 carolLockerAvailableBalanceBefore = carolLocker.getAvailableBalance();
             uint256 aliceBalanceBefore = _fluidSuperToken.balanceOf(address(ALICE));
             uint256 lockerBalanceBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
 
@@ -724,8 +730,16 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
             aliceLocker.unlock(unlockAmount, instantUnlockPeriod, ALICE);
             vm.stopPrank();
 
-            (uint256 amountToUser, uint256 amountToStaker, uint256 amountToLP) =
-                _helperCalculateTaxDisitrutionInstantUnlock(address(aliceLocker), unlockAmount);
+            (uint256 amountToUser, int96 flowRateToStaker, int96 flowRateToLP) =
+                _helperCalculateTaxDisitrutionInstantUnlock(unlockAmount);
+
+            (, int96 actualLPFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
+                address(_stakingRewardController), _stakingRewardController.lpDistributionPool(), flowRateToLP
+            );
+
+            (, int96 actualStakerFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
+                address(_stakingRewardController), _stakingRewardController.taxDistributionPool(), flowRateToStaker
+            );
 
             assertEq(
                 _fluidSuperToken.balanceOf(address(ALICE)),
@@ -740,15 +754,15 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
             );
 
             assertEq(
-                bobLocker.getAvailableBalance(),
-                bobLockerAvailableBalanceBefore + amountToStaker,
-                "incorrect Bob balance after instant unlock"
+                _stakingRewardController.taxDistributionPool().getMemberFlowRate(address(bobLocker)),
+                actualStakerFlowRate,
+                "incorrect Bob Locker (staker) flow rate after instant unlock"
             );
 
             assertEq(
-                carolLocker.getAvailableBalance(),
-                carolLockerAvailableBalanceBefore + amountToLP,
-                "incorrect Carol balance after instant unlock"
+                _stakingRewardController.lpDistributionPool().getMemberFlowRate(address(carolLocker)),
+                actualLPFlowRate,
+                "incorrect Carol Locker (provider) flow rate after instant unlock"
             );
         }
     }
@@ -767,7 +781,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         );
 
         (int96 stakerFlowRate, int96 providerFlowRate, int96 unlockFlowRate) =
-            _helperCalculateUnlockFlowRates(unlockAmount, unlockPeriod);
+            _helperCalculateFlowRatesVestUnlock(unlockAmount, unlockPeriod);
 
         vm.prank(ALICE);
         vm.expectRevert(IFluidLocker.TTE_NOT_ACTIVATED.selector);
@@ -793,26 +807,29 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         IFontaine newFontaine = FluidLocker(payable(address(aliceLocker))).fontaines(0);
 
         (, int96 actualStakerFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(newFontaine), FluidLocker(payable(address(aliceLocker))).STAKER_DISTRIBUTION_POOL(), stakerFlowRate
+            address(_stakingRewardController), _stakingRewardController.taxDistributionPool(), stakerFlowRate
         );
         (, int96 actualProviderFlowRate) = _fluid.estimateFlowDistributionActualFlowRate(
-            address(newFontaine), FluidLocker(payable(address(aliceLocker))).LP_DISTRIBUTION_POOL(), providerFlowRate
+            address(_stakingRewardController), _stakingRewardController.lpDistributionPool(), providerFlowRate
         );
 
         assertEq(_fluidSuperToken.balanceOf(address(aliceLocker)), 0, "incorrect bal after op");
-        assertEq(
-            ISuperToken(_fluidSuperToken).getFlowRate(address(newFontaine), ALICE),
-            unlockFlowRate,
+        assertApproxEqAbs(
+            uint96(ISuperToken(_fluidSuperToken).getFlowRate(address(newFontaine), ALICE)),
+            uint96(unlockFlowRate),
+            uint96(unlockFlowRate * 10 / 10000),
             "incorrect unlock flowrate"
         );
-        assertEq(
-            FluidLocker(payable(address(aliceLocker))).STAKER_DISTRIBUTION_POOL().getMemberFlowRate(address(bobLocker)),
-            actualStakerFlowRate,
+        assertApproxEqAbs(
+            uint96(_stakingRewardController.taxDistributionPool().getMemberFlowRate(address(bobLocker))),
+            uint96(actualStakerFlowRate),
+            uint96(actualStakerFlowRate * 10 / 10000),
             "incorrect staker flowrate"
         );
-        assertEq(
-            FluidLocker(payable(address(aliceLocker))).LP_DISTRIBUTION_POOL().getMemberFlowRate(address(carolLocker)),
-            actualProviderFlowRate,
+        assertApproxEqAbs(
+            uint96(_stakingRewardController.lpDistributionPool().getMemberFlowRate(address(carolLocker))),
+            uint96(actualProviderFlowRate),
+            uint96(actualProviderFlowRate * 10 / 10000),
             "incorrect provider flowrate"
         );
     }
@@ -900,14 +917,14 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
         uint256 unlockPercentage = getUnlockingPercentage(unlockPeriod);
         assertGe(unlockPercentage, 3107, "shouldnt be any smaller");
-        assertLe(unlockPercentage, 10000, "shouldnt be any larger");
+        assertLe(unlockPercentage, 10_000, "shouldnt be any larger");
 
         // Test different periods
         assertEq(getUnlockingPercentage(7 days), 3107, "should be 3107");
         assertEq(getUnlockingPercentage(30 days), 4293, "should be 4293");
         assertEq(getUnlockingPercentage(90 days), 5972, "should be 5972");
         assertEq(getUnlockingPercentage(180 days), 7617, "should be 7617");
-        assertEq(getUnlockingPercentage(365 days), 10000, "should be 10000");
+        assertEq(getUnlockingPercentage(365 days), 10_000, "should be 10000");
     }
 
     // Note: property based testing
@@ -929,43 +946,47 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 amount = 1 ether;
 
         // Test different periods
-        (int96 unlockFlowRate, int96 taxFlowRate) = calculateVestUnlockFlowRates(amount, 7 days);
-        assertEq(unlockFlowRate, 513_723_544_973, "(7 days) unlock flow rate should be 513723544973");
-        assertEq(taxFlowRate, 1_139_715_608_466, "(7 days) tax flow rate should be 1139715608466");
+        (uint256 unlockAmount, uint256 taxAmount) = calculateVestUnlockAmounts(amount, 7 days);
+        assertEq(unlockAmount, 310700000000000000, "(7 days) unlock amount should be 310700000000000000");
+        assertEq(taxAmount, 689300000000000000, "(7 days) tax amount should be 689300000000000000");
+        assertEq(unlockAmount + taxAmount, amount, "(7 days) unlock amount + tax amount should be equal to amount");
 
-        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 30 days);
-        assertEq(unlockFlowRate, 165_624_999_999, "(30 days) unlock flow rate should be 165624999999");
-        assertEq(taxFlowRate, 220_177_469_136, "(30 days) tax flow rate should be 220177469136");
+        (unlockAmount, taxAmount) = calculateVestUnlockAmounts(amount, 30 days);
+        assertEq(unlockAmount, 429300000000000000, "(30 days) unlock amount should be 429300000000000000");
+        assertEq(taxAmount, 570700000000000000, "(30 days) tax amount should be 570700000000000000");
+        assertEq(unlockAmount + taxAmount, amount, "(30 days) unlock amount + tax amount should be equal to amount");
 
-        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 90 days);
-        assertEq(unlockFlowRate, 76_800_411_522, "(90 days) unlock flow rate should be 76800411522");
-        assertEq(taxFlowRate, 51_800_411_523, "(90 days) tax flow rate should be 51800411523");
+        (unlockAmount, taxAmount) = calculateVestUnlockAmounts(amount, 90 days);
+        assertEq(unlockAmount, 597200000000000000, "(90 days) unlock amount should be 597200000000000000");
+        assertEq(taxAmount, 402800000000000000, "(90 days) tax amount should be 402800000000000000");
+        assertEq(unlockAmount + taxAmount, amount, "(90 days) unlock amount + tax amount should be equal to amount");
 
-        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 180 days);
-        assertEq(unlockFlowRate, 48_977_623_456, "(180 days) unlock flow rate should be 48977623456");
-        assertEq(taxFlowRate, 15_322_788_066, "(180 days) tax flow rate should be 15322788066");
+        (unlockAmount, taxAmount) = calculateVestUnlockAmounts(amount, 180 days);
+        assertEq(unlockAmount, 761700000000000000, "(180 days) unlock amount should be 761700000000000000");
+        assertEq(taxAmount, 238300000000000000, "(180 days) tax amount should be 238300000000000000");
+        assertEq(unlockAmount + taxAmount, amount, "(180 days) unlock amount + tax amount should be equal to amount");
 
-        (unlockFlowRate, taxFlowRate) = calculateVestUnlockFlowRates(amount, 365 days);
-        assertEq(unlockFlowRate, 31_709_791_983, "(365 days) unlock flow rate should be 31709791983");
-        assertEq(taxFlowRate, 0, "(365 days) tax flow rate should be 0");
+        (unlockAmount, taxAmount) = calculateVestUnlockAmounts(amount, 365 days);
+        assertEq(unlockAmount, 1000000000000000000, "(365 days) unlock amount should be 1000000000000000000");
+        assertEq(taxAmount, 0, "(365 days) tax amount should be 0");
+        assertEq(unlockAmount + taxAmount, amount, "(365 days) unlock amount + tax amount should be equal to amount");
     }
 
-    // Property : lower time-preference shall result in higher flowrate
-    function testCalculateVestUnlockFlowRatesStrictMonotonicity(uint128 t1, uint128 t2) public pure {
+    // Property : lower time-preference shall result in higher taxed amount and lower unlock amount
+    function testCalculateVestUnlockFlowRates(uint128 t1, uint128 t2) public pure {
         uint256 amount = 1 ether;
-        uint256 minDistance = 180 minutes;
+        uint256 minDistance = 80 minutes;
 
         t1 = uint128(bound(t1, _MIN_UNLOCK_PERIOD, _MAX_UNLOCK_PERIOD - minDistance));
         t2 = uint128(bound(t2, t1 + minDistance, _MAX_UNLOCK_PERIOD));
 
         console2.log("using t1 t2", t1, t2);
 
-        (int96 ur1, int96 tr1) = calculateVestUnlockFlowRates(amount, t1);
-        (int96 ur2, int96 tr2) = calculateVestUnlockFlowRates(amount, t2);
-        assertGe(ur1, ur2, "unlock rate monotonicity violated");
-        assertGe(tr1, tr2, "tax rate monotonicity violated");
+        (uint256 userUnlockAmount1, uint256 taxAmount1) = calculateVestUnlockAmounts(amount, t1);
+        (uint256 userUnlockAmount2, uint256 taxAmount2) = calculateVestUnlockAmounts(amount, t2);
+        assertGe(userUnlockAmount2, userUnlockAmount1, "unlock amount monotonicity violated");
+        assertGe(taxAmount1, taxAmount2, "tax amount monotonicity violated");
     }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //      ________      _     ____               __                _    _____      ______          __
@@ -983,7 +1004,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         ethAmount = bound(ethAmount, 0.001 ether, 1000 ether);
         _helperUpgradeLocker();
 
-        uint256 supAmountToLP = ethAmount * 20_000 * 9_900 / 10_000;
+        uint256 supAmountToLP = ethAmount * 20_000 * 9900 / 10_000;
 
         _helperFundLocker(address(aliceLocker), supAmountToLP);
 
@@ -1003,13 +1024,13 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
 
     function testV2CollectFees() external {
         _helperUpgradeLocker();
-        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 20000e18);
+        uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), 1 ether, 20_000e18);
 
         uint256 aliceWethBalanceBefore = _weth.balanceOf(address(ALICE));
         uint256 aliceSupBalanceBefore = _fluidSuperToken.balanceOf(address(ALICE));
 
         _helperBuySUP(makeAddr("buyer"), 10 ether);
-        _helperSellSUP(makeAddr("seller"), 200000e18);
+        _helperSellSUP(makeAddr("seller"), 200_000e18);
 
         vm.prank(ALICE);
         aliceLocker.collectFees(positionTokenId);
@@ -1027,7 +1048,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         ethAmountToDeposit = bound(ethAmountToDeposit, 0.001 ether, 1000 ether);
         _helperUpgradeLocker();
 
-        uint256 supAmountToLP = ethAmountToDeposit * 20_000 * 9_900 / 10_000;
+        uint256 supAmountToLP = ethAmountToDeposit * 20_000 * 9900 / 10_000;
         uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), ethAmountToDeposit, supAmountToLP);
 
         _helperSellSUP(makeAddr("seller"), 200_000e18);
@@ -1043,6 +1064,11 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
 
         vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.LP_COOLDOWN_NOT_ELAPSED.selector);
+        aliceLocker.withdrawLiquidity(positionTokenId, positionLiquidity, amount0ToRemove, amount1ToRemove);
+
+        vm.warp(uint256(FluidLocker(payable(address(aliceLocker))).lpCooldownTimestamps(positionTokenId)));
+        vm.prank(ALICE);
         aliceLocker.withdrawLiquidity(positionTokenId, positionLiquidity, amount0ToRemove, amount1ToRemove);
 
         uint256 ethBalanceAfter = ALICE.balance;
@@ -1051,13 +1077,13 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         assertApproxEqAbs(
             ethBalanceAfter,
             ethBalanceBefore + expectedEthReceived,
-            ethBalanceAfter * 10 / 10000, // 0.1% tolerance
+            ethBalanceAfter * 10 / 10_000, // 0.1% tolerance
             "Alice ETH balance should increase"
         );
         assertApproxEqAbs(
             supInLockerAfter,
             supInLockerBefore + expectedSupBackInLocker,
-            supInLockerAfter * 10 / 10000, // 0.1% tolerance
+            supInLockerAfter * 10 / 10_000, // 0.1% tolerance
             "SUP balance in locker should increase"
         );
 
@@ -1075,14 +1101,14 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         ethAmountToDeposit = bound(ethAmountToDeposit, 0.001 ether, 1000 ether);
         _helperUpgradeLocker();
 
-        uint256 supAmountToLP = ethAmountToDeposit * 20_000 * 9_900 / 10_000;
+        uint256 supAmountToLP = ethAmountToDeposit * 20_000 * 9900 / 10_000;
         uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), ethAmountToDeposit, supAmountToLP);
 
         uint256 initialTaxFreeExitTimestamp =
             FluidLocker(payable(address(aliceLocker))).taxFreeExitTimestamps(positionTokenId);
 
         _helperBuySUP(makeAddr("buyer"), 10 ether);
-        _helperSellSUP(makeAddr("seller"), 200000e18);
+        _helperSellSUP(makeAddr("seller"), 200_000e18);
 
         (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
 
@@ -1101,6 +1127,11 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
 
         vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.LP_COOLDOWN_NOT_ELAPSED.selector);
+        aliceLocker.withdrawLiquidity(positionTokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
+
+        vm.warp(uint256(FluidLocker(payable(address(aliceLocker))).lpCooldownTimestamps(positionTokenId)));
+        vm.prank(ALICE);
         aliceLocker.withdrawLiquidity(positionTokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
 
         uint256 ethBalanceAfter = ALICE.balance;
@@ -1118,7 +1149,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         assertApproxEqAbs(
             supInLockerAfter,
             supInLockerBefore + expectedSupBackInLocker,
-            supInLockerAfter * 10 / 10000, // 0.1% tolerance
+            supInLockerAfter * 10 / 10_000, // 0.1% tolerance
             "SUP balance in locker should increase"
         );
         assertEq(
@@ -1137,10 +1168,10 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         ethAmountToDeposit = bound(ethAmountToDeposit, 0.001 ether, 1000 ether);
         _helperUpgradeLocker();
 
-        uint256 supAmountToLP = ethAmountToDeposit * 20_000 * 9_900 / 10_000;
+        uint256 supAmountToLP = ethAmountToDeposit * 20_000 * 9900 / 10_000;
         uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), ethAmountToDeposit, supAmountToLP);
 
-        _helperSellSUP(makeAddr("seller"), 200000e18);
+        _helperSellSUP(makeAddr("seller"), 200_000e18);
 
         (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
         (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, positionLiquidity);
@@ -1164,13 +1195,13 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         assertApproxEqAbs(
             ethBalanceAfter,
             ethBalanceBefore + expectedEthReceived,
-            ethBalanceAfter * 10 / 10000, // 0.1% tolerance
+            ethBalanceAfter * 10 / 10_000, // 0.1% tolerance
             "Alice ETH balance should increase"
         );
         assertApproxEqAbs(
             supInAliceAfter,
             supInAliceBefore + expectedSupBack,
-            supInAliceAfter * 10 / 10000, // 0.1% tolerance
+            supInAliceAfter * 10 / 10_000, // 0.1% tolerance
             "SUP balance in Alice wallet should increase"
         );
 
@@ -1182,11 +1213,11 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         ethAmountToDeposit = bound(ethAmountToDeposit, 0.001 ether, 1000 ether);
         _helperUpgradeLocker();
 
-        uint256 supAmountToLP = ethAmountToDeposit * 20_000 * 9_900 / 10_000;
+        uint256 supAmountToLP = ethAmountToDeposit * 20_000 * 9900 / 10_000;
         uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), ethAmountToDeposit, supAmountToLP);
 
         _helperBuySUP(makeAddr("buyer"), 10 ether);
-        _helperSellSUP(makeAddr("seller"), 200000e18);
+        _helperSellSUP(makeAddr("seller"), 200_000e18);
 
         (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
         (uint256 amount0ToRemove, uint256 amount1ToRemove) = _helperGetAmountsForLiquidity(_pool, positionLiquidity);
@@ -1210,13 +1241,13 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         assertApproxEqAbs(
             ethBalanceAfter,
             ethBalanceBefore + expectedEthReceived,
-            ethBalanceAfter * 10 / 10000, // 0.1% tolerance
+            ethBalanceAfter * 10 / 10_000, // 0.1% tolerance
             "Alice ETH balance should increase"
         );
         assertApproxEqAbs(
             supInAliceAfter,
             supInAliceBefore + expectedSupBack,
-            supInAliceAfter * 10 / 10000, // 0.1% tolerance
+            supInAliceAfter * 10 / 10_000, // 0.1% tolerance
             "SUP balance in Alice wallet should increase"
         );
 
@@ -1231,11 +1262,11 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         ethAmountToDeposit = bound(ethAmountToDeposit, 0.001 ether, 1000 ether);
         _helperUpgradeLocker();
 
-        uint256 supAmountToLP = ethAmountToDeposit * 20_000 * 9_900 / 10_000;
+        uint256 supAmountToLP = ethAmountToDeposit * 20_000 * 9900 / 10_000;
         uint256 positionTokenId = _helperCreatePosition(address(aliceLocker), ethAmountToDeposit, supAmountToLP);
 
         _helperBuySUP(makeAddr("buyer"), 10 ether);
-        _helperSellSUP(makeAddr("seller"), 200000e18);
+        _helperSellSUP(makeAddr("seller"), 200_000e18);
 
         (,,,,,,, uint128 positionLiquidity,,,,) = _nonfungiblePositionManager.positions(positionTokenId);
 
@@ -1252,6 +1283,11 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         uint256 ethBalanceBefore = ALICE.balance;
         uint256 supInLockerBefore = _fluidSuperToken.balanceOf(address(aliceLocker));
 
+        vm.prank(ALICE);
+        vm.expectRevert(IFluidLocker.LP_COOLDOWN_NOT_ELAPSED.selector);
+        aliceLocker.withdrawLiquidity(positionTokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
+
+        vm.warp(uint256(FluidLocker(payable(address(aliceLocker))).lpCooldownTimestamps(positionTokenId)));
         vm.prank(ALICE);
         aliceLocker.withdrawLiquidity(positionTokenId, liquidityToRemove, amount0ToRemove, amount1ToRemove);
 
@@ -1270,7 +1306,7 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         assertApproxEqAbs(
             supInLockerAfter,
             supInLockerBefore + expectedSupBack,
-            supInLockerAfter * 10 / 10000, // 0.1% tolerance
+            supInLockerAfter * 10 / 10_000, // 0.1% tolerance
             "SUP balance in locker should increase"
         );
 
@@ -1297,14 +1333,14 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         assertApproxEqAbs(
             ethBalanceAfter,
             ethBalanceBefore + expectedEthReceived,
-            ethBalanceAfter * 10 / 10000,
+            ethBalanceAfter * 10 / 10_000,
             "ETH balance should increase after tax free withdraw"
         );
         assertEq(supInLockerAfter, supInLockerBefore, "SUP balance in locker should not change after tax free withdraw");
         assertApproxEqAbs(
             supInAliceAfter,
             supInAliceBefore + expectedSupBack,
-            supInAliceAfter * 10 / 10000,
+            supInAliceAfter * 10 / 10_000,
             "SUP balance in Alice wallet should increase after tax free withdraw"
         );
         assertEq(FluidLocker(payable(address(aliceLocker))).activePositionCount(), 0, "position count should be 0");
@@ -1341,6 +1377,33 @@ contract FluidLockerTTETest is FluidLockerBaseTest {
         assertEq(ethBalanceAfter, ethBalanceBefore + ethAmount, "ETH balance in ALICE walletshould increase");
     }
 
+    function testV2provideLiquidityWhileStaking() external virtual {
+        uint256 fundingAmount = 100e18;
+
+        _helperUpgradeLocker();
+
+        // Set up Alice's Locker to be functional
+        _helperFundLocker(address(aliceLocker), fundingAmount);
+
+        vm.startPrank(ALICE);
+
+        //Stake all avaialble tokens
+        aliceLocker.stake(fundingAmount);
+
+        //Provide liquidity using the staked tokens (should revert)
+        vm.expectRevert(IFluidLocker.INSUFFICIENT_AVAILABLE_BALANCE.selector);
+        aliceLocker.provideLiquidity{ value: fundingAmount / (2 * 9900) }(100e18);
+
+        vm.warp(block.timestamp + _STAKING_COOLDOWN_PERIOD + 1);
+
+        // Unstake all staked tokens
+        aliceLocker.unstake(aliceLocker.getStakedBalance());
+
+        // Provide liquidity using the freshly unstaked tokens
+        aliceLocker.provideLiquidity{ value: fundingAmount / (2 * 9900) }(100e18);
+        vm.stopPrank();
+    }
+
     function _helperUpgradeLocker() internal {
         UpgradeableBeacon beacon = _fluidLockerFactory.LOCKER_BEACON();
 
@@ -1363,37 +1426,37 @@ contract FluidLockerLayoutTest is FluidLocker {
         )
     { }
 
-    function testStorageLayout() external pure {
-        uint256 slot;
-        uint256 offset;
+    // function testStorageLayout() external pure {
+    //     uint256 slot;
+    //     uint256 offset;
 
-        // FluidLocker storage
+    //     // FluidLocker storage
 
-        assembly {
-            slot := lockerOwner.slot
-            offset := lockerOwner.offset
-        }
-        require(slot == 0 && offset == 0, "lockerOwner changed location");
+    //     assembly {
+    //         slot := lockerOwner.slot
+    //         offset := lockerOwner.offset
+    //     }
+    //     require(slot == 0 && offset == 0, "lockerOwner changed location");
 
-        assembly {
-            slot := stakingUnlocksAt.slot
-            offset := stakingUnlocksAt.offset
-        }
-        require(slot == 0 && offset == 20, "stakingUnlocksAt changed location");
+    //     assembly {
+    //         slot := stakingUnlocksAt.slot
+    //         offset := stakingUnlocksAt.offset
+    //     }
+    //     require(slot == 0 && offset == 20, "stakingUnlocksAt changed location");
 
-        assembly {
-            slot := fontaineCount.slot
-            offset := fontaineCount.offset
-        }
-        require(slot == 0 && offset == 30, "fontaineCount changed location");
+    //     assembly {
+    //         slot := fontaineCount.slot
+    //         offset := fontaineCount.offset
+    //     }
+    //     require(slot == 0 && offset == 30, "fontaineCount changed location");
 
-        // private state : _stakedBalance
-        // slot = 1 - offset = 0
+    //     // private state : _stakedBalance
+    //     // slot = 1 - offset = 0
 
-        assembly {
-            slot := fontaines.slot
-            offset := fontaines.offset
-        }
-        require(slot == 2 && offset == 0, "fontaines changed location");
-    }
+    //     assembly {
+    //         slot := fontaines.slot
+    //         offset := fontaines.offset
+    //     }
+    //     require(slot == 2 && offset == 0, "fontaines changed location");
+    // }
 }

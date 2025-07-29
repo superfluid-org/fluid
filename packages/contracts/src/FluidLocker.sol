@@ -65,15 +65,12 @@ uint256 constant BP_DENOMINATOR = 10_000;
 /// @dev Scaler used for unlock percentage calculation
 uint256 constant UNLOCKING_PCT_SCALER = 1e18;
 
-function calculateVestUnlockFlowRates(uint256 amountToUnlock, uint128 unlockPeriod)
+function calculateVestUnlockAmounts(uint256 totalAmountToUnlock, uint128 unlockPeriod)
     pure
-    returns (int96 unlockFlowRate, int96 taxFlowRate)
+    returns (uint256 userUnlockAmount, uint256 taxAmount)
 {
-    int96 globalFlowRate = int256(amountToUnlock / unlockPeriod).toInt96();
-
-    unlockFlowRate =
-        (globalFlowRate * int256(getUnlockingPercentage(unlockPeriod))).toInt96() / int256(BP_DENOMINATOR).toInt96();
-    taxFlowRate = globalFlowRate - unlockFlowRate;
+    userUnlockAmount = Math.mulDiv(totalAmountToUnlock, getUnlockingPercentage(unlockPeriod), BP_DENOMINATOR);
+    taxAmount = totalAmountToUnlock - userUnlockAmount;
 }
 
 function getUnlockingPercentage(uint128 unlockPeriod) pure returns (uint256 unlockingPercentageBP) {
@@ -117,7 +114,10 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     bool public immutable UNLOCK_AVAILABLE;
 
     /// @notice Staking cooldown period
-    uint80 private constant _STAKING_COOLDOWN_PERIOD = 3 days;
+    uint80 private constant _STAKING_COOLDOWN_PERIOD = 7 days;
+
+    /// @notice LP cooldown period
+    uint80 private constant _LP_COOLDOWN_PERIOD = 7 days;
 
     /// @notice Minimum unlock period allowed (1 week)
     uint128 private constant _MIN_UNLOCK_PERIOD = 7 days;
@@ -186,6 +186,9 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     /// @notice Stores the tax free withdraw timestamp for a given position token identifier
     mapping(uint256 positionTokenId => uint256 taxFreeWithdrawTimestamp) public taxFreeExitTimestamps;
+
+    /// @notice Stores the LP cooldown timestamp for a given position token identifier
+    mapping(uint256 positionTokenId => uint256 lpCooldownTimestamp) public lpCooldownTimestamps;
 
     /// @notice Aggregated liquidity balance provided by this locker
     uint256 private _liquidityBalance;
@@ -333,12 +336,14 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
         // Check if there will be a tax distribution event
         if (unlockPeriod < _MAX_UNLOCK_PERIOD) {
-            // Ensure that the tax distribution pools have at least one unit distributed
-            if (STAKER_DISTRIBUTION_POOL.getTotalUnits() == 0) {
+            (uint256 stakerAllocation, uint256 providerAllocation) = STAKING_REWARD_CONTROLLER.getTaxAllocation();
+
+            // Ensure that the tax distribution pools have at least one unit distributed (if the tax allocation is greater than 0)
+            if (STAKER_DISTRIBUTION_POOL.getTotalUnits() == 0 && stakerAllocation > 0) {
                 revert STAKER_DISTRIBUTION_POOL_HAS_NO_UNITS();
             }
 
-            if (LP_DISTRIBUTION_POOL.getTotalUnits() == 0) {
+            if (LP_DISTRIBUTION_POOL.getTotalUnits() == 0 && providerAllocation > 0) {
                 revert LP_DISTRIBUTION_POOL_HAS_NO_UNITS();
             }
         }
@@ -417,7 +422,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function provideLiquidity(uint256 supAmount) external payable nonReentrant onlyLockerOwner {
+    function provideLiquidity(uint256 supAmount) external payable nonReentrant onlyLockerOwner unlockAvailable {
         address weth = NONFUNGIBLE_POSITION_MANAGER.WETH9();
 
         uint256 ethAmount = msg.value;
@@ -425,18 +430,27 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Wrap ETH into WETH
         IWETH9(weth).deposit{ value: ethAmount }();
 
+        uint256 ethPumpAmount = ethAmount * BP_PUMP_RATIO / BP_DENOMINATOR;
+
         // Pumponomics (market buy SUP with 1% of the provided paired asset)
-        _pump(weth, ethAmount * BP_PUMP_RATIO / BP_DENOMINATOR);
+        _pump(weth, ethPumpAmount);
+
+        // Ensure that the locker has enough available balance to provide liquidity
+        if (getAvailableBalance() < supAmount) {
+            revert INSUFFICIENT_AVAILABLE_BALANCE();
+        }
 
         // Get the amount of paired asset tokens in the locker
-        uint256 ethLPAmount = IERC20(weth).balanceOf(address(this));
+        uint256 ethLPAmount = ethAmount - ethPumpAmount;
 
         // Approve the locker to spend the paired asset and the $SUP tokens
         TransferHelper.safeApprove(weth, address(NONFUNGIBLE_POSITION_MANAGER), ethLPAmount);
         TransferHelper.safeApprove(address(FLUID), address(NONFUNGIBLE_POSITION_MANAGER), supAmount);
 
         // Create a new Uniswap V3 position
-        _createPosition(ethLPAmount, supAmount);
+        (uint256 positionTokenId,,) = _createPosition(ethLPAmount, supAmount);
+
+        lpCooldownTimestamps[positionTokenId] = uint80(block.timestamp) + _LP_COOLDOWN_PERIOD;
 
         activePositionCount++;
 
@@ -449,10 +463,15 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         uint128 liquidityToRemove,
         uint256 amount0ToRemove,
         uint256 amount1ToRemove
-    ) external nonReentrant onlyLockerOwner {
+    ) external nonReentrant onlyLockerOwner unlockAvailable {
         // ensure the locker has a position
         if (!_positionExists(tokenId)) {
             revert LOCKER_HAS_NO_POSITION();
+        }
+
+        // Enforce LP cooldown
+        if (block.timestamp < lpCooldownTimestamps[tokenId]) {
+            revert LP_COOLDOWN_NOT_ELAPSED();
         }
 
         // Collect the fees
@@ -489,6 +508,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         external
         nonReentrant
         onlyLockerOwner
+        unlockAvailable
         returns (uint256 collectedWeth, uint256 collectedSup)
     {
         // ensure the locker has a position
@@ -584,27 +604,23 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
 
     function _instantUnlock(uint256 amountToUnlock, address recipient) internal {
         // Calculate instant unlock penalty amount
-        uint256 penaltyAmount = (amountToUnlock * _INSTANT_UNLOCK_PENALTY_BP) / BP_DENOMINATOR;
+        uint256 taxAmount = Math.mulDiv(amountToUnlock, _INSTANT_UNLOCK_PENALTY_BP, BP_DENOMINATOR);
 
-        (, uint256 providerAllocation) = STAKING_REWARD_CONTROLLER.getTaxAllocation();
+        // Transfer the tax amount to the Staking Reward Controller
+        FLUID.transfer(address(STAKING_REWARD_CONTROLLER), taxAmount);
 
-        // Distribute penalty to provider (connected to the LP_DISTRIBUTION_POOL)
-        uint256 actualProviderDistributionAmount =
-            FLUID.distribute(address(this), LP_DISTRIBUTION_POOL, penaltyAmount * providerAllocation / BP_DENOMINATOR);
+        // Update the tax distribution flow
+        STAKING_REWARD_CONTROLLER.refreshTaxDistributionFlow();
 
-        // Distribute penalty to staker (connected to the STAKER_DISTRIBUTION_POOL)
-        uint256 actualStakerDistributionAmount =
-            FLUID.distribute(address(this), STAKER_DISTRIBUTION_POOL, penaltyAmount - actualProviderDistributionAmount);
-
-        // Transfer the leftover $FLUID to the locker owner
-        FLUID.transfer(recipient, amountToUnlock - actualProviderDistributionAmount - actualStakerDistributionAmount);
+        // Transfer the amount after tax to the locker owner
+        FLUID.transfer(recipient, amountToUnlock - taxAmount);
 
         emit FluidUnlocked(0, amountToUnlock, recipient, address(0));
     }
 
     function _vestUnlock(uint256 amountToUnlock, uint128 unlockPeriod, address recipient) internal {
-        // Calculate the unlock and penalty flow rates based on requested amount and unlock period
-        (int96 unlockFlowRate, int96 taxFlowRate) = calculateVestUnlockFlowRates(amountToUnlock, unlockPeriod);
+        // Calculate the amount due to the user and the tax amount
+        (uint256 userUnlockAmount, uint256 taxAmount) = calculateVestUnlockAmounts(amountToUnlock, unlockPeriod);
 
         // Use create2 to deploy a Fontaine Beacon Proxy
         // The salt used for deployment is the hashed encoded Locker address and unlock identifier
@@ -612,21 +628,21 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
             new BeaconProxy{ salt: keccak256(abi.encode(address(this), fontaineCount)) }(address(FONTAINE_BEACON), "")
         );
 
-        // Transfer the total amount to unlock to the newly created Fontaine
-        FLUID.transfer(newFontaine, amountToUnlock);
-
         // Persist the fontaine address and increment fontaine counter
         fontaines[fontaineCount] = IFontaine(newFontaine);
         fontaineCount++;
 
-        // Calculate the tax allocation split between provider and staker
-        (, uint256 providerAllocation) = STAKING_REWARD_CONTROLLER.getTaxAllocation();
+        // Transfer the amount to unlock to the newly created Fontaine
+        FLUID.transfer(newFontaine, userUnlockAmount);
 
-        int96 providerFlowRate = (taxFlowRate * int256(providerAllocation).toInt96()) / int256(BP_DENOMINATOR).toInt96();
-        int96 stakerFlowRate = taxFlowRate - providerFlowRate;
+        // Transfer the tax amount to the Staking Reward Controller
+        FLUID.transfer(address(STAKING_REWARD_CONTROLLER), taxAmount);
 
         // Initialize the new Fontaine instance (this initiate the unlock process)
-        IFontaine(newFontaine).initialize(recipient, unlockFlowRate, providerFlowRate, stakerFlowRate, unlockPeriod);
+        IFontaine(newFontaine).initialize(recipient, int256(userUnlockAmount / unlockPeriod).toInt96(), unlockPeriod);
+
+        // Update the tax distribution flow
+        STAKING_REWARD_CONTROLLER.refreshTaxDistributionFlow();
 
         emit FluidUnlocked(unlockPeriod, amountToUnlock, recipient, newFontaine);
     }
@@ -658,12 +674,13 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
      * @notice Creates a new Uniswap V3 position with the specified amounts of tokens
      * @param ethAmount The desired amount of ETH to add as liquidity
      * @param supAmount The desired amount of SUP to add as liquidity
+     * @return positionTokenId The token identifier of the newly created position
      * @return depositedEthAmount The actual amount of ETH deposited as liquidity
      * @return depositedSupAmount The actual amount of SUP deposited as liquidity
      */
     function _createPosition(uint256 ethAmount, uint256 supAmount)
         internal
-        returns (uint256 depositedEthAmount, uint256 depositedSupAmount)
+        returns (uint256 positionTokenId, uint256 depositedEthAmount, uint256 depositedSupAmount)
     {
         bool zeroIsSup = ETH_SUP_POOL.token0() == address(FLUID);
 
@@ -688,6 +705,8 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         STAKING_REWARD_CONTROLLER.updateLiquidityProviderUnits(_liquidityBalance);
 
         (depositedSupAmount, depositedEthAmount) = _sortOutAmounts(zeroIsSup, depositedAmount0, depositedAmount1);
+
+        positionTokenId = tokenId;
     }
 
     /**
