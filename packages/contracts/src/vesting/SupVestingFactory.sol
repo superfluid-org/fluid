@@ -126,41 +126,29 @@ contract SupVestingFactory is ISupVestingFactory {
 
     /// @inheritdoc ISupVestingFactory
     function createSupVestingContract(
-        address recipient,
+        address vestingRecipient,
         uint256 amount,
         uint256 cliffAmount,
         uint32 cliffDate,
         uint32 endDate
-    ) external onlyAdmin returns (address newSupVestingContract) {
-        if (cliffDate < block.timestamp + MIN_CLIFF_PERIOD) revert FORBIDDEN();
-        if (cliffAmount >= amount) revert FORBIDDEN();
+    ) external onlyAdmin {
+        _createSupVestingContract(vestingRecipient, amount, cliffAmount, cliffDate, endDate);
+    }
 
-        // Ensure the recipient address does not already have a vesting contract
-        if (supVestings[recipient] != address(0)) revert RECIPIENT_ALREADY_HAS_VESTING_CONTRACT();
+    /// @inheritdoc ISupVestingFactory
+    function createSupVestingContract(
+        address[] memory vestingRecipients,
+        uint256[] memory amounts,
+        uint256[] memory cliffAmounts,
+        uint32 cliffDate,
+        uint32 endDate
+    ) external onlyAdmin {
+        uint256 length = vestingRecipients.length;
+        if (amounts.length != length || cliffAmounts.length != length) revert INVALID_PARAMETER();
 
-        recipients.push(recipient);
-
-        uint256 vestingDuration = endDate - cliffDate;
-
-        uint256 vestingAmount = amount - cliffAmount;
-        int96 flowRate = int256(vestingAmount / vestingDuration).toInt96();
-
-        // Add the remainder to the cliff amount
-        cliffAmount += vestingAmount - (uint96(flowRate) * vestingDuration);
-
-        // Deploy the new SUP Token Vesting contract
-        newSupVestingContract =
-            address(new SupVesting(VESTING_SCHEDULER, SUP, recipient, cliffDate, flowRate, cliffAmount, endDate));
-
-        // Maps the recipient address to the new SUP Token Vesting contract
-        supVestings[recipient] = newSupVestingContract;
-
-        // Transfer the tokens from the treasury to the new vesting contract
-        SUP.transferFrom(treasury, newSupVestingContract, amount);
-
-        // Emit the events
-        emit Transfer(address(0), recipient, amount);
-        emit SupVestingCreated(recipient, newSupVestingContract);
+        for (uint256 i = 0; i < length; ++i) {
+            _createSupVestingContract(vestingRecipients[i], amounts[i], cliffAmounts[i], cliffDate, endDate);
+        }
     }
 
     /// @inheritdoc ISupVestingFactory
@@ -197,6 +185,50 @@ contract SupVestingFactory is ISupVestingFactory {
         for (uint256 i; i < length; i++) {
             supply += balanceOf(recipients[i]);
         }
+    }
+
+    //     ____      __                        __   ______                 __  _
+    //    /  _/___  / /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
+    //    / // __ \/ __/ _ \/ ___/ __ \/ __ `/ /  / /_  / / / / __ \/ ___/ __/ / __ \/ __ \/ ___/
+    //  _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
+    // /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
+
+    function _createSupVestingContract(
+        address recipient,
+        uint256 amount,
+        uint256 cliffAmount,
+        uint32 cliffDate,
+        uint32 endDate
+    ) internal {
+        if (cliffDate < block.timestamp + MIN_CLIFF_PERIOD) revert FORBIDDEN();
+        if (cliffAmount >= amount) revert FORBIDDEN();
+
+        // Ensure the recipient address does not already have a vesting contract
+        if (supVestings[recipient] != address(0)) revert RECIPIENT_ALREADY_HAS_VESTING_CONTRACT();
+
+        recipients.push(recipient);
+
+        uint256 vestingDuration = endDate - cliffDate;
+
+        uint256 vestingAmount = amount - cliffAmount;
+        int96 flowRate = int256(vestingAmount / vestingDuration).toInt96();
+
+        // Add the remainder to the cliff amount
+        cliffAmount += vestingAmount - (uint96(flowRate) * vestingDuration);
+
+        // Deploy the new SUP Token Vesting contract
+        address newSupVestingContract =
+            address(new SupVesting(VESTING_SCHEDULER, SUP, recipient, cliffDate, flowRate, cliffAmount, endDate));
+
+        // Maps the recipient address to the new SUP Token Vesting contract
+        supVestings[recipient] = newSupVestingContract;
+
+        // Transfer the tokens from the treasury to the new vesting contract
+        SUP.transferFrom(treasury, newSupVestingContract, amount);
+
+        // Emit the events
+        emit Transfer(address(0), recipient, amount);
+        emit SupVestingCreated(recipient, newSupVestingContract);
     }
 
     //      __  ___          ___ _____

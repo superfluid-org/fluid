@@ -53,6 +53,9 @@ interface ISupVestingFactory {
     /// @notice Error thrown when the caller is not the foundation treasury
     error FORBIDDEN();
 
+    /// @notice Error thrown when the calling `createSupVestingContract` with invalid parameters
+    error INVALID_PARAMETER();
+
     /// @notice Error thrown when a recipient already has a vesting contract
     error RECIPIENT_ALREADY_HAS_VESTING_CONTRACT();
 
@@ -64,20 +67,35 @@ interface ISupVestingFactory {
 
     /**
      * @notice Creates a new SUP token vesting contract for a recipient
-     * @param recipient The address that will receive the vested tokens
+     * @param vestingRecipient The address that will receive the vested tokens
      * @param amount The total amount of SUP tokens to be vested
      * @param cliffAmount The amount of SUP tokens that will be transferred at cliff date
      * @param cliffDate The timestamp when the cliff period ends and the flow can start
      * @param endDate The timestamp when the vesting schedule ends
-     * @return newSupVestingContract The address of the newly created vesting contract
      */
     function createSupVestingContract(
-        address recipient,
+        address vestingRecipient,
         uint256 amount,
         uint256 cliffAmount,
         uint32 cliffDate,
         uint32 endDate
-    ) external returns (address newSupVestingContract);
+    ) external;
+
+    /**
+     * @notice Creates a batch of SUP token vesting contracts for multiple recipients
+     * @param vestingRecipients The addresses that will receive the vested tokens
+     * @param amounts The total amount of SUP tokens to be vested for each recipient
+     * @param cliffAmounts The amount of SUP tokens that will be transferred at cliff date for each recipient
+     * @param cliffDate The timestamp when the cliff period ends and the flows can start
+     * @param endDate The timestamp when the vesting schedules end
+     */
+    function createSupVestingContract(
+        address[] memory vestingRecipients,
+        uint256[] memory amounts,
+        uint256[] memory cliffAmounts,
+        uint32 cliffDate,
+        uint32 endDate
+    ) external;
 
     /**
      * @notice Updates the treasury address

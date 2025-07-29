@@ -94,11 +94,13 @@ contract SupVestingTest is SupVestingTestInit {
         _fluidSuperToken.approve(address(supVestingFactory), _amount);
 
         vm.prank(ADMIN);
-        address recipientSupVesting =
-            supVestingFactory.createSupVestingContract(recipient, _amount, _amount / 3, _cliffDate, _endDate);
+
+        supVestingFactory.createSupVestingContract(recipient, _amount, _amount / 3, _cliffDate, _endDate);
 
         (uint256 expectedCliff, int96 expectedFlowRate) =
             _helperCalculateExpectedCliffAndFlow(_amount, _endDate - _cliffDate);
+
+        address recipientSupVesting = supVestingFactory.supVestings(recipient);
 
         // Move time to after vesting can be started
         vm.warp(_cliffDate);

@@ -73,6 +73,70 @@ contract SupVestingFactoryTest is SFTest {
         );
     }
 
+    function testCreateSupVestingContract_batch(address nonAdmin) public {
+        vm.assume(nonAdmin != address(ADMIN));
+
+        address[] memory vestingRecipients = new address[](3);
+        vestingRecipients[0] = makeAddr("recipient0");
+        vestingRecipients[1] = makeAddr("recipient1");
+        vestingRecipients[2] = makeAddr("recipient2");
+
+        uint256[] memory amounts = new uint256[](3);
+        amounts[0] = 1 ether;
+        amounts[1] = 1000 ether;
+        amounts[2] = 100_000 ether;
+
+        uint256[] memory cliffAmounts = new uint256[](3);
+        cliffAmounts[0] = 0.3 ether;
+        cliffAmounts[1] = 300 ether;
+        cliffAmounts[2] = 30_000 ether;
+
+        uint256 totalAmount = amounts[0] + amounts[1] + amounts[2];
+
+        vm.prank(FLUID_TREASURY);
+        _fluidSuperToken.approve(address(supVestingFactory), totalAmount);
+
+        vm.prank(nonAdmin);
+        vm.expectRevert(ISupVestingFactory.FORBIDDEN.selector);
+        supVestingFactory.createSupVestingContract(
+            vestingRecipients,
+            amounts,
+            cliffAmounts,
+            uint32(block.timestamp + CLIFF_PERIOD),
+            uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+        );
+
+        uint256 supplyBefore = supVestingFactory.totalSupply();
+
+        vm.prank(ADMIN);
+        supVestingFactory.createSupVestingContract(
+            vestingRecipients,
+            amounts,
+            cliffAmounts,
+            uint32(block.timestamp + CLIFF_PERIOD),
+            uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+        );
+
+        for (uint256 i = 0; i < 3; ++i) {
+            address newSupVestingContract = supVestingFactory.supVestings(vestingRecipients[i]);
+
+            assertNotEq(newSupVestingContract, address(0), "New sup vesting contract should be created");
+            assertEq(supVestingFactory.balanceOf(vestingRecipients[i]), amounts[i], "Balance should be updated");
+        }
+
+        vm.prank(ADMIN);
+        vm.expectRevert(ISupVestingFactory.RECIPIENT_ALREADY_HAS_VESTING_CONTRACT.selector);
+        supVestingFactory.createSupVestingContract(
+            vestingRecipients,
+            amounts,
+            cliffAmounts,
+            uint32(block.timestamp + CLIFF_PERIOD),
+            uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
+        );
+
+        assertEq(supVestingFactory.totalSupply(), supplyBefore + totalAmount, "Total supply should be updated");
+    }
+
     function testSetTreasury(address newTreasury, address nonTreasury) public {
         vm.assume(nonTreasury != address(FLUID_TREASURY));
         vm.assume(newTreasury != address(FLUID_TREASURY));
