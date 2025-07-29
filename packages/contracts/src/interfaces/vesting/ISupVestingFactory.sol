@@ -70,31 +70,19 @@ interface ISupVestingFactory {
      * @param vestingRecipient The address that will receive the vested tokens
      * @param amount The total amount of SUP tokens to be vested
      * @param cliffAmount The amount of SUP tokens that will be transferred at cliff date
-     * @param cliffDate The timestamp when the cliff period ends and the flow can start
-     * @param endDate The timestamp when the vesting schedule ends
      */
-    function createSupVestingContract(
-        address vestingRecipient,
-        uint256 amount,
-        uint256 cliffAmount,
-        uint32 cliffDate,
-        uint32 endDate
-    ) external;
+    function createSupVestingContract(address vestingRecipient, uint256 amount, uint256 cliffAmount) external;
 
     /**
      * @notice Creates a batch of SUP token vesting contracts for multiple recipients
      * @param vestingRecipients The addresses that will receive the vested tokens
      * @param amounts The total amount of SUP tokens to be vested for each recipient
      * @param cliffAmounts The amount of SUP tokens that will be transferred at cliff date for each recipient
-     * @param cliffDate The timestamp when the cliff period ends and the flows can start
-     * @param endDate The timestamp when the vesting schedules end
      */
     function createSupVestingContract(
         address[] memory vestingRecipients,
         uint256[] memory amounts,
-        uint256[] memory cliffAmounts,
-        uint32 cliffDate,
-        uint32 endDate
+        uint256[] memory cliffAmounts
     ) external;
 
     /**

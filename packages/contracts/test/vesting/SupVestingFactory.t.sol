@@ -42,23 +42,17 @@ contract SupVestingFactoryTest is SFTest {
         amount = bound(amount, 1 ether, 1_000_000 ether);
         cliffAmount = bound(cliffAmount, 1, amount - 0.1 ether);
 
-        uint32 cliffDate = uint32(block.timestamp + CLIFF_PERIOD);
-
         vm.prank(FLUID_TREASURY);
         _fluidSuperToken.approve(address(supVestingFactory), amount);
 
         vm.prank(nonAdmin);
         vm.expectRevert(ISupVestingFactory.FORBIDDEN.selector);
-        supVestingFactory.createSupVestingContract(
-            recipient, amount, cliffAmount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
-        );
+        supVestingFactory.createSupVestingContract(recipient, amount, cliffAmount);
 
         uint256 supplyBefore = supVestingFactory.totalSupply();
 
         vm.prank(ADMIN);
-        supVestingFactory.createSupVestingContract(
-            recipient, amount, cliffAmount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
-        );
+        supVestingFactory.createSupVestingContract(recipient, amount, cliffAmount);
 
         address newSupVestingContract = supVestingFactory.supVestings(recipient);
 
@@ -68,9 +62,7 @@ contract SupVestingFactoryTest is SFTest {
 
         vm.prank(ADMIN);
         vm.expectRevert(ISupVestingFactory.RECIPIENT_ALREADY_HAS_VESTING_CONTRACT.selector);
-        supVestingFactory.createSupVestingContract(
-            recipient, amount, cliffAmount, cliffDate, uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
-        );
+        supVestingFactory.createSupVestingContract(recipient, amount, cliffAmount);
     }
 
     function testCreateSupVestingContract_batch(address nonAdmin) public {
@@ -98,24 +90,12 @@ contract SupVestingFactoryTest is SFTest {
 
         vm.prank(nonAdmin);
         vm.expectRevert(ISupVestingFactory.FORBIDDEN.selector);
-        supVestingFactory.createSupVestingContract(
-            vestingRecipients,
-            amounts,
-            cliffAmounts,
-            uint32(block.timestamp + CLIFF_PERIOD),
-            uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
-        );
+        supVestingFactory.createSupVestingContract(vestingRecipients, amounts, cliffAmounts);
 
         uint256 supplyBefore = supVestingFactory.totalSupply();
 
         vm.prank(ADMIN);
-        supVestingFactory.createSupVestingContract(
-            vestingRecipients,
-            amounts,
-            cliffAmounts,
-            uint32(block.timestamp + CLIFF_PERIOD),
-            uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
-        );
+        supVestingFactory.createSupVestingContract(vestingRecipients, amounts, cliffAmounts);
 
         for (uint256 i = 0; i < 3; ++i) {
             address newSupVestingContract = supVestingFactory.supVestings(vestingRecipients[i]);
@@ -126,13 +106,7 @@ contract SupVestingFactoryTest is SFTest {
 
         vm.prank(ADMIN);
         vm.expectRevert(ISupVestingFactory.RECIPIENT_ALREADY_HAS_VESTING_CONTRACT.selector);
-        supVestingFactory.createSupVestingContract(
-            vestingRecipients,
-            amounts,
-            cliffAmounts,
-            uint32(block.timestamp + CLIFF_PERIOD),
-            uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
-        );
+        supVestingFactory.createSupVestingContract(vestingRecipients, amounts, cliffAmounts);
 
         assertEq(supVestingFactory.totalSupply(), supplyBefore + totalAmount, "Total supply should be updated");
     }
@@ -159,13 +133,7 @@ contract SupVestingFactoryTest is SFTest {
 
             vm.prank(ADMIN);
             vm.expectRevert(ISupVestingFactory.INVALID_PARAMETER.selector);
-            supVestingFactory.createSupVestingContract(
-                vestingRecipients,
-                amounts,
-                cliffAmounts,
-                uint32(block.timestamp + CLIFF_PERIOD),
-                uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
-            );
+            supVestingFactory.createSupVestingContract(vestingRecipients, amounts, cliffAmounts);
         }
         // CliffAmounts length != recipients length
         {
@@ -188,13 +156,7 @@ contract SupVestingFactoryTest is SFTest {
 
             vm.prank(ADMIN);
             vm.expectRevert(ISupVestingFactory.INVALID_PARAMETER.selector);
-            supVestingFactory.createSupVestingContract(
-                vestingRecipients,
-                amounts,
-                cliffAmounts,
-                uint32(block.timestamp + CLIFF_PERIOD),
-                uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
-            );
+            supVestingFactory.createSupVestingContract(vestingRecipients, amounts, cliffAmounts);
         }
 
         // Amounts length != recipients length
@@ -218,13 +180,7 @@ contract SupVestingFactoryTest is SFTest {
 
             vm.prank(ADMIN);
             vm.expectRevert(ISupVestingFactory.INVALID_PARAMETER.selector);
-            supVestingFactory.createSupVestingContract(
-                vestingRecipients,
-                amounts,
-                cliffAmounts,
-                uint32(block.timestamp + CLIFF_PERIOD),
-                uint32(block.timestamp + CLIFF_PERIOD + VESTING_DURATION)
-            );
+            supVestingFactory.createSupVestingContract(vestingRecipients, amounts, cliffAmounts);
         }
     }
 

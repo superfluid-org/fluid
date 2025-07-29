@@ -62,6 +62,14 @@ contract SupVestingFactory is ISupVestingFactory {
     /// @notice Minimum cliff period for a vesting contract
     uint256 public constant MIN_CLIFF_PERIOD = 3 days;
 
+    /// @notice Vesting Cliff Date (applies to all Vesting Created from this Factory)
+    /// TODO : Exact timestamp to be re-confirmed
+    uint32 public constant VESTING_CLIFF_DATE = 1771074000; // 14th Feb 2026 (2 PM CET)
+
+    /// @notice Vesting End Date (applies to all Vesting Created from this Factory)
+    /// TODO : Exact timestamp to be re-confirmed
+    uint32 public constant VESTING_END_DATE = 1834146000; // 14th Feb 2028 (2 PM CET)
+
     //     _____ __        __
     //    / ___// /_____ _/ /____  _____
     //    \__ \/ __/ __ `/ __/ _ \/ ___/
@@ -125,29 +133,24 @@ contract SupVestingFactory is ISupVestingFactory {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /// @inheritdoc ISupVestingFactory
-    function createSupVestingContract(
-        address vestingRecipient,
-        uint256 amount,
-        uint256 cliffAmount,
-        uint32 cliffDate,
-        uint32 endDate
-    ) external onlyAdmin {
-        _createSupVestingContract(vestingRecipient, amount, cliffAmount, cliffDate, endDate);
+    function createSupVestingContract(address vestingRecipient, uint256 amount, uint256 cliffAmount)
+        external
+        onlyAdmin
+    {
+        _createSupVestingContract(vestingRecipient, amount, cliffAmount);
     }
 
     /// @inheritdoc ISupVestingFactory
     function createSupVestingContract(
         address[] memory vestingRecipients,
         uint256[] memory amounts,
-        uint256[] memory cliffAmounts,
-        uint32 cliffDate,
-        uint32 endDate
+        uint256[] memory cliffAmounts
     ) external onlyAdmin {
         uint256 length = vestingRecipients.length;
         if (amounts.length != length || cliffAmounts.length != length) revert INVALID_PARAMETER();
 
         for (uint256 i = 0; i < length; ++i) {
-            _createSupVestingContract(vestingRecipients[i], amounts[i], cliffAmounts[i], cliffDate, endDate);
+            _createSupVestingContract(vestingRecipients[i], amounts[i], cliffAmounts[i]);
         }
     }
 
@@ -193,14 +196,7 @@ contract SupVestingFactory is ISupVestingFactory {
     //  _/ // / / / /_/  __/ /  / / / / /_/ / /  / __/ / /_/ / / / / /__/ /_/ / /_/ / / / (__  )
     // /___/_/ /_/\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
-    function _createSupVestingContract(
-        address recipient,
-        uint256 amount,
-        uint256 cliffAmount,
-        uint32 cliffDate,
-        uint32 endDate
-    ) internal {
-        if (cliffDate < block.timestamp + MIN_CLIFF_PERIOD) revert FORBIDDEN();
+    function _createSupVestingContract(address recipient, uint256 amount, uint256 cliffAmount) internal {
         if (cliffAmount >= amount) revert FORBIDDEN();
 
         // Ensure the recipient address does not already have a vesting contract
@@ -208,7 +204,7 @@ contract SupVestingFactory is ISupVestingFactory {
 
         recipients.push(recipient);
 
-        uint256 vestingDuration = endDate - cliffDate;
+        uint256 vestingDuration = VESTING_END_DATE - VESTING_CLIFF_DATE;
 
         uint256 vestingAmount = amount - cliffAmount;
         int96 flowRate = int256(vestingAmount / vestingDuration).toInt96();
@@ -217,8 +213,11 @@ contract SupVestingFactory is ISupVestingFactory {
         cliffAmount += vestingAmount - (uint96(flowRate) * vestingDuration);
 
         // Deploy the new SUP Token Vesting contract
-        address newSupVestingContract =
-            address(new SupVesting(VESTING_SCHEDULER, SUP, recipient, cliffDate, flowRate, cliffAmount, endDate));
+        address newSupVestingContract = address(
+            new SupVesting(
+                VESTING_SCHEDULER, SUP, recipient, VESTING_CLIFF_DATE, flowRate, cliffAmount, VESTING_END_DATE
+            )
+        );
 
         // Maps the recipient address to the new SUP Token Vesting contract
         supVestings[recipient] = newSupVestingContract;
