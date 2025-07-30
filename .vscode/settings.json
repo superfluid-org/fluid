@@ -1,0 +1,11 @@
+{
+  "workbench.colorCustomizations": {
+    "editorIndentGuide.activeBackground1": "#e54141",
+    "titleBar.activeBackground": "#31aa08",
+    "titleBar.activeForeground": "#ffffff",
+    "titleBar.inactiveBackground": "#31aa08",
+    "titleBar.inactiveForeground": "#ffffff"
+  }
+  // "solidity.formatter": "forge",
+  // "editor.formatOnSave": true
+}
