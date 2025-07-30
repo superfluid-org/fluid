@@ -185,11 +185,11 @@ FLUID_UNLOCK_STATUS : Whether the Lockers allow the SuperToken to be withdrawn o
 
 ```shell
 /*
-SUP_ADDRESS={SUP_ADDRESS} \
-VESTING_SCHEDULER_ADDRESS={VESTING_SCHEDULER_ADDRESS} \
+SUP_ADDRESS=0xa69f80524381275A7fFdb3AE01c54150644c8792 \
+VESTING_SCHEDULER_ADDRESS=0x7b77A34b8B76B66E97a5Ae01aD052205d5cbe257 \
 ADMIN_ADDRESS={ADMIN_ADDRESS} \
 TREASURY_ADDRESS={TREASURY_ADDRESS} \
-forge script script/vesting/DeployVesting.s.sol:DeployVestingScript --ffi --rpc-url $BASE_MAINNET_RPC_URL --broadcast --verify -vvv --etherscan-api-key $BASESCAN_API_KEY
+forge script script/vesting/DeployVesting.s.sol:DeployVestingScript --ffi --rpc-url $BASE_MAINNET_RPC_URL --account SUP_DEPLOYER --broadcast --verify -vvv --etherscan-api-key $BASESCAN_API_KEY
 */
 ```
 
