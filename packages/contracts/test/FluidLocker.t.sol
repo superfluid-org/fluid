@@ -139,10 +139,10 @@ contract FluidLockerTest is SFTest {
 
         vm.prank(BOB);
         vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
-        aliceLocker.connectToPool(PROGRAM_0);
+        aliceLocker.connect(PROGRAM_0);
 
         vm.prank(ALICE);
-        aliceLocker.connectToPool(PROGRAM_0);
+        aliceLocker.connect(PROGRAM_0);
 
         assertEq(
             _fluid.balanceOf(address(aliceLocker)),
@@ -168,10 +168,10 @@ contract FluidLockerTest is SFTest {
 
         vm.prank(BOB);
         vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
-        aliceLocker.disconnectFromPool(PROGRAM_0);
+        aliceLocker.disconnect(PROGRAM_0);
 
         vm.prank(ALICE);
-        aliceLocker.disconnectFromPool(PROGRAM_0);
+        aliceLocker.disconnect(PROGRAM_0);
 
         assertEq(
             _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),
@@ -210,10 +210,10 @@ contract FluidLockerTest is SFTest {
 
         vm.prank(BOB);
         vm.expectRevert(IFluidLocker.NOT_LOCKER_OWNER.selector);
-        aliceLocker.disconnectFromPool(programIds);
+        aliceLocker.disconnect(programIds);
 
         vm.prank(ALICE);
-        aliceLocker.disconnectFromPool(programIds);
+        aliceLocker.disconnect(programIds);
 
         assertEq(
             _fluid.isMemberConnected(address(programPools[0]), address(aliceLocker)),

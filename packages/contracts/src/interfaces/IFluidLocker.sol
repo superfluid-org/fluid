@@ -149,28 +149,28 @@ interface IFluidLocker {
     function unstake() external;
 
     /**
-     * @notice Helper function to help the Locker connect to a program pool
+     * @notice Helper function which connects the Locker to a program pool
      * @dev Only this Locker owner can call this function
      * @param programId program identifier corresponding to the pool to connect to
      */
-    function connectToPool(uint256 programId) external;
+    function connect(uint256 programId) external;
 
     /**
-     * @notice Helper function to help the Locker disconnect from a program pool
+     * @notice Helper function which disconnects the Locker from a program pool
      * @dev Only this Locker owner can call this function
      * @param programId program identifier corresponding to the pool to connect to
      */
-    function disconnectFromPool(uint256 programId) external;
+    function disconnect(uint256 programId) external;
 
     /**
-     * @notice Helper function to help the Locker disconnect from multiple program pools
+     * @notice Helper function which disconnects the Locker from multiple program pools
      * @dev Only this Locker owner can call this function
      * @param programIds array of program identifiers corresponding to the pools to disconnect from
      */
-    function disconnectFromPool(uint256[] memory programIds) external;
+    function disconnect(uint256[] memory programIds) external;
 
     /**
-     * @notice Helper function to help the Locker disconnect from multiple program pools and claim units
+     * @notice Helper function which combines batched disconnectFromPool and claim into one call.
      * @dev Only this Locker owner can call this function
      * @param programIdsToDisconnect array of program identifiers corresponding to the pools to disconnect from
      * @param programIdsToClaim array of program identifiers corresponding to the pools to claim units from

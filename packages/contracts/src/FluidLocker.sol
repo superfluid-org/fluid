@@ -294,7 +294,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function connectToPool(uint256 programId) external nonReentrant onlyLockerOwner {
+    function connect(uint256 programId) external nonReentrant onlyLockerOwner {
         // Get the corresponding program pool
         ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
 
@@ -305,12 +305,12 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
     }
 
     /// @inheritdoc IFluidLocker
-    function disconnectFromPool(uint256 programId) external nonReentrant onlyLockerOwner {
+    function disconnect(uint256 programId) external nonReentrant onlyLockerOwner {
         _disconnectFromPool(programId);
     }
 
     /// @inheritdoc IFluidLocker
-    function disconnectFromPool(uint256[] memory programIds) external nonReentrant onlyLockerOwner {
+    function disconnect(uint256[] memory programIds) external nonReentrant onlyLockerOwner {
         for (uint256 i; i < programIds.length; ++i) {
             _disconnectFromPool(programIds[i]);
         }
