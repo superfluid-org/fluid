@@ -84,14 +84,16 @@ interface ISupVestingFactory {
     /**
      * @notice Updates the treasury address
      * @param newTreasury The new treasury address to set
-     * @dev Can only be called by admin
+     * @dev The treasury is meant to be a multisig
+     * @dev Can only be called by the treasury itself
      */
     function setTreasury(address newTreasury) external;
 
     /**
      * @notice Updates the admin address
      * @param newAdmin The new admin address to set
-     * @dev Can only be called by admin
+     * @dev The admin is originally meant to be an operational EOA then be updated to a multisig
+     * @dev Can only be called by either the admin or the treasury
      */
     function setAdmin(address newAdmin) external;
 
