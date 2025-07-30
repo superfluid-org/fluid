@@ -53,8 +53,8 @@ interface ISupVestingFactory {
     /// @notice Error thrown when the caller is not the foundation treasury
     error FORBIDDEN();
 
-    /// @notice Error thrown when a recipient already has a vesting contract
-    error RECIPIENT_ALREADY_HAS_VESTING_CONTRACT();
+    /// @notice Error thrown when a recipient already has a vesting contract at the given vesting index
+    error VESTING_DUPLICATED();
 
     //      ______     __                        __   ______                 __  _
     //     / ____/  __/ /____  _________  ____ _/ /  / ____/_  ______  _____/ /_(_)___  ____  _____
@@ -63,8 +63,9 @@ interface ISupVestingFactory {
     //  /_____/_/|_|\__/\___/_/  /_/ /_/\__,_/_/  /_/    \__,_/_/ /_/\___/\__/_/\____/_/ /_/____/
 
     /**
-     * @notice Creates a new SUP token vesting contract for a recipient
+     * @notice Creates a SUP token vesting contract for a recipient
      * @param recipient The address that will receive the vested tokens
+     * @param recipientVestingIndex The expected count of pre-existing schedules for the given `recipient` (0 if none exists)
      * @param amount The total amount of SUP tokens to be vested
      * @param cliffAmount The amount of SUP tokens that will be transferred at cliff date
      * @param cliffDate The timestamp when the cliff period ends and the flow can start
@@ -73,6 +74,7 @@ interface ISupVestingFactory {
      */
     function createSupVestingContract(
         address recipient,
+        uint256 recipientVestingIndex,
         uint256 amount,
         uint256 cliffAmount,
         uint32 cliffDate,
