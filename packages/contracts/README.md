@@ -165,11 +165,14 @@ FLUID_UNLOCK_STATUS : Whether the Lockers allow the SuperToken to be withdrawn o
 ### Pre-requisite
 
 - Have an ADMIN account created
-- Have the TREASURY multisig create and setup
+- Have the TREASURY multisig created and setup
 - Have all the insiders data ready and validated :
   - `recipient` address
   - `amount` for each insider
-  - vesting parameter (`cliffAmount` / `cliffDate` / `endDate`)
+  - `cliffAmount` for each insider
+  - confirm vesting dates (cliff date / end date)
+    - if necessary, manually update `SupVestingFactory::VESTING_CLIFF_DATE`
+    - if necessary, manually update `SupVestingFactory::VESTING_END_DATE`
 
 ### Step 1 :
 
@@ -192,14 +195,12 @@ forge script script/vesting/DeployVesting.s.sol:DeployVestingScript --ffi --rpc-
 
 ### Step 2 :
 
-- Approve the `SupVestingFactory` contract address to spend $SUP tokens from the Treasury Multisig
-- Note : Approved Amount = sum of all insiders' amount
+- Approve the `SupVestingFactory` contract address to spend $SUP tokens from the TREASURY account
+- Note : Approved Amount shall be equal to the sum of all insiders' amount
 
 ### Step 3 :
 
 - Execute script to create SupVesting contract for each insiders.
-- Note : Currently, the `SupVestingFactory` contract allows prefunding of the `SupVesting` contracts.
-  We must remain consistent and either prefund or not prefund every `SupVesting` contracts.
 
 ### Step 4 :
 
