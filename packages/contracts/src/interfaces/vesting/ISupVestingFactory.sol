@@ -111,6 +111,12 @@ interface ISupVestingFactory {
     function balanceOf(address vestingReceiver) external view returns (uint256 unvestedBalance);
 
     /**
+     * @notice Gets the total supply of LockedSUP tokens (unvested SUP Tokens)
+     * @return supply The total supply of LockedSUP tokens
+     */
+    function totalSupply() external view returns (uint256 supply);
+
+    /**
      * @notice Gets the admin address
      * @return admin The current admin address
      */

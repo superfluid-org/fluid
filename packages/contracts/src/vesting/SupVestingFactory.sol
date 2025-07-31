@@ -134,7 +134,7 @@ contract SupVestingFactory is ISupVestingFactory {
         uint32 endDate
     ) external onlyAdmin returns (address newSupVestingContract) {
         if (cliffDate < block.timestamp + MIN_CLIFF_PERIOD) revert FORBIDDEN();
-        if (cliffAmount >= amount) revert FORBIDDEN();
+        if (!(cliffAmount < amount)) revert FORBIDDEN();
         if (supVestings[recipient].length != recipientVestingIndex) {
             revert VESTING_DUPLICATED();
         }
@@ -197,10 +197,11 @@ contract SupVestingFactory is ISupVestingFactory {
         }
     }
 
+    /// @inheritdoc ISupVestingFactory
     function totalSupply() external view returns (uint256 supply) {
         uint256 length = recipients.length;
 
-        for (uint256 i; i < length; i++) {
+        for (uint256 i; i < length; ++i) {
             supply += balanceOf(recipients[i]);
         }
     }
