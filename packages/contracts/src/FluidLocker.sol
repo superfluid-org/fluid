@@ -435,9 +435,7 @@ contract FluidLocker is Initializable, ReentrancyGuard, IFluidLocker {
         // Get the corresponding program pool
         ISuperfluidPool programPool = EP_PROGRAM_MANAGER.getProgramPool(programId);
 
-        assert(FLUID.isMemberConnected(address(programPool), address(this)));
-
-        // Connect this locker to the Program Pool
+        // Disconnect this locker from the Program Pool
         FLUID.disconnectPool(programPool);
     }
 
