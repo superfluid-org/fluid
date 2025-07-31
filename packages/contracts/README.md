@@ -85,11 +85,14 @@ FLUID_UNLOCK_STATUS : Whether the Lockers allow the SuperToken to be withdrawn o
 ### Pre-requisite
 
 - Have an ADMIN account created
-- Have the TREASURY multisig create and setup
+- Have the TREASURY multisig created and setup
 - Have all the insiders data ready and validated :
   - `recipient` address
+  - `recipientVestingIndex` for each insider (0 if none exists, 1 if one exists, etc.)
   - `amount` for each insider
-  - vesting parameter (`cliffAmount` / `cliffDate` / `endDate`)
+  - `cliffAmount` for each insider
+  - `cliffDate` for each insider
+  - `endDate` for each insider
 
 ### Step 1 :
 
@@ -102,24 +105,22 @@ FLUID_UNLOCK_STATUS : Whether the Lockers allow the SuperToken to be withdrawn o
 
 ```shell
 /*
-SUP_ADDRESS={SUP_ADDRESS} \
-VESTING_SCHEDULER_ADDRESS={VESTING_SCHEDULER_ADDRESS} \
+SUP_ADDRESS=0xa69f80524381275A7fFdb3AE01c54150644c8792 \
+VESTING_SCHEDULER_ADDRESS=0x7b77A34b8B76B66E97a5Ae01aD052205d5cbe257 \
 ADMIN_ADDRESS={ADMIN_ADDRESS} \
 TREASURY_ADDRESS={TREASURY_ADDRESS} \
-forge script script/vesting/DeployVesting.s.sol:DeployVestingScript --ffi --rpc-url $BASE_MAINNET_RPC_URL --broadcast --verify -vvv --etherscan-api-key $BASESCAN_API_KEY
+forge script script/vesting/DeployVesting.s.sol:DeployVestingScript --ffi --rpc-url $BASE_MAINNET_RPC_URL --account SUP_DEPLOYER --broadcast --verify -vvv --etherscan-api-key $BASESCAN_API_KEY
 */
 ```
 
 ### Step 2 :
 
-- Approve the `SupVestingFactory` contract address to spend $SUP tokens from the Treasury Multisig
-- Note : Approved Amount = sum of all insiders' amount
+- Approve the `SupVestingFactory` contract address to spend $SUP tokens from the TREASURY account
+- Note : Approved Amount shall be equal to the sum of all insiders' amount
 
 ### Step 3 :
 
 - Execute script to create SupVesting contract for each insiders.
-- Note : Currently, the `SupVestingFactory` contract allows prefunding of the `SupVesting` contracts.
-  We must remain consistent and either prefund or not prefund every `SupVesting` contracts.
 
 ### Step 4 :
 
