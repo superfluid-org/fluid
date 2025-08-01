@@ -182,6 +182,84 @@ contract SupVestingTest is SupVestingTestInit {
 
         assertEq(_fluidSuperToken.balanceOf(address(supVesting)), 0, "Balance should be 0");
     }
+
+    function testEmergencyWithdrawStreamManuallyClosedByRecipient() public {
+        // Move time to after vesting can be started
+        vm.warp(cliffDate + 1 minutes);
+
+        // Execute the vesting start
+        vestingScheduler.executeCliffAndFlow(_fluidSuperToken, address(supVesting), ALICE);
+
+        int96 vestingFlowRate = _fluidSuperToken.getFlowRate(address(supVesting), ALICE);
+
+        assertEq(vestingFlowRate, flowRate, "Flow rate mismatch");
+
+        vm.warp(block.timestamp + 5 days);
+
+        uint256 treasuryBalanceBefore = _fluidSuperToken.balanceOf(FLUID_TREASURY);
+        uint256 aliceVestingBalanceBefore = _fluidSuperToken.balanceOf(address(supVesting));
+
+        vm.startPrank(ALICE);
+        _fluidSuperToken.deleteFlow(address(supVesting), ALICE);
+        vm.stopPrank();
+
+        vm.prank(ADMIN);
+        supVesting.emergencyWithdraw();
+
+        assertEq(_fluidSuperToken.getFlowRate(address(supVesting), ALICE), 0, "Flow should be deleted");
+
+        assertApproxEqAbs(
+            _fluidSuperToken.balanceOf(FLUID_TREASURY),
+            treasuryBalanceBefore + aliceVestingBalanceBefore,
+            (_fluidSuperToken.balanceOf(FLUID_TREASURY) * 10) / 10_000, // 0.1% tolerance
+            "Balance should be updated"
+        );
+
+        assertEq(_fluidSuperToken.balanceOf(address(supVesting)), 0, "Balance should be 0");
+    }
+
+    function testEmergencyWithdrawStreamManuallyClosedByRecipientAndVestingEnded() public {
+        IVestingSchedulerV2.VestingSchedule memory aliceVS =
+            vestingScheduler.getVestingSchedule(address(_fluidSuperToken), address(supVesting), ALICE);
+
+        // Move time to after vesting can be started
+        vm.warp(cliffDate + 1 minutes);
+
+        // Execute the vesting start
+        vestingScheduler.executeCliffAndFlow(_fluidSuperToken, address(supVesting), ALICE);
+
+        int96 vestingFlowRate = _fluidSuperToken.getFlowRate(address(supVesting), ALICE);
+
+        assertEq(vestingFlowRate, flowRate, "Flow rate mismatch");
+
+        vm.warp(block.timestamp + 5 days);
+
+        uint256 treasuryBalanceBefore = _fluidSuperToken.balanceOf(FLUID_TREASURY);
+        uint256 aliceVestingBalanceBefore = _fluidSuperToken.balanceOf(address(supVesting));
+
+        vm.startPrank(ALICE);
+        _fluidSuperToken.deleteFlow(address(supVesting), ALICE);
+        vm.stopPrank();
+
+        // Move time to after vesting can be concluded (before the stream gets critical / buffer starts being consumed)
+        vm.warp(aliceVS.endDate - 5 hours);
+
+        vestingScheduler.executeEndVesting(_fluidSuperToken, address(supVesting), ALICE);
+
+        vm.prank(ADMIN);
+        supVesting.emergencyWithdraw();
+
+        assertEq(_fluidSuperToken.getFlowRate(address(supVesting), ALICE), 0, "Flow should be deleted");
+
+        assertApproxEqAbs(
+            _fluidSuperToken.balanceOf(FLUID_TREASURY),
+            treasuryBalanceBefore + aliceVestingBalanceBefore,
+            (_fluidSuperToken.balanceOf(FLUID_TREASURY) * 10) / 10_000, // 0.1% tolerance
+            "Balance should be updated"
+        );
+
+        assertEq(_fluidSuperToken.balanceOf(address(supVesting)), 0, "Balance should be 0");
+    }
 }
 
 /// @notice This test is meant to be updated with all the real data for each insider
